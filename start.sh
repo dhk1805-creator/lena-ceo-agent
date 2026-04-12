@@ -10,6 +10,29 @@ export TZ=Asia/Ho_Chi_Minh
 export OPENCLAW_GATEWAY_PORT="${PORT:-8080}"
 export OPENCLAW_GATEWAY_TOKEN="${GATEWAY_PASSWORD:-LeNa2026!}"
 
+# === PERSISTENT VOLUME SYNC ===
+# Volume mounts at /root/.openclaw — copy workspace files if missing or updated
+echo "Syncing workspace files to persistent volume..."
+mkdir -p /root/.openclaw/workspace/skills
+mkdir -p /root/.openclaw/agents/main/sessions
+mkdir -p /root/.openclaw/credentials/zalouser
+
+# Always update AGENTS.md, MEMORY.md, skills (from Docker image)
+cp -f /app/workspace/AGENTS.md /root/.openclaw/workspace/AGENTS.md 2>/dev/null
+cp -f /app/workspace/MEMORY.md /root/.openclaw/workspace/MEMORY.md 2>/dev/null
+cp -rf /app/workspace/skills/* /root/.openclaw/workspace/skills/ 2>/dev/null
+
+# Only copy Zalo credentials if not already exists (preserve login session)
+if [ ! -f /root/.openclaw/credentials/zalouser/credentials.json ]; then
+  cp -f /app/zalo-session/credentials.json /root/.openclaw/credentials/zalouser/credentials.json 2>/dev/null
+  cp -f /app/zalo-session/zalouser-pairing.json /root/.openclaw/credentials/zalouser-pairing.json 2>/dev/null
+  echo "Zalo credentials copied (first deploy)"
+else
+  echo "Zalo credentials already exist (preserved from volume)"
+fi
+
+echo "Workspace sync complete"
+
 # Generate openclaw.json from environment variables
 cat > /root/.openclaw/openclaw.json <<OCEOF
 {
