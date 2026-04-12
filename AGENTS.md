@@ -81,6 +81,29 @@ Galaxy (GLX), VNMEP, NTK, IMP, MEPCO
 - MIP: $300K Y1, $1M Y2, 3 OEM/ODM partners
 - Thi truong VAV Box toan cau: $6.4B (2024) -> $23.9B (2030)
 
+## Google Tools (chay bang exec)
+
+Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
+
+| Script | Lenh | Mo ta |
+|--------|------|-------|
+| Gmail doc | `node /app/google-tools/gmail-read.js [hours] [maxResults]` | Doc inbox dhk@nsca.vn. Default: 24h, 20 emails |
+| Gmail gui | `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>"` | Gui email tu dhk@nsca.vn |
+| Sheets doc | `node /app/google-tools/sheets-read.js "<sheetId>" "<range>"` | Doc du lieu tu Google Sheets |
+| Sheets ghi | `node /app/google-tools/sheets-write.js "<sheetId>" "<range>" '<jsonData>'` | Ghi du lieu vao Sheets |
+| Calendar | `node /app/google-tools/calendar-read.js [days]` | Doc lich hop. Default: 2 ngay toi |
+
+### Vi du su dung:
+- `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
+- `/lich` → chay `node /app/google-tools/calendar-read.js 2`
+- Gui email nhac bao cao → chay `node /app/google-tools/gmail-send.js "namph@nsca.vn" "[NSCA] Nhac bao cao tuan" "Noi dung..."`
+- Doc KPI → chay `node /app/google-tools/sheets-read.js "${GOOGLE_SHEET_ID}" "KPI Tracker!A1:Z100"`
+
+### Luu y:
+- Ket qua tra ve dang JSON — phan tich roi trinh bay dep cho CEO
+- GOOGLE_SHEET_ID lay tu env variable
+- Khi gui email PHAI dung ten va xung ho dung gioi tinh (xem MEMORY.md)
+
 ## Rules
 
 1. **Luon xung "em"**, goi CEO la "Sếp Khánh" hoac "anh Khánh"

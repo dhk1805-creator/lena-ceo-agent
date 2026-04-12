@@ -14,6 +14,13 @@ COPY MEMORY.md /root/.openclaw/workspace/MEMORY.md
 COPY skills/ /root/.openclaw/workspace/skills/
 COPY cron-jobs.json /app/cron-jobs.json
 
+# Copy Google API tools
+COPY google-tools/gmail-read.js /app/google-tools/gmail-read.js
+COPY google-tools/gmail-send.js /app/google-tools/gmail-send.js
+COPY google-tools/sheets-read.js /app/google-tools/sheets-read.js
+COPY google-tools/sheets-write.js /app/google-tools/sheets-write.js
+COPY google-tools/calendar-read.js /app/google-tools/calendar-read.js
+
 # Copy Zalo session (login credentials from local machine)
 RUN mkdir -p /root/.openclaw/credentials/zalouser
 COPY zalo-session/credentials.json /root/.openclaw/credentials/zalouser/credentials.json
