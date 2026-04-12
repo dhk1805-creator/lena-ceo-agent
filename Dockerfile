@@ -20,6 +20,7 @@ COPY google-tools/gmail-send.js /app/google-tools/gmail-send.js
 COPY google-tools/sheets-read.js /app/google-tools/sheets-read.js
 COPY google-tools/sheets-write.js /app/google-tools/sheets-write.js
 COPY google-tools/calendar-read.js /app/google-tools/calendar-read.js
+COPY google-tools/import-cron.js /app/google-tools/import-cron.js
 
 # Copy Zalo session (login credentials from local machine)
 RUN mkdir -p /root/.openclaw/credentials/zalouser

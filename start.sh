@@ -68,7 +68,7 @@ echo "Claude API: $(echo ${CLAUDE_API_KEY} | head -c 15)..."
 echo "Gateway Token set: yes"
 
 # Import cron jobs after gateway starts (background)
-(sleep 30 && openclaw cron import /app/cron-jobs.json 2>/dev/null && echo "Cron jobs imported") &
+(sleep 30 && node /app/google-tools/import-cron.js /app/cron-jobs.json 2>&1 && echo "Cron jobs imported") &
 
 # Start gateway
 echo "=== Starting OpenClaw Gateway on port ${OPENCLAW_GATEWAY_PORT} ==="
