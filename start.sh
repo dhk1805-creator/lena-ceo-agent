@@ -56,7 +56,8 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
   },
   "channels": {
     "zalouser": {
-      "enabled": true
+      "enabled": true,
+      "dmPolicy": "open"
     }
   }
 }
