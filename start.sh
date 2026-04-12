@@ -7,7 +7,8 @@ echo "=== Le Na CEO Agent - Starting on Railway ==="
 export TZ=Asia/Ho_Chi_Minh
 
 # Railway provides PORT env
-PORT="${PORT:-18789}"
+export OPENCLAW_GATEWAY_PORT="${PORT:-8080}"
+export OPENCLAW_GATEWAY_TOKEN="${GATEWAY_PASSWORD:-LeNa2026!}"
 
 # Generate openclaw.json from environment variables
 cat > /root/.openclaw/openclaw.json <<OCEOF
@@ -46,18 +47,8 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
   },
   "gateway": {
     "mode": "local",
-    "port": ${PORT},
-    "bind": "lan",
-    "auth": {
-      "mode": "password",
-      "password": "${GATEWAY_PASSWORD:-LeNa2026!}"
-    },
-    "controlUi": {
-      "allowedOrigins": ["https://lena-ceo-agent-production.up.railway.app"]
-    },
-    "remote": {
-      "url": "https://lena-ceo-agent-production.up.railway.app"
-    }
+    "port": ${OPENCLAW_GATEWAY_PORT},
+    "bind": "lan"
   },
   "channels": {
     "zalouser": {
@@ -67,12 +58,13 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
 }
 OCEOF
 
-echo "Config generated with port ${PORT}"
+echo "Config generated with port ${OPENCLAW_GATEWAY_PORT}"
 echo "Claude API: $(echo ${CLAUDE_API_KEY} | head -c 15)..."
+echo "Gateway Token set: yes"
 
 # Import cron jobs after gateway starts (background)
 (sleep 30 && openclaw cron import /app/cron-jobs.json 2>/dev/null && echo "Cron jobs imported") &
 
 # Start gateway
-echo "=== Starting OpenClaw Gateway on port ${PORT} ==="
+echo "=== Starting OpenClaw Gateway on port ${OPENCLAW_GATEWAY_PORT} ==="
 exec openclaw gateway --verbose
