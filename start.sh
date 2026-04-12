@@ -48,7 +48,10 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
   "gateway": {
     "mode": "local",
     "port": ${OPENCLAW_GATEWAY_PORT},
-    "bind": "lan"
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": ["https://lena-ceo-agent-production.up.railway.app"]
+    }
   },
   "channels": {
     "zalouser": {
