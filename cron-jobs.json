@@ -8,7 +8,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Quet email moi gui den dhk@nsca.vn trong 1 gio qua. Chi doc email gui DICH DANH TO: dhk@nsca.vn. Phan loai: report_submission, urgent, approval_request, external, general_internal. Tu dong tra loi theo quy tac:\n- report_submission: Xac nhan da nhan, hoac yeu cau lam ro\n- urgent: Forward CEO + thong bao khan cap\n- approval_request: Tong hop gui CEO\n- external (nuoc ngoai): Reply bang tieng Anh\n- general_internal: Phan hoi phu hop\nNeu co Google Docs/Sheets link, vao doc va tom tat.\nSau khi xu ly, gui bao cao tom tat cho CEO qua Zalo.\nLog tat ca vao sheet 'Email Action Log'."
+      "message": "Chay: node /app/google-tools/gmail-read.js 1 20\nDoc ket qua JSON, phan loai email:\n- report_submission: Bao cao tu 14 truong phong\n- urgent: Tu khach hang OEM (EAL, Quiet Cool), NPP, co deadline\n- approval_request: Yeu cau duyet\n- external: Tu doi tac quoc te\n- general_internal: Noi bo thong thuong\n\nVoi moi email, xem co can hanh dong gi khong.\nGui bao cao tom tat cho CEO qua Zalo (dung emoji phan loai).\nLog vao Google Sheets bang: node /app/google-tools/sheets-write.js $GOOGLE_SHEET_ID \"'5. Email Action Log'!A:J\" '<data>'"
     },
     "sessionTarget": "isolated"
   },
@@ -21,7 +21,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Doc Google Calendar cua dhk@nsca.vn cho hom nay va ngay mai. Dinh dang:\n- Thoi gian, ten cuoc hop, nguoi tham gia, dia diem\n- Danh dau cuoc hop quan trong\nGui qua Zalo cho CEO."
+      "message": "Chay: node /app/google-tools/calendar-read.js 2\nDoc ket qua JSON, trinh bay lich hop hom nay va ngay mai.\nFormat:\nLICH HOP — [Ngay]\n[Gio] — [Ten cuoc hop] — [Nguoi tham gia]\nDanh dau cuoc hop quan trong.\nGui qua Zalo cho Sep Khanh."
     },
     "sessionTarget": "isolated"
   },
@@ -60,7 +60,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Gui email NHAC NHO 14 phong ban nop bao cao tuan. Danh sach:\n1. R&D/HCNS (rd@nsca.vn)\n2. PKD (pkd@nsca.vn)\n3. BD Noi Dia (bdnd@nsca.vn)\n4. BD International (bdi@nsca.vn)\n5. BO (bo@nsca.vn)\n6. TCKT (tckt@nsca.vn)\n7. QLSX (qlsx@nsca.vn)\n8. Xuong Nhom (nhom@nsca.vn)\n9. Xuong Thep (thep@nsca.vn)\n10. Xuong Co Dien (codien@nsca.vn)\n11. QAQC (qaqc@nsca.vn)\n12. Kho (kho@nsca.vn)\n13. Giao Hang (giaohang@nsca.vn)\n14. Cung Ung (cungung@nsca.vn)\n\nNoi dung: Nhac nho nop bao cao tuan truoc 16h thu 7. Ghi ten Le Na - Tro ly CEO.\nLog vao 'Report Tracker' sheet."
+      "message": "Gui email NHAC NHO 14 truong bo phan nop bao cao tuan. Danh sach (xem MEMORY.md de lay email chinh xac):\n1. R&D - anh Nam (namph@nsca.vn)\n2. HCNS - anh Son (sondv@nsca.vn)\n3. PKD - anh Ngoc (ndao@nsca.vn)\n4. BD Noi dia - anh Duc (ductm@nsca.vn)\n5. BD International - anh Santiago (santiago@nsca.vn) — GUI TIENG ANH\n6. Back Office - chi Tam (tamntt@nsca.vn)\n7. TCKT - anh Duan (duannt@nsca.vn)\n8. GD Nha may/SX Nhom - anh Ngoc (ngocnv@nsca.vn)\n9. SX Thep - anh Tung (tunghm@nsca.vn)\n10. Co Dien - anh Phong (phongdv@nsca.vn)\n11. QAQC - anh Tuan (tuannl@nsca.vn)\n12. Kho - chi Ha (hant@nsca.vn)\n13. Giao Hang - anh Duc (ducvt@nsca.vn)\n14. Cung Ung - chi Kim Anh (anhdtk@nsca.vn)\n\nDung gmail-send.js de gui tung email. Xung 'em', goi 'anh/chi' tuy gioi tinh.\nDeadline: Thu 6 17:00. Log vao Google Sheets 'Report Tracker'."
     },
     "sessionTarget": "isolated"
   },
