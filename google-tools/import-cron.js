@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Import cron jobs via Gateway WebSocket API
 const fs = require('fs');
-const TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || process.env.GATEWAY_PASSWORD || 'LeNa2026!';
+const TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || process.env.GATEWAY_PASSWORD;
+const PORT = process.env.OPENCLAW_GATEWAY_PORT || process.env.PORT || '8080';
 const CRON_FILE = process.argv[2] || '/app/cron-jobs.json';
+if (!TOKEN) { console.error('No gateway token found'); process.exit(1); }
 
 async function main() {
   const jobs = JSON.parse(fs.readFileSync(CRON_FILE, 'utf8'));
@@ -10,7 +12,7 @@ async function main() {
 
   for (const job of jobs) {
     try {
-      const res = await fetch('http://localhost:8080/api/cron', {
+      const res = await fetch('http://localhost:${PORT}/api/cron', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${TOKEN}`,
@@ -27,7 +29,7 @@ async function main() {
 
   // List all cron jobs
   try {
-    const res = await fetch('http://localhost:8080/api/cron', {
+    const res = await fetch('http://localhost:${PORT}/api/cron', {
       headers: { 'Authorization': `Bearer ${TOKEN}` }
     });
     const data = await res.text();

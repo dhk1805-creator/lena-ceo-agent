@@ -31,28 +31,13 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-const SIGNATURE_HTML = `
-<br><hr style="border:none;border-top:1px solid #ddd;margin:20px 0;">
-<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;">
-  <tr>
-    <td style="padding-right:15px;vertical-align:top;">
-      <img src="https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/lena-avatar.jpg"
-           width="80" height="80" style="border-radius:50%;" alt="Le Na">
-    </td>
-    <td style="vertical-align:top;">
-      <strong style="font-size:14px;color:#1a5276;">Đào Thị Lê Na</strong><br>
-      Trợ lý CEO Đào Huy Khánh<br>
-      <strong>Công ty CP Ngôi Sao Châu Á (NSCA) / STARDUCT</strong><br>
-      Email: dhk@nsca.vn | Tel: 0903 232 222<br>
-      <em style="font-size:11px;color:#888;">AI Executive Assistant — Powered by NSCA</em>
-    </td>
-  </tr>
-</table>`;
+// Chu ky duoc Le Na tu them trong noi dung email (tu AGENTS.md)
+// gmail-send.js CHI gui noi dung, KHONG them chu ky
 
 async function main() {
   const token = await getAccessToken();
 
-  const htmlBody = body.replace(/\n/g, '<br>') + SIGNATURE_HTML;
+  const htmlBody = body.replace(/\n/g, '<br>');
 
   const email = [
     `To: ${to}`,

@@ -59,14 +59,30 @@ Khi CEO gui tin nhan, nhan dien lenh:
 
 ## Key Data References
 
-### 14 Phong Ban
-R&D/HCNS, PKD, BD Noi Dia, BD International, BO, TCKT, QLSX,
-Xuong Nhom, Xuong Thep, Xuong Co Dien, QAQC, Kho, Giao Hang, Cung Ung
+### 14 Bo phan (Truong bo phan nhan bao cao)
+1. R&D — anh Nam
+2. HCNS — anh Son
+3. PKD — anh Ngoc (Boc Beo)
+4. BD Noi dia — anh Duc
+5. BD International — anh Santiago
+6. Back Office — chi Tam
+7. TCKT — anh Duan
+8. GD Nha may / SX Nhom — anh Ngoc
+9. SX Thep — anh Tung
+10. Co Dien — anh Phong
+11. QAQC — anh Tuan
+12. Kho — chi Ha
+13. Giao Hang — anh Duc
+14. Cung Ung — chi Kim Anh
 
-### 5 NPP (Nha phan phoi)
-Galaxy (GLX), VNMEP, NTK, IMP, MEPCO
+### 5 NPP (Nha phan phoi — thu tu theo Hang)
+1. NTK (Hang A — Mien Bac)
+2. GALAXY (Hang B — Mien Trung)
+3. VNMEP (Hang B — Mien Nam)
+4. IMP (Hang C — TP.HCM)
+5. MEPCO (Hang C — Binh Duong)
 
-### 10 Nganh Hang KHKD 2026 (~251.7 ty VND)
+### 10 Nganh Hang KHKD 2026 (251.76 ty VND)
 1. Cua gio noi dia: 48.08 ty
 2. Van EI noi dia: 90.96 ty
 3. Van co khi noi dia: 30.03 ty
@@ -137,15 +153,7 @@ Le Na la **tro ly chinh thuc cua CEO**, co quyen THAY MAT CEO:
 </table>
 ```
 
-Neu email client khong ho tro HTML, dung plain text:
-```
----
-Tran trong,
-Đào Thị Lê Na
-Trợ lý CEO Đào Huy Khánh
-Công ty CP Ngôi Sao Châu Á (NSCA) / STARDUCT
-Email: dhk@nsca.vn | Tel: 0903 232 222
-```
+**QUAN TRONG: gmail-send.js KHONG tu them chu ky. Le Na PHAI tu them chu ky HTML vao cuoi body truoc khi goi gmail-send.js. Chi them 1 LAN duy nhat.**
 
 ### Nguyen tac xu ly email:
 
