@@ -141,26 +141,31 @@ BUOC 1 — Tim thread bao cao SX chung (6 BP SX gui vao 1 thread):
 `node /app/google-tools/gmail-read.js 168 30 "subject:\"BAO CAO BO PHAN SAN XUAT TUAN\""`
 Cac BP trong thread nay: anh Tung (thep), anh Phong (co dien), chi Ha (kho), chi Kim Anh (cung ung), chi Xuan-khsx01 (nhom), anh Ngoc NV (GD NM), anh Duc GH (ducvt)
 
-BUOC 2 — Tim bao cao rieng cua cac BP con lai:
-- `node /app/google-tools/gmail-read.js 168 10 "from:duannt@nsca.vn"` — TCKT
-- `node /app/google-tools/gmail-read.js 168 10 "from:sondt@nsca.vn"` — HCNS (LUU Y: sondt@)
-- `node /app/google-tools/gmail-read.js 168 10 "from:ndao@nsca.vn"` — PKD
-- `node /app/google-tools/gmail-read.js 168 10 "from:ductm@nsca.vn"` — BD Noi dia
-- `node /app/google-tools/gmail-read.js 168 10 "from:santiago@nsca.vn"` — BD Intl
-- `node /app/google-tools/gmail-read.js 168 10 "from:tamntt@nsca.vn"` — Back Office
-- `node /app/google-tools/gmail-read.js 168 10 "from:namph@nsca.vn"` — R&D
-- `node /app/google-tools/gmail-read.js 168 10 "from:tuannl@nsca.vn"` — QAQC
+BUOC 2 — Tim bao cao rieng cua 8 BP con lai (doc TAT CA email, KHONG filter subject):
+- `node /app/google-tools/gmail-read.js 168 15 "from:duannt@nsca.vn"` — TCKT
+- `node /app/google-tools/gmail-read.js 168 15 "from:sondt@nsca.vn"` — HCNS (LUU Y: sondt@)
+- `node /app/google-tools/gmail-read.js 168 15 "from:ndao@nsca.vn"` — PKD
+- `node /app/google-tools/gmail-read.js 168 15 "from:ductm@nsca.vn"` — BD Noi dia
+- `node /app/google-tools/gmail-read.js 168 15 "from:santiago@nsca.vn"` — BD Intl
+- `node /app/google-tools/gmail-read.js 168 15 "from:tamntt@nsca.vn"` — Back Office
+- `node /app/google-tools/gmail-read.js 168 15 "from:namph@nsca.vn"` — R&D
+- `node /app/google-tools/gmail-read.js 168 15 "from:tuannl@nsca.vn"` — QAQC
+Sau khi doc, DOC KY BODY tung email de nhan dang email nao la BAO CAO TUAN.
+Bao cao tuan co the co subject bat ky — khong nhat thiet phai co "bao cao" hay "tuan".
+Nhan dang bang noi dung: ket qua cong viec, tinh hinh, ke hoach tuan toi, so lieu...
 
-BUOC 3 — Tim rong hon neu chua du:
-`node /app/google-tools/gmail-read.js 168 50 "from:nsca.vn subject:(bao cao OR report OR tuan OR weekly OR san xuat OR HCNS OR TCKT OR PKD)"`
+BUOC 3 — Neu chua du, quet email gui cho CEO:
+`node /app/google-tools/gmail-read.js 168 30 "to:dhk@nsca.vn from:nsca.vn"`
 
 **LUU Y QUAN TRONG:**
 - HCNS: email la **sondt@nsca.vn** (Dang Thanh Son), KHONG PHAI sondv
 - SX Nhom: **chi Xuan (khsx01@nsca.vn)** gui BC thay anh Ngoc NV
 - 6 BP SX gui vao **1 thread chung** "BAO CAO BO PHAN SAN XUAT TUAN NAM 2026"
 - Giao Hang: **ducvt@nsca.vn** (khac voi BD Noi dia ductm@nsca.vn)
+- R&D/PKD/Back Office/QAQC: co the gui BC voi subject KHONG co tu "bao cao" — phai doc body
+- Neu thay email dai (>500 ky tu) gui Thu 5/6/7 voi noi dung tong hop → DO LA BAO CAO
 
-**KHONG BAO GIO doc email ma khong co filter!**
+**KHONG BAO GIO doc email ma khong co filter from: hoac subject:!**
 
 ### Google Sheets Dashboard:
 - **Spreadsheet ID**: Lay tu env variable `$GOOGLE_SHEET_ID`

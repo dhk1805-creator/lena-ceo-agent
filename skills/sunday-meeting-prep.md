@@ -34,25 +34,75 @@ Doc tu sheet '9. KHKD 2026 Baseline' — 10 nganh hang, target theo thang.
 - Neu la tuan cuoi thang → THEM danh gia thang
 - Neu la tuan cuoi quy → THEM danh gia quy
 
-### Buoc 2: Quet email bao cao tuan (14 bo phan)
-Chay: `node /app/google-tools/gmail-read.js 168 100`
-- 168h = 7 ngay, toi da 100 email
-- Loc email co chu de chua: 'bao cao', 'report', 'tuan', 'weekly', 'BC tuan'
-- Nhan dien email tu 14 truong bo phan:
+### Buoc 2: Quet email bao cao tuan (14 bo phan) — CHIEN LUOC 3 BUOC
+
+**QUAN TRONG: KHONG BAO GIO doc email ma khong co filter. Inbox co 231K+ email, doc khong filter = khong tim thay gi.**
+
+**BUOC 2a — Tim thread bao cao SX chung (6 BP SX gui vao 1 thread):**
+```
+node /app/google-tools/gmail-read.js 168 30 "subject:\"BAO CAO BO PHAN SAN XUAT TUAN\""
+```
+Cac BP trong thread nay (doc ky body de nhan dien tung BP):
+- GD Nha may / SX Nhom — anh Ngoc (ngocnv@nsca.vn)
+- SX Thep — anh Tung (tunghm@nsca.vn)
+- Co Dien — anh Phong (phongdv@nsca.vn)
+- Kho — chi Ha (hant@nsca.vn)
+- Giao Hang — anh Duc (ducvt@nsca.vn)
+- Cung Ung — chi Kim Anh (anhdtk@nsca.vn)
+- KHSX Nhom — chi Xuan (khsx01@nsca.vn hoac xuannt@nsca.vn)
+
+**BUOC 2b — Tim bao cao rieng cua 8 BP con lai:**
+KHONG gioi han subject — doc TAT CA email tu moi nguoi trong 7 ngay, roi TU NHAN DANG email nao la bao cao tuan:
+```
+node /app/google-tools/gmail-read.js 168 15 "from:namph@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:sondt@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:ndao@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:ductm@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:santiago@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:tamntt@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:duannt@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:tuannl@nsca.vn"
+```
+
+**CACH NHAN DANG BAO CAO TUAN:**
+Bao cao tuan co the co NHIEU DANG — KHONG chi co subject "bao cao tuan":
+- Subject co: bao cao, report, tuan, weekly, tong hop, cap nhat, update, tinh hinh
+- HOAC body co: ket qua tuan, tuan XX, cong viec tuan, plan tuan toi
+- HOAC la email dai (>500 ky tu) gui vao Thu 5/6/7 voi noi dung tong hop cong viec
+- **DOC KY BODY** — nhieu nguoi gui bao cao voi subject chung chung (Re:, Fwd:, ten du an...)
+- Neu 1 nguoi gui nhieu email, chon email NAO co tinh chat tong hop/bao cao nhat
+
+**LUU Y QUAN TRONG:**
+- HCNS: email la **sondt@nsca.vn** (Dang Thanh Son), KHONG PHAI sondv@
+- QAQC: tuannl@nsca.vn — co the gui bao cao kem trong thread SX hoac reply rieng
+- R&D: namph@nsca.vn — co the gui bao cao dang "cap nhat R&D" thay vi "bao cao tuan"
+- PKD: ndao@nsca.vn — co the gui bao cao kem du lieu kinh doanh, subject co the la ten du an
+- Back Office: tamntt@nsca.vn — bao cao co the nam trong email ve don hang, khach hang
+
+**BUOC 2c — Tim rong hon neu chua du 14 BP:**
+```
+node /app/google-tools/gmail-read.js 168 50 "from:nsca.vn subject:(bao cao OR report OR tuan OR weekly OR cap nhat OR tong hop OR tinh hinh)"
+```
+Hoac quet theo to: (CC/BCC cho CEO):
+```
+node /app/google-tools/gmail-read.js 168 30 "to:dhk@nsca.vn from:nsca.vn"
+```
+
+**14 TRUONG BO PHAN (checklist):**
   1. R&D — anh Nam (namph@nsca.vn)
-  2. HCNS — anh Son (sondv@nsca.vn)
+  2. HCNS — anh Son (sondt@nsca.vn) ⚠️ sondt@ KHONG PHAI sondv@
   3. PKD — anh Ngoc (ndao@nsca.vn)
   4. BD Noi dia — anh Duc (ductm@nsca.vn)
   5. BD International — anh Santiago (santiago@nsca.vn)
   6. Back Office — chi Tam (tamntt@nsca.vn)
   7. TCKT — anh Duan (duannt@nsca.vn)
-  8. GD Nha may / SX Nhom — anh Ngoc (ngocnv@nsca.vn)
-  9. SX Thep — anh Tung (tunghm@nsca.vn)
-  10. Co Dien — anh Phong (phongdv@nsca.vn)
+  8. GD Nha may / SX Nhom — anh Ngoc (ngocnv@nsca.vn) ← trong thread SX
+  9. SX Thep — anh Tung (tunghm@nsca.vn) ← trong thread SX
+  10. Co Dien — anh Phong (phongdv@nsca.vn) ← trong thread SX
   11. QAQC — anh Tuan (tuannl@nsca.vn)
-  12. Kho — chi Ha (hant@nsca.vn)
-  13. Giao Hang — anh Duc (ducvt@nsca.vn)
-  14. Cung Ung — chi Kim Anh (anhdtk@nsca.vn)
+  12. Kho — chi Ha (hant@nsca.vn) ← trong thread SX
+  13. Giao Hang — anh Duc (ducvt@nsca.vn) ← trong thread SX
+  14. Cung Ung — chi Kim Anh (anhdtk@nsca.vn) ← trong thread SX
 
 ### Buoc 3: Doc va phan tich tung bao cao (DINH TINH)
 - Tom tat thanh tich, van de, de xuat cua tung bo phan
