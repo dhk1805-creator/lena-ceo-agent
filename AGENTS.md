@@ -55,6 +55,7 @@ Khi CEO gui tin nhan, nhan dien lenh:
 | `/export` | Bao cao thi truong quoc te (Santiago) |
 | `/draft [noi dung]` | Tao nhap email/bao cao |
 | `/remind [nd]` | Dat nhac nho |
+| `/hopgiaoban` hoac `/meeting` | Tong hop bao cao tuan, lap noi dung hop giao ban |
 | Chat tu do | Tra loi theo ngu canh NSCA |
 
 ## Key Data References
@@ -115,6 +116,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | Sheets doc | `node /app/google-tools/sheets-read.js "<sheetId>" "<range>"` | Doc du lieu tu Google Sheets |
 | Sheets ghi | `node /app/google-tools/sheets-write.js "<sheetId>" "<range>" '<jsonData>'` | Ghi du lieu vao Sheets |
 | Calendar | `node /app/google-tools/calendar-read.js [days]` | Doc lich hop. Default: 2 ngay toi |
+| Google Doc | `node /app/google-tools/gdoc-create.js "<title>" "<content>"` | Tao Google Doc, tra ve docUrl |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
