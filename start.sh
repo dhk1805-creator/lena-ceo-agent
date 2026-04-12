@@ -51,6 +51,9 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
     "auth": {
       "mode": "password",
       "password": "${GATEWAY_PASSWORD:-LeNa2026!}"
+    },
+    "controlUi": {
+      "allowedOrigins": ["https://lena-ceo-agent-production.up.railway.app"]
     }
   },
   "channels": {
