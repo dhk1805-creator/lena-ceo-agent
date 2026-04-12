@@ -1,0 +1,145 @@
+[
+  {
+    "id": "smart-email-scan",
+    "name": "Smart Email Agent - Scan & Auto-Reply",
+    "schedule": {
+      "kind": "cron",
+      "expr": "*/15 7-22 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Quet email moi gui den dhk@nsca.vn trong 1 gio qua. Chi doc email gui DICH DANH TO: dhk@nsca.vn. Phan loai: report_submission, urgent, approval_request, external, general_internal. Tu dong tra loi theo quy tac:\n- report_submission: Xac nhan da nhan, hoac yeu cau lam ro\n- urgent: Forward CEO + thong bao khan cap\n- approval_request: Tong hop gui CEO\n- external (nuoc ngoai): Reply bang tieng Anh\n- general_internal: Phan hoi phu hop\nNeu co Google Docs/Sheets link, vao doc va tom tat.\nSau khi xu ly, gui bao cao tom tat cho CEO qua Zalo.\nLog tat ca vao sheet 'Email Action Log'."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "calendar-morning",
+    "name": "Calendar Morning Briefing",
+    "schedule": {
+      "kind": "cron",
+      "expr": "30 7 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Doc Google Calendar cua dhk@nsca.vn cho hom nay va ngay mai. Dinh dang:\n- Thoi gian, ten cuoc hop, nguoi tham gia, dia diem\n- Danh dau cuoc hop quan trong\nGui qua Zalo cho CEO."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "monday-meeting-prep",
+    "name": "Monday Meeting Preparation",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 6 * * 1"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Chuan bi noi dung HOP GIAO BAN sang thu 2. Doc 5 nguon tu Google Sheets:\n1. Report Tracker - tinh hinh nop bao cao 14 phong ban\n2. KPI Tracker - so lieu KPI tuan qua\n3. Email Action Log - cac email quan trong da xu ly\n4. Attachment Analysis Log - bao cao da phan tich\n5. Google Calendar - lich hop tuan nay\n\nTao bao cao 6 phan:\n1. Tong quan tuan qua\n2. Tinh hinh phong ban (14 BP)\n3. KPI highlights\n4. Email & van de can xu ly\n5. Lich hop tuan moi\n6. De xuat CEO\n\nGui qua Zalo (chia thanh nhieu tin nhan neu dai).\nTao Google Doc chia se voi team."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "weekly-business-report",
+    "name": "Weekly Business Report",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 8 * * 1"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Tao bao cao kinh doanh tuan. Doc KPI Tracker va Sales data tu Google Sheets. Phan tich doanh thu, chi phi, loi nhuan. So sanh voi tuan truoc va target. Gui CEO qua Zalo."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "dept-report-friday",
+    "name": "Department Report Reminder - Friday Normal",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 9 * * 5"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Gui email NHAC NHO 14 phong ban nop bao cao tuan. Danh sach:\n1. R&D/HCNS (rd@nsca.vn)\n2. PKD (pkd@nsca.vn)\n3. BD Noi Dia (bdnd@nsca.vn)\n4. BD International (bdi@nsca.vn)\n5. BO (bo@nsca.vn)\n6. TCKT (tckt@nsca.vn)\n7. QLSX (qlsx@nsca.vn)\n8. Xuong Nhom (nhom@nsca.vn)\n9. Xuong Thep (thep@nsca.vn)\n10. Xuong Co Dien (codien@nsca.vn)\n11. QAQC (qaqc@nsca.vn)\n12. Kho (kho@nsca.vn)\n13. Giao Hang (giaohang@nsca.vn)\n14. Cung Ung (cungung@nsca.vn)\n\nNoi dung: Nhac nho nop bao cao tuan truoc 16h thu 7. Ghi ten Le Na - Tro ly CEO.\nLog vao 'Report Tracker' sheet."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "dept-report-saturday-urgent",
+    "name": "Department Report - Saturday Urgent Reminder",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 16 * * 6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Kiem tra sheet 'Report Tracker' xem phong ban nao CHUA NOP bao cao tuan nay. Gui email KHAN CAP cho cac phong ban chua nop, voi tieu de '[KHAN CAP] Yeu cau nop bao cao tuan'. Thong bao CEO qua Zalo danh sach phong ban chua nop."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "dept-report-sunday-escalate",
+    "name": "Department Report - Sunday CEO Escalation",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 8 * * 0"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Kiem tra sheet 'Report Tracker'. Neu van con phong ban CHUA NOP bao cao, gui bao cao ESCALATION cho CEO qua Zalo:\n- Danh sach phong ban da nop (co ngay gio)\n- Danh sach phong ban CHUA nop (da nhac 2 lan)\n- De xuat hanh dong cho CEO"
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "weekly-kpi-dashboard",
+    "name": "Weekly KPI Dashboard",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 18 * * 5"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Doc sheet 'KPI Tracker' tu Google Sheets. Phan tich KPI tuan:\n- Doanh thu vs target\n- San luong vs ke hoach\n- Chi phi vs ngan sach\n- Cac chi so bat thuong\nTao bang tong hop co emoji (xanh/vang/do). Gui CEO qua Zalo."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "khkd-variance-analysis",
+    "name": "KHKD 2026 Variance Analysis",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 8 * * 6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "PHAN TICH CHENH LECH KHKD 2026. Doc 3 sheet tu Google Sheets:\n1. 'KHKD 2026 Baseline' - Target 10 nganh hang theo thang (tong ~251.7 ty)\n2. 'KPI Tracker' - So lieu thuc te\n3. 'NPP Tracker' - Doanh so 5 NPP (GLX, VNMEP, NTK, IMP, MEPCO)\n\nTinh toan:\n- Variance thang hien tai: Actual vs Target cho tung nganh hang\n- % dat cho tung NPP\n- YTD progress\n- Traffic light: xanh >=100%, vang >=80%, do <80%\n\nPhan tich:\n- Top 3 nganh hang dat/vuot vs top 3 duoi target\n- NPP manh/yeu nhat\n- Risk va co hoi\n- 3-5 de xuat cu the cho CEO\n\nGui Zalo (chia phan neu dai). Log vao 'Variance Log'."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "climanexus-weekly",
+    "name": "ClimaNexus Subsidiary Weekly Update",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 9 * * 1"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "BAO CAO TUAN CLIMANEXUS (cong ty con). Doc 3 sheet:\n1. 'ClimaNexus KPI' - Chi so hoat dong\n2. 'ClimaNexus Milestones' - Roadmap 12 thang, trang thai\n3. 'ClimaNexus Pipeline' - Du an tiem nang\n\nBao cao:\n- KPI: doanh thu, R&D, patent, VC meetings\n- Milestone: da hoan thanh vs qua han\n- Pipeline: tong gia tri, giai doan\n- De xuat 2-3 uu tien cho CEO\n\nGui qua Zalo."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
+    "id": "international-market-weekly",
+    "name": "International Market Tracker (Santiago)",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 9 * * 3"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "BAO CAO THI TRUONG QUOC TE (Santiago de los Reyes - OMDM). Doc 3 sheet:\n1. 'Export Revenue Tracker' - Doanh thu xuat khau theo thi truong\n2. 'International Pipeline' - Doi tac OEM/ODM/Distribution\n3. 'Santiago KPI Tracker' - KPI 24 thang theo MIP\n\nMIP targets:\n- GTM plan approved trong 3 thang\n- 3 doi tac chien luoc\n- Export revenue $300K Y1, $1M Y2\n- 2 trien lam quoc te/nam\n\nBoi canh: Thi truong VAV Box toan cau $6.4B (2024) -> $23.9B (2030), APAC 40%.\n\nPhan tich: pipeline, tien do KPI, co hoi thi truong.\nGui CEO qua Zalo."
+    },
+    "sessionTarget": "isolated"
+  }
+]
