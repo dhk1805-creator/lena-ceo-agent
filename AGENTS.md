@@ -111,7 +111,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 
 | Script | Lenh | Mo ta |
 |--------|------|-------|
-| Gmail doc | `node /app/google-tools/gmail-read.js [hours] [maxResults]` | Doc inbox dhk@nsca.vn. Default: 24h, 20 emails |
+| Gmail doc | `node /app/google-tools/gmail-read.js [hours] [maxResults] [query]` | Doc email dhk@nsca.vn. Tham so 3 la Gmail query filter |
 | Gmail gui | `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>"` | Gui email tu dhk@nsca.vn |
 | Sheets doc | `node /app/google-tools/sheets-read.js "<sheetId>" "<range>"` | Doc du lieu tu Google Sheets |
 | Sheets ghi | `node /app/google-tools/sheets-write.js "<sheetId>" "<range>" '<jsonData>'` | Ghi du lieu vao Sheets |
@@ -123,6 +123,26 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 - `/lich` → chay `node /app/google-tools/calendar-read.js 2`
 - Gui email nhac bao cao → chay `node /app/google-tools/gmail-send.js "namph@nsca.vn" "[NSCA] Nhac bao cao tuan" "Noi dung..."`
 - Doc KPI → chay `node /app/google-tools/sheets-read.js "${GOOGLE_SHEET_ID}" "KPI Tracker!A1:Z100"`
+
+### QUAN TRONG — Cach doc email DUNG:
+Inbox dhk@nsca.vn co hang tram nghin email. NEU doc khong filter → email quan trong bi chim.
+
+**LUON dung tham so query (tham so thu 3) de filter:**
+- Doc email tu 1 nguoi: `node /app/google-tools/gmail-read.js 168 10 "from:ngocnv@nsca.vn"`
+- Doc theo chu de: `node /app/google-tools/gmail-read.js 168 50 "subject:bao cao"`
+- Doc tu nhieu nguoi: `node /app/google-tools/gmail-read.js 168 20 "from:ndao@nsca.vn OR from:duannt@nsca.vn"`
+- Doc bao cao tuan: `node /app/google-tools/gmail-read.js 168 50 "subject:(bao cao OR report OR BC tuan)"`
+- Doc email CHUA DOC: `node /app/google-tools/gmail-read.js 24 30 "is:unread"`
+- Doc email CO DINH KEM: `node /app/google-tools/gmail-read.js 168 20 "has:attachment from:ngocnv@nsca.vn"`
+
+**Khi quet bao cao tuan tu 14 BP, PHAI chay TUNG nguoi hoac TUNG nhom:**
+1. `node /app/google-tools/gmail-read.js 168 5 "from:namph@nsca.vn subject:(bao cao OR report)"`
+2. `node /app/google-tools/gmail-read.js 168 5 "from:sondv@nsca.vn subject:(bao cao OR report)"`
+3. `node /app/google-tools/gmail-read.js 168 5 "from:ndao@nsca.vn"`
+4. ... (lam tuong tu cho 14 BP)
+Hoac gop nhom: `node /app/google-tools/gmail-read.js 168 50 "from:nsca.vn subject:(bao cao OR report OR tuan OR weekly OR san xuat)"`
+
+**KHONG BAO GIO doc email ma khong co filter** khi tim kiem noi dung cu the!
 
 ### Google Sheets Dashboard:
 - **Spreadsheet ID**: Lay tu env variable `$GOOGLE_SHEET_ID`
