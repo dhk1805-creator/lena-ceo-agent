@@ -1,19 +1,40 @@
 # Sunday Meeting Prep — Tong hop bao cao tuan & Chuan bi hop giao ban Thu 2
 
 ## Trigger
-- Cron job: Chu nhat 21:00 (tuan)
+- Cron job: Chu nhat 21:00 (hang tuan)
 - Lenh: CEO goi "/hopgiaoban" hoac "/meeting"
 
 ## Muc dich
-Tong hop bao cao tuan tu 14 bo phan, ket hop KPI va du lieu NPP, lap noi dung hop giao ban cho CEO vao sang Thu 2.
+Tong hop tinh hinh tuan tu bao cao 14 bo phan (DINH TINH) va danh gia ket qua vs ke hoach phan bo (DINH LUONG), lap noi dung hop giao ban cho CEO vao sang Thu 2.
 
-## Quy trinh
+## NGUYEN TAC PHAN BO TARGET
 
-### Buoc 1: Xac dinh tuan hien tai
-- Tinh week number cua nam (vi du: Tuan 15, Tuan 16)
-- Xac dinh khoang thoi gian (Thu 2 → Chu nhat)
+### Target nam (KHKD 2026): 251.76 ty VND
+Doc tu sheet '9. KHKD 2026 Baseline' — 10 nganh hang, target theo thang.
 
-### Buoc 2: Quet email bao cao tuan
+### Cach phan bo:
+- **Nam → Thang**: Da co san trong KHKD Baseline (T1-T12)
+- **Thang → Tuan**: Target thang ÷ so tuan trong thang do
+  - Thang co 4 tuan: target tuan = target thang ÷ 4
+  - Thang co 5 tuan: target tuan = target thang ÷ 5
+  - (Tinh theo so Thu 2 trong thang)
+- **Quy**: Tong 3 thang (Q1=T1-T3, Q2=T4-T6, Q3=T7-T9, Q4=T10-T12)
+
+### Danh gia (Traffic Light):
+- 🟢 Xanh: Dat >= 100% ke hoach phan bo
+- 🟡 Vang: Dat 80-99% ke hoach phan bo
+- 🔴 Do: Dat < 80% ke hoach phan bo
+
+## QUY TRINH
+
+### Buoc 1: Xac dinh ky bao cao
+- Tinh week number (vi du: Tuan 15, Tuan 16)
+- Xac dinh thang hien tai, quy hien tai
+- Tinh target tuan = target thang ÷ so tuan trong thang
+- Neu la tuan cuoi thang → THEM danh gia thang
+- Neu la tuan cuoi quy → THEM danh gia quy
+
+### Buoc 2: Quet email bao cao tuan (14 bo phan)
 Chay: `node /app/google-tools/gmail-read.js 168 100`
 - 168h = 7 ngay, toi da 100 email
 - Loc email co chu de chua: 'bao cao', 'report', 'tuan', 'weekly', 'BC tuan'
@@ -33,65 +54,136 @@ Chay: `node /app/google-tools/gmail-read.js 168 100`
   13. Giao Hang — anh Duc (ducvt@nsca.vn)
   14. Cung Ung — chi Kim Anh (anhdtk@nsca.vn)
 
-### Buoc 3: Doc va phan tich tung bao cao
-- Doc noi dung email (snippet + body)
+### Buoc 3: Doc va phan tich tung bao cao (DINH TINH)
 - Tom tat thanh tich, van de, de xuat cua tung bo phan
 - Rut ra dau viec can trien khai / thuc hien / hoan thanh
+- Ghi nhan bo phan CHUA NOP bao cao
 
-### Buoc 4: Doc du lieu bo sung tu Google Sheets
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'2. KPI Tracker'!A1:Z100"`
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'6. Report Tracker'!A1:S50"`
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'10. NPP Tracker'!A1:S50"`
+### Buoc 4: Doc du lieu so lieu (DINH LUONG)
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'9. KHKD 2026 Baseline'!A1:O15"` — Target phan bo
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'2. KPI Tracker'!A1:Z100"` — KPI thuc te
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'10. NPP Tracker'!A1:S50"` — Doanh so NPP
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'19. Weekly Performance'!A1:Z100"` — Ket qua tuan truoc
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'6. Report Tracker'!A1:S50"` — Tinh hinh nop BC
 
-### Buoc 5: Lap tai lieu hop giao ban
-Format noi dung:
+### Buoc 5: Tinh toan & danh gia
+
+**5a. Danh gia TUAN:**
+| Nganh hang | Target tuan (ty) | Thuc te tuan (ty) | % Dat | Trang thai |
+Voi moi nganh hang: Target tuan = Target thang (tu Baseline) ÷ so tuan trong thang
+
+**5b. Danh gia THANG (neu tuan cuoi thang):**
+| Nganh hang | Target thang (ty) | Thuc te thang (ty) | % Dat | Trang thai |
+Luy ke thang = Tong cac tuan trong thang
+
+**5c. Danh gia QUY (neu tuan cuoi quy):**
+| Nganh hang | Target quy (ty) | Thuc te quy (ty) | % Dat | Trang thai |
+Luy ke quy = Tong 3 thang
+
+**5d. NPP Performance:**
+| NPP | DT tuan (ty) | KH tuan | % | Luy ke thang | KH thang | % |
+
+### Buoc 6: Lap noi dung hop giao ban
 
 ```
-NOI DUNG HOP GIAO BAN TUAN [XX]
+===== NOI DUNG HOP GIAO BAN TUAN [XX] =====
 Ngay hop: Thu 2, [ngay/thang/nam]
 Chuan bi: Dao Thi Le Na — Tro ly AI CEO
 
-1. TONG QUAN TUAN QUA
-- Doanh thu tuan: [so lieu]
-- So sanh voi ke hoach: [%]
-- Diem noi bat: [3-5 diem chinh]
+==============================
+PHAN A: TINH HINH TUAN (DINH TINH)
+==============================
 
-2. BAO CAO TUNG BO PHAN (14 BP)
-[Ten bo phan] — [Truong BP]
-- Ket qua chinh: [tom tat]
-- Van de: [liet ke]
-- Dau viec tuan toi:
-  [ ] [Viec 1] — Deadline: [ngay] — Phu trach: [ten]
-- Trang thai: xanh/vang/do
+--- A1. TONG QUAN ---
+- So bo phan da nop bao cao: [X]/14
+- Diem noi bat tuan qua: [3-5 diem chinh]
+- Van de nong: [liet ke]
 
-(Neu CHUA NOP bao cao → ghi ro: CHUA NOP BAO CAO)
+--- A2. BAO CAO TUNG BO PHAN ---
+Voi MOI bo phan:
+[STT]. [Ten bo phan] — [Truong BP]
+  Ket qua: [tom tat tu email bao cao]
+  Van de: [liet ke]
+  Dau viec tuan toi:
+    [ ] [Viec] — Deadline: [ngay] — Phu trach: [ten]
+  Trang thai: [xanh/vang/do]
 
-3. KPI HIGHLIGHTS
-- Top 3 KPI dat/vuot
-- Top 3 KPI chua dat
+(Neu CHUA NOP → ghi: ⚠️ CHUA NOP BAO CAO)
 
-4. TINH HINH NPP
-- NTK: [%] KH
-- GALAXY: [%] KH
-- VNMEP: [%] KH
-- IMP: [%] KH
-- MEPCO: [%] KH
+==============================
+PHAN B: KET QUA vs KE HOACH (DINH LUONG)
+==============================
 
-5. VAN DE CAN CEO QUYET DINH
-1. [Van de 1] — De xuat: [giai phap]
+--- B1. DOANH THU TUAN [XX] ---
+| Nganh hang | KH Tuan (ty) | TT Tuan (ty) | % Dat | |
+|------------|-------------|-------------|-------|---|
+| Cua gio ND | [X] | [Y] | [Z%] | 🟢🟡🔴 |
+| Van EI ND  | [X] | [Y] | [Z%] | 🟢🟡🔴 |
+| ... | | | | |
+| TONG | [X] | [Y] | [Z%] | 🟢🟡🔴 |
 
-6. DAU VIEC TUAN TOI
+--- B2. LUY KE THANG [MM] (tinh den tuan nay) ---
+| Nganh hang | KH Thang (ty) | TT LK (ty) | % Dat | |
+(So lieu tu KHKD Baseline vs KPI Tracker)
+
+--- B3. LUY KE QUY [Q] (neu tuan cuoi quy) ---
+| Nganh hang | KH Quy (ty) | TT LK (ty) | % Dat | |
+
+--- B4. NPP PERFORMANCE ---
+| NPP | DT Tuan | KH Tuan | % | LK Thang | KH Thang | % | |
+| NTK | | | | | | | |
+| GALAXY | | | | | | | |
+| VNMEP | | | | | | | |
+| IMP | | | | | | | |
+| MEPCO | | | | | | | |
+
+==============================
+PHAN C: TONG HOP & DE XUAT
+==============================
+
+--- C1. TOP PERFORMANCE ---
+- Top 3 nganh hang dat/vuot KH
+- Top 3 NPP dat/vuot KH
+
+--- C2. CAN CANH BAO ---
+- Nganh hang duoi target (do)
+- NPP duoi target (do)
+- Nguyen nhan & xu huong
+
+--- C3. VAN DE CAN CEO QUYET DINH ---
+1. [Van de] — De xuat: [giai phap]
+
+--- C4. DAU VIEC TUAN TOI ---
 | # | Dau viec | Bo phan | Phu trach | Deadline | Uu tien |
 
-7. LICH HOP TUAN MOI
+--- C5. LICH HOP TUAN MOI ---
 (Doc tu Calendar)
+
+===== KET THUC =====
 ```
 
-### Buoc 6: Luu noi dung
-- Tao Google Doc bang: `node /app/google-tools/gdoc-create.js "Noi dung hop giao ban tuan [XX]" "<noi dung>"`
-- Nhan lai docUrl de gui cho CEO
+### Buoc 7: Luu ket qua tuan vao Google Sheets
+- Ghi ket qua tuan vao sheet '19. Weekly Performance':
+  `node /app/google-tools/sheets-write.js $GOOGLE_SHEET_ID "'19. Weekly Performance'!A[row]" '<data>'`
+- Du lieu: [Tuan, Thang, Tong DT, Tong KH, %, tung nganh hang, tung NPP]
 
-### Buoc 7: Gui Zalo cho Sep Khanh
-- Gui tom tat ngan (max 2000 ky tu) qua Zalo
-- Noi: "Da, anh Khanh, em da chuan bi xong noi dung hop giao ban Tuan [XX]. [Tom tat 3-5 diem chinh]. Link tai lieu: [docUrl]"
+### Buoc 8: Tao Google Doc
+- `node /app/google-tools/gdoc-create.js "Noi dung hop giao ban tuan [XX]" "<noi dung>"`
+- Nhan lai docUrl
+
+### Buoc 9: Gui Zalo cho Sep Khanh
+- Tom tat (max 2000 ky tu):
+  "Da, anh Khanh, em da chuan bi xong noi dung hop giao ban Tuan [XX].
+  
+  DOANH THU TUAN: [X] ty / KH [Y] ty = [Z%] [emoji]
+  LK THANG: [X] ty / KH [Y] ty = [Z%] [emoji]
+  
+  TOP: [nganh hang tot nhat]
+  CANH BAO: [nganh hang kem nhat]
+  NPP: NTK [%], GLX [%], VNMEP [%], IMP [%], MEPCO [%]
+  
+  [So BP da nop BC: X/14]
+  [Van de khan cap neu co]
+  
+  Link tai lieu: [docUrl]"
 - Neu co van de KHAN CAP → highlight dau tin nhan
