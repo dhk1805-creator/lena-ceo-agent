@@ -54,6 +54,9 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
     },
     "controlUi": {
       "allowedOrigins": ["https://lena-ceo-agent-production.up.railway.app"]
+    },
+    "remote": {
+      "url": "https://lena-ceo-agent-production.up.railway.app"
     }
   },
   "channels": {
