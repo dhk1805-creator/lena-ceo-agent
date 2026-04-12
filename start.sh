@@ -54,7 +54,9 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
     },
     "controlUi": {
       "allowedOrigins": ["https://lena-ceo-agent-production.up.railway.app"]
-    }
+    },
+    "trustedProxies": ["0.0.0.0/0"],
+    "pairingRequired": false
   },
   "channels": {
     "zalouser": {
