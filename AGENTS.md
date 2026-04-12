@@ -135,14 +135,32 @@ Inbox dhk@nsca.vn co hang tram nghin email. NEU doc khong filter → email quan 
 - Doc email CHUA DOC: `node /app/google-tools/gmail-read.js 24 30 "is:unread"`
 - Doc email CO DINH KEM: `node /app/google-tools/gmail-read.js 168 20 "has:attachment from:ngocnv@nsca.vn"`
 
-**Khi quet bao cao tuan tu 14 BP, PHAI chay TUNG nguoi hoac TUNG nhom:**
-1. `node /app/google-tools/gmail-read.js 168 5 "from:namph@nsca.vn subject:(bao cao OR report)"`
-2. `node /app/google-tools/gmail-read.js 168 5 "from:sondv@nsca.vn subject:(bao cao OR report)"`
-3. `node /app/google-tools/gmail-read.js 168 5 "from:ndao@nsca.vn"`
-4. ... (lam tuong tu cho 14 BP)
-Hoac gop nhom: `node /app/google-tools/gmail-read.js 168 50 "from:nsca.vn subject:(bao cao OR report OR tuan OR weekly OR san xuat)"`
+**Khi quet bao cao tuan tu 14 BP, chay 3 BUOC:**
 
-**KHONG BAO GIO doc email ma khong co filter** khi tim kiem noi dung cu the!
+BUOC 1 — Tim thread bao cao SX chung (6 BP SX gui vao 1 thread):
+`node /app/google-tools/gmail-read.js 168 30 "subject:\"BAO CAO BO PHAN SAN XUAT TUAN\""`
+Cac BP trong thread nay: anh Tung (thep), anh Phong (co dien), chi Ha (kho), chi Kim Anh (cung ung), chi Xuan-khsx01 (nhom), anh Ngoc NV (GD NM), anh Duc GH (ducvt)
+
+BUOC 2 — Tim bao cao rieng cua cac BP con lai:
+- `node /app/google-tools/gmail-read.js 168 10 "from:duannt@nsca.vn"` — TCKT
+- `node /app/google-tools/gmail-read.js 168 10 "from:sondt@nsca.vn"` — HCNS (LUU Y: sondt@)
+- `node /app/google-tools/gmail-read.js 168 10 "from:ndao@nsca.vn"` — PKD
+- `node /app/google-tools/gmail-read.js 168 10 "from:ductm@nsca.vn"` — BD Noi dia
+- `node /app/google-tools/gmail-read.js 168 10 "from:santiago@nsca.vn"` — BD Intl
+- `node /app/google-tools/gmail-read.js 168 10 "from:tamntt@nsca.vn"` — Back Office
+- `node /app/google-tools/gmail-read.js 168 10 "from:namph@nsca.vn"` — R&D
+- `node /app/google-tools/gmail-read.js 168 10 "from:tuannl@nsca.vn"` — QAQC
+
+BUOC 3 — Tim rong hon neu chua du:
+`node /app/google-tools/gmail-read.js 168 50 "from:nsca.vn subject:(bao cao OR report OR tuan OR weekly OR san xuat OR HCNS OR TCKT OR PKD)"`
+
+**LUU Y QUAN TRONG:**
+- HCNS: email la **sondt@nsca.vn** (Dang Thanh Son), KHONG PHAI sondv
+- SX Nhom: **chi Xuan (khsx01@nsca.vn)** gui BC thay anh Ngoc NV
+- 6 BP SX gui vao **1 thread chung** "BAO CAO BO PHAN SAN XUAT TUAN NAM 2026"
+- Giao Hang: **ducvt@nsca.vn** (khac voi BD Noi dia ductm@nsca.vn)
+
+**KHONG BAO GIO doc email ma khong co filter!**
 
 ### Google Sheets Dashboard:
 - **Spreadsheet ID**: Lay tu env variable `$GOOGLE_SHEET_ID`

@@ -38,7 +38,7 @@
 ## HCNS (Hanh chinh Nhan su)
 | Code | Ho ten | Gioi tinh | Chuc vu | Email | SDT/Zalo |
 |------|--------|-----------|---------|-------|----------|
-| HC01 | Đặng Văn Sơn | Nam | TP HCNS | sondv@nsca.vn | 0901765432 |
+| HC01 | Đặng Thanh Sơn | Nam | TP HCNS | sondt@nsca.vn | 0901765432 |
 | HC02 | HCNS 01 | - | Nhân sự tổng hợp | hc02@nsca.vn | 0912876501 |
 | HC03 | HCNS 02 | - | Lương & Chấm công | hc03@nsca.vn | 0923987602 |
 | HC04 | HCNS 03 | - | Tuyển dụng & Đào tạo | hc04@nsca.vn | 0934098703 |
@@ -78,7 +78,7 @@
 | Bo phan | Truong | Gioi tinh | Cach goi | Email |
 |---------|--------|-----------|----------|-------|
 | R&D | Phạm Hoài Nam | Nam | anh Nam | namph@nsca.vn |
-| HCNS | Đặng Văn Sơn | Nam | anh Sơn | sondv@nsca.vn |
+| HCNS | Đặng Thanh Sơn | Nam | anh Sơn | sondt@nsca.vn |
 | PKD | Đào Nguyên Ngọc | Nam | anh Ngọc (Bộc Béo) | ndao@nsca.vn |
 | BD Nội địa | Trần Minh Đức | Nam | anh Đức | ductm@nsca.vn |
 | BD International | Santiago de los Reyes | Nam | anh Santiago / Santi | santiago@nsca.vn |
