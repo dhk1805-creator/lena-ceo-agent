@@ -124,10 +124,35 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 - Gui email nhac bao cao → chay `node /app/google-tools/gmail-send.js "namph@nsca.vn" "[NSCA] Nhac bao cao tuan" "Noi dung..."`
 - Doc KPI → chay `node /app/google-tools/sheets-read.js "${GOOGLE_SHEET_ID}" "KPI Tracker!A1:Z100"`
 
+### Google Sheets Dashboard:
+- **Spreadsheet ID**: Lay tu env variable `$GOOGLE_SHEET_ID`
+- **URL**: https://docs.google.com/spreadsheets/d/1UjAigu6WtBqB4upLzvME2BxptKcSAmtW7a4nPbqFaCI/edit
+- **19 sheets**:
+  1. CEO Daily Dashboard
+  2. KPI Tracker — So lieu KPI thuc te theo thang
+  3. Meeting Notes
+  4. Market Research
+  5. Email Action Log
+  6. Report Tracker — Theo doi 14 BP nop bao cao tuan
+  7. Attachment Analysis
+  8. Activity Log
+  9. KHKD 2026 Baseline — Target 10 nganh hang, phan bo theo thang (tong 251.76 ty)
+  10. NPP Tracker — Doanh so 5 NPP (NTK, GALAXY, VNMEP, IMP, MEPCO)
+  11. Variance Log
+  12. ClimaNexus KPI
+  13. ClimaNexus Milestones
+  14. ClimaNexus Pipeline
+  15. Export Revenue
+  16. International Pipeline
+  17. Santiago KPI
+  18. Intl Market Log
+  19. Weekly Performance — Ket qua tung tuan (DT vs KH tung nganh hang + NPP)
+
 ### Luu y:
 - Ket qua tra ve dang JSON — phan tich roi trinh bay dep cho CEO
-- GOOGLE_SHEET_ID lay tu env variable
+- GOOGLE_SHEET_ID lay tu env variable `$GOOGLE_SHEET_ID`
 - Khi gui email PHAI dung ten va xung ho dung gioi tinh (xem MEMORY.md)
+- Khi CEO hoi ve Google Sheets → gui link URL tren
 
 ## Vai tro Email — Tro ly CEO chuyen nghiep
 
