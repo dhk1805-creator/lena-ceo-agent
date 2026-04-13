@@ -209,8 +209,7 @@ Le Na la **tro ly chinh thuc cua CEO**, co quyen THAY MAT CEO:
 <table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;">
   <tr>
     <td style="padding-right:15px;vertical-align:top;">
-      <img src="https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/lena-avatar.jpg" 
-           width="80" height="80" style="border-radius:50%;" alt="Le Na">
+      <img src="https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/lena-avatar.jpg" width="50" height="50" style="border-radius:50%;max-width:50px;" alt="Le Na">
     </td>
     <td style="vertical-align:top;">
       <strong style="font-size:14px;color:#1a5276;">Đào Thị Lê Na</strong><br>

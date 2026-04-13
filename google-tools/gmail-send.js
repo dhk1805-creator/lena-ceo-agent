@@ -49,7 +49,11 @@ function mimeEncodeName(str) {
 async function main() {
   const token = await getAccessToken();
 
-  const htmlBody = body.replace(/\n/g, '<br>');
+  // Step 1: Remove newlines INSIDE HTML tags (e.g. <img src="..."\n  width="80">)
+  // This prevents <br> from being injected inside tags and breaking them
+  let processed = body.replace(/<[^>]*>/gs, (tag) => tag.replace(/[\r\n]+/g, ' '));
+  // Step 2: Replace remaining newlines with <br> (these are in text content)
+  const htmlBody = processed.replace(/\n/g, '<br>');
 
   const email = [
     `To: ${to}`,
