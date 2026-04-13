@@ -34,6 +34,18 @@ async function getAccessToken() {
 // Chu ky duoc Le Na tu them trong noi dung email (tu AGENTS.md)
 // gmail-send.js CHI gui noi dung, KHONG them chu ky
 
+// MIME encode subject (RFC 2047) — fix loi font tieng Viet trong Subject
+function mimeEncodeSubject(str) {
+  const encoded = Buffer.from(str, 'utf-8').toString('base64');
+  return `=?UTF-8?B?${encoded}?=`;
+}
+
+// MIME encode ten nguoi gui (RFC 2047)
+function mimeEncodeName(str) {
+  const encoded = Buffer.from(str, 'utf-8').toString('base64');
+  return `=?UTF-8?B?${encoded}?=`;
+}
+
 async function main() {
   const token = await getAccessToken();
 
@@ -41,12 +53,13 @@ async function main() {
 
   const email = [
     `To: ${to}`,
-    `From: "Đào Thị Lê Na - NSCA" <dhk@nsca.vn>`,
-    `Subject: ${subject}`,
+    `From: ${mimeEncodeName('Đào Thị Lê Na - NSCA')} <dhk@nsca.vn>`,
+    `Subject: ${mimeEncodeSubject(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
     '',
-    `<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${htmlBody}</body></html>`
+    Buffer.from(`<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${htmlBody}</body></html>`, 'utf-8').toString('base64')
   ].join('\r\n');
 
   const encoded = Buffer.from(email).toString('base64url');
