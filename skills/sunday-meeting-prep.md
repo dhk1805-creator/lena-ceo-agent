@@ -222,7 +222,8 @@ PHAN C: TONG HOP & DE XUAT
 - Nhan lai docUrl
 
 ### Buoc 9: Gui vao My Documents Zalo cho Sep Khanh
-(Dung tool zalouser: action=send, target=1982095867855370044)
+Dung EXEC: `openclaw message send --channel zalouser --target 1982095867855370044 --message "noi dung"`
+(Chia thanh nhieu tin nhan neu dai hon 2000 ky tu)
 - Tom tat (max 2000 ky tu):
   "Da, anh Khanh, em da chuan bi xong noi dung hop giao ban Tuan [XX].
   
