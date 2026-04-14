@@ -141,5 +141,18 @@
       "message": "BAO CAO THI TRUONG QUOC TE (Santiago de los Reyes - OMDM). Doc 3 sheet:\n1. 'Export Revenue Tracker' - Doanh thu xuat khau theo thi truong\n2. 'International Pipeline' - Doi tac OEM/ODM/Distribution\n3. 'Santiago KPI Tracker' - KPI 24 thang theo MIP\n\nMIP targets:\n- GTM plan approved trong 3 thang\n- 3 doi tac chien luoc\n- Export revenue $300K Y1, $1M Y2\n- 2 trien lam quoc te/nam\n\nBoi canh: Thi truong VAV Box toan cau $6.4B (2024) -> $23.9B (2030), APAC 40%.\n\nPhan tich: pipeline, tien do KPI, co hoi thi truong.\nGui CEO qua ZALO cho Sep Khanh (dung openclaw message send)."
     },
     "sessionTarget": "isolated"
+  },
+  {
+    "id": "market-intelligence-weekly",
+    "name": "Weekly Market Intelligence — IAQ/IEQ/HVAC",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 8 * * 3"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "BAO CAO MARKET INTELLIGENCE HANG TUAN.\n\nNghien cuu (dung web search) cac chu de:\n1. IAQ (Indoor Air Quality) — tin tuc, san pham moi, quy dinh moi\n2. IEQ (Indoor Environmental Quality) — xu huong, nghien cuu\n3. Smart HVAC — IoT, AI-driven, energy recovery, startups moi\n4. Doi thu ClimaNexus — Airthings, Awair, IQAir, Honeywell Connected, JCI OpenBlue, startups moi\n5. Su kien nganh — AHR Expo, ASHRAE, hoi nghi, giai thuong\n6. Tieu chuan moi — ASHRAE, ISO, WELL, RESET, LEED updates\n\nTong hop thanh bao cao 5-10 diem chinh. Highlight co hoi va moi de doa cho NSCA/ClimaNexus.\n\nGui EMAIL 2 ban:\n1. Tieng Viet cho Sep Khanh: node /app/google-tools/gmail-send.js \"dhk@nsca.vn\" \"[Le Na] Weekly Market Intelligence - IAQ/IEQ/HVAC - Tuan [XX]\" \"<noi dung>\"\n2. Tieng Anh cho Santiago: node /app/google-tools/gmail-send.js \"santiago@nsca.vn\" \"[Le Na] Weekly Market Intelligence - IAQ/IEQ/HVAC - Week [XX]\" \"<content>\""
+    },
+    "sessionTarget": "isolated"
   }
 ]
