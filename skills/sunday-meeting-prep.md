@@ -221,7 +221,8 @@ PHAN C: TONG HOP & DE XUAT
 - `node /app/google-tools/gdoc-create.js "Noi dung hop giao ban tuan [XX]" "<noi dung>"`
 - Nhan lai docUrl
 
-### Buoc 9: Gui Zalo cho Sep Khanh
+### Buoc 9: Gui vao My Documents Zalo cho Sep Khanh
+(Dung tool zalouser: action=send, target=1982095867855370044)
 - Tom tat (max 2000 ky tu):
   "Da, anh Khanh, em da chuan bi xong noi dung hop giao ban Tuan [XX].
   
