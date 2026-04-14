@@ -64,7 +64,7 @@
 ## HANH CHINH NHAN SU (HCNS)
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
 |----|--------|---------|-----|-------|-----|
-| HC01 | Đặng Văn Sơn | TP HCNS | HCNS | sondv@nsca.vn | 0901765432 |
+| HC01 | Đặng Văn Sơn | TP HCNS | HCNS | sondt@nsca.vn | 0901765432 |
 | HC02 | HCNS 01 | Nhân sự tổng hợp | HCNS | hc02@nsca.vn | 0912876501 |
 | HC03 | HCNS 02 | Lương & Chấm công | HCNS | hc03@nsca.vn | 0923987602 |
 | HC04 | HCNS 03 | Tuyển dụng & Đào tạo | HCNS | hc04@nsca.vn | 0934098703 |
@@ -101,5 +101,5 @@
 ---
 ## GHI CHU:
 - Tong: 63 nguoi (noi bo + doi tac)
-- LUU Y email anh Son HCNS: sondv@nsca.vn (KHONG phai sondt@nsca.vn)
+- Email anh Son HCNS: sondt@nsca.vn
 - Email cua chi Hong (nsca@nsca.vn) va email cong ty (nsca@nsca.vn) la CUNG MOT email
