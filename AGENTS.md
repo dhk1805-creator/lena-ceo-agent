@@ -51,7 +51,7 @@
 
 **CACH LE NA GUI TIN NHAN ZALO CHO SEP KHANH:**
 ```
-exec: openclaw message send --channel zalouser --target 1201556577723470097 --message "Noi dung tin nhan"
+exec: openclaw message send --channel zalouser --target 255067431607136002 --message "Noi dung tin nhan"
 ```
 
 **CACH LE NA TRA LOI TIN NHAN ZALO:**
