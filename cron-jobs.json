@@ -4,7 +4,7 @@
     "name": "Smart Email Agent - Scan & Auto-Reply",
     "schedule": {
       "kind": "cron",
-      "expr": "*/15 7-22 * * 1-6"
+      "expr": "0 8,14 * * 1-6"
     },
     "payload": {
       "kind": "agentTurn",
