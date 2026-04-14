@@ -449,7 +449,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | Script | Lenh | Mo ta |
 |--------|------|-------|
 | Gmail doc | `node /app/google-tools/gmail-read.js [hours] [maxResults] [query]` | Doc email dhk@nsca.vn. Tham so 3 la Gmail query filter |
-| Gmail gui | `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>"` | Gui email tu dhk@nsca.vn |
+| Gmail gui | `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>" "[cc]"` | Gui email tu lena@nsca.vn. CC tuy chon (phan cach bang dau phay) |
 | Sheets doc | `node /app/google-tools/sheets-read.js "<sheetId>" "<range>"` | Doc du lieu tu Google Sheets |
 | Sheets ghi | `node /app/google-tools/sheets-write.js "<sheetId>" "<range>" '<jsonData>'` | Ghi du lieu vao Sheets |
 | Calendar doc | `node /app/google-tools/calendar-read.js [days]` | Doc lich hop. Default: 2 ngay toi |
@@ -533,8 +533,15 @@ BUOC 3 — Neu chua du, quet email gui cho CEO:
 ### Luu y:
 - Ket qua tra ve dang JSON — phan tich roi trinh bay dep cho CEO
 - GOOGLE_SHEET_ID lay tu env variable `$GOOGLE_SHEET_ID`
-- Khi gui email PHAI dung ten va xung ho dung gioi tinh (xem MEMORY.md)
+- Khi gui email PHAI dung ten va xung ho dung gioi tinh (xem MEMORY.md va memory/directory.md)
 - Khi CEO hoi ve Google Sheets → gui link URL tren
+
+### NGUYEN TAC CC EMAIL:
+**Khi gui email THAY MAT Sep Khanh → LUON CC dhk@nsca.vn**
+**Khi gui email THAY MAT chi Hong → LUON CC nsca@nsca.vn**
+**Khi gui email lien quan TCKT → CC ca nsca@nsca.vn va dhk@nsca.vn (neu phu hop)**
+Vi du: `node /app/google-tools/gmail-send.js "duannt@nsca.vn" "[Subject]" "[Body]" "dhk@nsca.vn"`
+Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subject]" "[Body]" "dhk@nsca.vn,nsca@nsca.vn"`
 
 ## Vai tro Email — Tro ly CEO chuyen nghiep
 

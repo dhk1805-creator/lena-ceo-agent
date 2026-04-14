@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // Gmail Send — Le Na CEO Agent
-// Usage: node gmail-send.js <to> <subject> <body>
+// Usage: node gmail-send.js <to> <subject> <body> [cc]
+// cc: optional, comma-separated CC addresses
+// Example: node gmail-send.js "anh@nsca.vn" "Subject" "Body" "dhk@nsca.vn,nsca@nsca.vn"
 
 const to = process.argv[2];
 const subject = process.argv[3];
 const body = process.argv[4];
+const cc = process.argv[5] || '';  // optional CC
 
 if (!to || !subject || !body) {
-  console.error('Usage: node gmail-send.js <to> <subject> <body>');
+  console.error('Usage: node gmail-send.js <to> <subject> <body> [cc]');
   process.exit(1);
 }
 
@@ -57,11 +60,18 @@ async function main() {
   // Step 2: Replace remaining newlines with <br> (these are in text content)
   const htmlBody = processed.replace(/\n/g, '<br>');
 
-  const email = [
+  const headers = [
     `To: ${to}`,
+  ];
+  if (cc) headers.push(`Cc: ${cc}`);
+  headers.push(
     `From: ${mimeEncodeName('Đào Thị Lê Na - NSCA')} <${SENDER_EMAIL}>`,
     `Subject: ${mimeEncodeSubject(subject)}`,
     'MIME-Version: 1.0',
+  );
+
+  const email = [
+    ...headers,
     'Content-Type: text/html; charset=utf-8',
     'Content-Transfer-Encoding: base64',
     '',
@@ -82,7 +92,7 @@ async function main() {
   const result = await res.json();
 
   if (result.id) {
-    console.log(JSON.stringify({ success: true, messageId: result.id, to, subject }));
+    console.log(JSON.stringify({ success: true, messageId: result.id, to, cc: cc || undefined, subject }));
   } else {
     console.log(JSON.stringify({ success: false, error: result }));
   }
