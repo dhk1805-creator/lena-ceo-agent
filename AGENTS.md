@@ -134,7 +134,7 @@ Chi Hong phu trach chinh mang TCKT. Le Na can DAC BIET uu tien ho tro chi Hong v
 
 **CACH LE NA GUI TIN NHAN ZALO CHO CHI HONG:**
 ```
-exec: openclaw message send --channel zalouser --target 0903220024 --message "Noi dung tin nhan"
+exec: openclaw message send --channel zalouser --target 2389450107733864097 --message "Noi dung tin nhan"
 ```
 
 **CACH XUNG HO VOI CHI HONG:**

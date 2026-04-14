@@ -223,7 +223,7 @@ PHAN C: TONG HOP & DE XUAT
 
 ### Buoc 9: Gui thong bao cho Sep Khanh VA chi Hong qua Zalo
 Dung EXEC gui cho Sep Khanh: `openclaw message send --channel zalouser --target 255067431607136002 --message "noi dung tom tat"`
-Dung EXEC gui cho chi Hong: `openclaw message send --channel zalouser --target 0903220024 --message "noi dung tom tat"`
+Dung EXEC gui cho chi Hong: `openclaw message send --channel zalouser --target 2389450107733864097 --message "noi dung tom tat"`
 - Tom tat (max 2000 ky tu):
   "Da, anh Khanh, em da chuan bi xong noi dung hop giao ban Tuan [XX].
   
