@@ -13,7 +13,9 @@ if (!to || !subject || !body) {
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
+// Uu tien token cua lena@nsca.vn (sender rieng), fallback ve token dhk (CEO)
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN_LENA || process.env.GOOGLE_REFRESH_TOKEN;
+const SENDER_EMAIL = process.env.GOOGLE_REFRESH_TOKEN_LENA ? 'lena@nsca.vn' : 'dhk@nsca.vn';
 
 async function getAccessToken() {
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -57,7 +59,7 @@ async function main() {
 
   const email = [
     `To: ${to}`,
-    `From: ${mimeEncodeName('Đào Thị Lê Na - NSCA')} <dhk@nsca.vn>`,
+    `From: ${mimeEncodeName('Đào Thị Lê Na - NSCA')} <${SENDER_EMAIL}>`,
     `Subject: ${mimeEncodeSubject(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
