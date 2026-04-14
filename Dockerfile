@@ -18,6 +18,7 @@ COPY google-tools/gmail-send.js /app/google-tools/gmail-send.js
 COPY google-tools/sheets-read.js /app/google-tools/sheets-read.js
 COPY google-tools/sheets-write.js /app/google-tools/sheets-write.js
 COPY google-tools/calendar-read.js /app/google-tools/calendar-read.js
+COPY google-tools/calendar-create.js /app/google-tools/calendar-create.js
 COPY google-tools/gdoc-create.js /app/google-tools/gdoc-create.js
 COPY google-tools/import-cron.js /app/google-tools/import-cron.js
 
