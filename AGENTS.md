@@ -369,6 +369,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | Calendar doc | `node /app/google-tools/calendar-read.js [days]` | Doc lich hop. Default: 2 ngay toi |
 | Calendar tao | `node /app/google-tools/calendar-create.js "<summary>" "<start_ISO>" "<end_ISO>" "[description]" "[location]"` | Tao event. Start/End: "2026-04-15T14:00:00+07:00" |
 | Google Doc | `node /app/google-tools/gdoc-create.js "<title>" "<content>"` | Tao Google Doc, tra ve docUrl |
+| Gmail attachment | `node /app/google-tools/gmail-attachment.js <messageId> [outputDir]` | Tai tat ca tep dinh kem tu email. Default dir: /tmp/attachments |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
