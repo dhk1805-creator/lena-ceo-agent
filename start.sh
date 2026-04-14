@@ -44,19 +44,20 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
         "apiKey": "${CLAUDE_API_KEY}",
         "api": "anthropic-messages",
         "models": [
+          { "id": "claude-opus-4-20250514", "name": "Claude Opus 4", "contextWindow": 200000, "maxTokens": 16384 },
           { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "contextWindow": 200000, "maxTokens": 8192 }
         ]
       },
       "openai": {
         "baseUrl": "https://api.openai.com/v1",
-        "apiKey": "${OPENAI_API_KEY:-sk-none}",
+        "apiKey": "${OPENAI_API_KEY}",
         "models": [
           { "id": "gpt-4o", "name": "GPT-4o", "contextWindow": 128000, "maxTokens": 4096 }
         ]
       },
       "google": {
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "apiKey": "${GEMINI_API_KEY:-none}",
+        "apiKey": "${GEMINI_API_KEY}",
         "api": "google-generative-ai",
         "models": [
           { "id": "gemini-2.0-flash", "name": "Gemini Flash", "contextWindow": 1048576, "maxTokens": 8192 }
@@ -66,7 +67,7 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
   },
   "agents": {
     "defaults": {
-      "model": "anthropic/claude-sonnet-4-20250514"
+      "model": "anthropic/claude-opus-4-20250514"
     }
   },
   "gateway": {
