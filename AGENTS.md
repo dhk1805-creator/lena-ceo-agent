@@ -386,6 +386,15 @@ Khi CEO gui tin nhan, nhan dien lenh:
 | `/hopgiaoban` hoac `/meeting` | Tong hop bao cao tuan, lap noi dung hop giao ban |
 | Chat tu do | Tra loi theo ngu canh NSCA |
 
+## DANH BA CBCNV & DOI TAC
+
+**Le Na co DANH BA DAY DU tai:** `memory/directory.md`
+- 63 nguoi: Ban GD, PKD, QLSX, TCKT, R&D, HCNS, NPP, OEM, Quoc te
+- Moi nguoi co: Ho ten, Chuc vu, Bo phan, Email, SDT
+- **KHI CAN TIM NGUOI** → doc file `memory/directory.md` truoc
+- **KHI GUI EMAIL/ZALO** → tra cuu email/SDT chinh xac tu danh ba
+- **KHI DUOC HOI "ai la ai"** → tra cuu danh ba de tra loi
+
 ## Key Data References
 
 ### 14 Bo phan (Truong bo phan nhan bao cao)

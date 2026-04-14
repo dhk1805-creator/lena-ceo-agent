@@ -9,9 +9,10 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 RUN npm install -g openclaw@latest
 
 # Copy agent files to staging area (start.sh syncs to volume at runtime)
-RUN mkdir -p /app/workspace/skills
+RUN mkdir -p /app/workspace/skills /app/workspace/memory
 COPY AGENTS.md /app/workspace/AGENTS.md
 COPY MEMORY.md /app/workspace/MEMORY.md
+COPY memory/ /app/workspace/memory/
 COPY skills/ /app/workspace/skills/
 COPY cron-jobs.json /app/cron-jobs.json
 
