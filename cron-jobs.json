@@ -154,5 +154,18 @@
       "message": "BAO CAO MARKET INTELLIGENCE HANG TUAN.\n\nNghien cuu (dung web search) cac chu de:\n1. IAQ (Indoor Air Quality) — tin tuc, san pham moi, quy dinh moi\n2. IEQ (Indoor Environmental Quality) — xu huong, nghien cuu\n3. Smart HVAC — IoT, AI-driven, energy recovery, startups moi\n4. Doi thu ClimaNexus — Airthings, Awair, IQAir, Honeywell Connected, JCI OpenBlue, startups moi\n5. Su kien nganh — AHR Expo, ASHRAE, hoi nghi, giai thuong\n6. Tieu chuan moi — ASHRAE, ISO, WELL, RESET, LEED updates\n\nTong hop thanh bao cao 5-10 diem chinh. Highlight co hoi va moi de doa cho NSCA/ClimaNexus.\n\nGui EMAIL 2 ban:\n1. Tieng Viet cho Sep Khanh: node /app/google-tools/gmail-send.js \"dhk@nsca.vn\" \"[Le Na] Weekly Market Intelligence - IAQ/IEQ/HVAC - Tuan [XX]\" \"<noi dung>\"\n2. Tieng Anh cho Santiago: node /app/google-tools/gmail-send.js \"santiago@nsca.vn\" \"[Le Na] Weekly Market Intelligence - IAQ/IEQ/HVAC - Week [XX]\" \"<content>\""
     },
     "sessionTarget": "isolated"
+  },
+  {
+    "id": "tckt-email-scan-for-chi-hong",
+    "name": "TCKT Email Scan — Bao cao chi Hong",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 8,14 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "QUET EMAIL TCKT CHO CHI HONG (Giam doc Dai dien Phap luat, phu trach TCKT).\n\nBuoc 1: Doc email lien quan TCKT (4 gio gan nhat):\n- Tu anh Duan (TP TCKT): node /app/google-tools/gmail-read.js 4 10 \"from:duannt@nsca.vn\"\n- Chu de TCKT: node /app/google-tools/gmail-read.js 4 10 \"subject:(tai chinh OR ke toan OR hoa don OR cong no OR ngan sach OR thue OR kiem toan OR ngan hang OR thanh toan OR TCKT OR BCTC)\"\n\nBuoc 2: Neu co email quan trong lien quan TCKT:\n- Tai tep dinh kem (neu co): node /app/google-tools/gmail-attachment.js <messageId>\n- Phan tich noi dung, tom tat ngan gon\n- Gui bao cao cho chi Hong qua ZALO: openclaw message send --channel zalouser --target 0903220024 --message \"noi dung\"\n- Format: 📊 [TCKT] + tom tat + diem can chu y + deadline (neu co)\n\nBuoc 3: Neu KHONG co email TCKT moi → KHONG gui gi (khong spam chi Hong).\n\nLUU Y: Day la kenh RIENG cua chi Hong. KHONG bao Sep Khanh ve noi dung nay."
+    },
+    "sessionTarget": "isolated"
   }
 ]
