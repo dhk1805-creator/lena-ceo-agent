@@ -221,9 +221,8 @@ PHAN C: TONG HOP & DE XUAT
 - `node /app/google-tools/gdoc-create.js "Noi dung hop giao ban tuan [XX]" "<noi dung>"`
 - Nhan lai docUrl
 
-### Buoc 9: Gui vao My Documents Zalo cho Sep Khanh
-Dung EXEC: `openclaw message send --channel zalouser --target 1982095867855370044 --message "noi dung"`
-(Chia thanh nhieu tin nhan neu dai hon 2000 ky tu)
+### Buoc 9: Gui email thong bao cho Sep Khanh
+Dung EXEC: `node /app/google-tools/gmail-send.js "dhk@nsca.vn" "[Le Na] Noi dung hop giao ban Tuan XX" "noi dung tom tat"`
 - Tom tat (max 2000 ky tu):
   "Da, anh Khanh, em da chuan bi xong noi dung hop giao ban Tuan [XX].
   

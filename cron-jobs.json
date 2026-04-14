@@ -8,7 +8,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "QUET EMAIL MOI — Dung filter de doc email quan trong, BO QUA spam.\n\nBuoc 1: Doc email quan trong (co filter):\n- Email noi bo: node /app/google-tools/gmail-read.js 1 20 \"from:nsca.vn -category:promotions -category:forums\"\n- Email tu NPP/doi tac: node /app/google-tools/gmail-read.js 1 10 \"-from:nsca.vn -category:promotions -category:forums -category:social\"\n\nBuoc 2: Phan loai:\n- report_submission: Bao cao tu 14 truong phong\n- urgent: Tu khach hang OEM (EAL, Quiet Cool), NPP, co deadline\n- approval_request: Yeu cau duyet\n- external: Tu doi tac quoc te\n- general_internal: Noi bo thong thuong\n\nBuoc 3: Voi moi email quan trong, xem co can hanh dong gi khong.\nBuoc 4: Gui bao cao tom tat cho CEO vao My Documents Zalo (target: 1982095867855370044) (dung emoji phan loai).\nBuoc 5: Log vao Google Sheets: node /app/google-tools/sheets-write.js $GOOGLE_SHEET_ID \"'5. Email Action Log'!A:J\" '<data>'"
+      "message": "QUET EMAIL MOI — Dung filter de doc email quan trong, BO QUA spam.\n\nBuoc 1: Doc email quan trong (co filter):\n- Email noi bo: node /app/google-tools/gmail-read.js 1 20 \"from:nsca.vn -category:promotions -category:forums\"\n- Email tu NPP/doi tac: node /app/google-tools/gmail-read.js 1 10 \"-from:nsca.vn -category:promotions -category:forums -category:social\"\n\nBuoc 2: Phan loai:\n- report_submission: Bao cao tu 14 truong phong\n- urgent: Tu khach hang OEM (EAL, Quiet Cool), NPP, co deadline\n- approval_request: Yeu cau duyet\n- external: Tu doi tac quoc te\n- general_internal: Noi bo thong thuong\n\nBuoc 3: Voi moi email quan trong, xem co can hanh dong gi khong.\nBuoc 4: Gui bao cao tom tat cho CEO qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na]) (dung emoji phan loai).\nBuoc 5: Log vao Google Sheets: node /app/google-tools/sheets-write.js $GOOGLE_SHEET_ID \"'5. Email Action Log'!A:J\" '<data>'"
     },
     "sessionTarget": "isolated"
   },
@@ -21,7 +21,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Chay: node /app/google-tools/calendar-read.js 2\nDoc ket qua JSON, trinh bay lich hop hom nay va ngay mai.\nFormat:\nLICH HOP — [Ngay]\n[Gio] — [Ten cuoc hop] — [Nguoi tham gia]\nDanh dau cuoc hop quan trong.\nGui vao My Documents Zalo (target: 1982095867855370044) cho Sep Khanh."
+      "message": "Chay: node /app/google-tools/calendar-read.js 2\nDoc ket qua JSON, trinh bay lich hop hom nay va ngay mai.\nFormat:\nLICH HOP — [Ngay]\n[Gio] — [Ten cuoc hop] — [Nguoi tham gia]\nDanh dau cuoc hop quan trong.\nGui qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na]) cho Sep Khanh."
     },
     "sessionTarget": "isolated"
   },
@@ -34,7 +34,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "TONG HOP BAO CAO TUAN & CHUAN BI HOP GIAO BAN THU 2\nDoc skill sunday-meeting-prep.md de biet quy trinh chi tiet.\n\nTOM TAT 9 BUOC:\n1. Xac dinh tuan/thang/quy hien tai. Tinh target tuan = target thang (tu KHKD Baseline) / so tuan trong thang.\n2. Quet email 7 ngay TU 14 TRUONG BP — PHAI dung filter:\n   - node /app/google-tools/gmail-read.js 168 50 \"from:nsca.vn subject:(bao cao OR report OR san xuat OR tuan OR weekly)\"\n   - Hoac quet tung nguoi: node /app/google-tools/gmail-read.js 168 5 \"from:ngocnv@nsca.vn\"\n   - KHONG doc email khong co filter vi se bi chim trong spam.\n3. PHAN A (DINH TINH): Tom tat tinh hinh tung BP tu email bao cao. Ghi nhan BP chua nop.\n4. Doc Google Sheets: KHKD Baseline (target), KPI Tracker (thuc te), NPP Tracker (doanh so NPP), Weekly Performance (lich su), Report Tracker.\n5. PHAN B (DINH LUONG): Tinh toan va danh gia:\n   - Doanh thu TUAN: tung nganh hang vs target tuan phan bo\n   - Luy ke THANG: tung nganh hang vs target thang\n   - Luy ke QUY (neu tuan cuoi quy): vs target quy\n   - NPP: tung NPP vs KH tuan va thang\n   - Traffic light: xanh >=100%, vang >=80%, do <80%\n6. PHAN C: Top performance, canh bao, van de can CEO quyet dinh, dau viec tuan toi, lich hop.\n7. Ghi ket qua tuan vao sheet '19. Weekly Performance'.\n8. Tao Google Doc: node /app/google-tools/gdoc-create.js\n9. Gui vao My Documents Zalo (target: 1982095867855370044): tom tat DT tuan vs KH, LK thang vs KH, NPP, so BP nop BC, link Google Doc."
+      "message": "TONG HOP BAO CAO TUAN & CHUAN BI HOP GIAO BAN THU 2\nDoc skill sunday-meeting-prep.md de biet quy trinh chi tiet.\n\nTOM TAT 9 BUOC:\n1. Xac dinh tuan/thang/quy hien tai. Tinh target tuan = target thang (tu KHKD Baseline) / so tuan trong thang.\n2. Quet email 7 ngay TU 14 TRUONG BP — PHAI dung filter:\n   - node /app/google-tools/gmail-read.js 168 50 \"from:nsca.vn subject:(bao cao OR report OR san xuat OR tuan OR weekly)\"\n   - Hoac quet tung nguoi: node /app/google-tools/gmail-read.js 168 5 \"from:ngocnv@nsca.vn\"\n   - KHONG doc email khong co filter vi se bi chim trong spam.\n3. PHAN A (DINH TINH): Tom tat tinh hinh tung BP tu email bao cao. Ghi nhan BP chua nop.\n4. Doc Google Sheets: KHKD Baseline (target), KPI Tracker (thuc te), NPP Tracker (doanh so NPP), Weekly Performance (lich su), Report Tracker.\n5. PHAN B (DINH LUONG): Tinh toan va danh gia:\n   - Doanh thu TUAN: tung nganh hang vs target tuan phan bo\n   - Luy ke THANG: tung nganh hang vs target thang\n   - Luy ke QUY (neu tuan cuoi quy): vs target quy\n   - NPP: tung NPP vs KH tuan va thang\n   - Traffic light: xanh >=100%, vang >=80%, do <80%\n6. PHAN C: Top performance, canh bao, van de can CEO quyet dinh, dau viec tuan toi, lich hop.\n7. Ghi ket qua tuan vao sheet '19. Weekly Performance'.\n8. Tao Google Doc: node /app/google-tools/gdoc-create.js\n9. Gui qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na]): tom tat DT tuan vs KH, LK thang vs KH, NPP, so BP nop BC, link Google Doc."
     },
     "sessionTarget": "isolated"
   },
@@ -47,7 +47,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Tao bao cao kinh doanh tuan. Doc KPI Tracker va Sales data tu Google Sheets. Phan tich doanh thu, chi phi, loi nhuan. So sanh voi tuan truoc va target. Gui CEO vao My Documents Zalo (target: 1982095867855370044)."
+      "message": "Tao bao cao kinh doanh tuan. Doc KPI Tracker va Sales data tu Google Sheets. Phan tich doanh thu, chi phi, loi nhuan. So sanh voi tuan truoc va target. Gui CEO qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na])."
     },
     "sessionTarget": "isolated"
   },
@@ -73,7 +73,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Kiem tra sheet 'Report Tracker' xem phong ban nao CHUA NOP bao cao tuan nay. Gui email KHAN CAP cho cac phong ban chua nop, voi tieu de '[KHAN CAP] Yeu cau nop bao cao tuan'. Thong bao CEO vao My Documents Zalo (target: 1982095867855370044) danh sach phong ban chua nop."
+      "message": "Kiem tra sheet 'Report Tracker' xem phong ban nao CHUA NOP bao cao tuan nay. Gui email KHAN CAP cho cac phong ban chua nop, voi tieu de '[KHAN CAP] Yeu cau nop bao cao tuan'. Thong bao CEO qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na]) danh sach phong ban chua nop."
     },
     "sessionTarget": "isolated"
   },
@@ -86,7 +86,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Kiem tra sheet 'Report Tracker'. Neu van con phong ban CHUA NOP bao cao, gui bao cao ESCALATION cho CEO vao My Documents Zalo (target: 1982095867855370044):\n- Danh sach phong ban da nop (co ngay gio)\n- Danh sach phong ban CHUA nop (da nhac 2 lan)\n- De xuat hanh dong cho CEO"
+      "message": "Kiem tra sheet 'Report Tracker'. Neu van con phong ban CHUA NOP bao cao, gui bao cao ESCALATION cho CEO qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na]):\n- Danh sach phong ban da nop (co ngay gio)\n- Danh sach phong ban CHUA nop (da nhac 2 lan)\n- De xuat hanh dong cho CEO"
     },
     "sessionTarget": "isolated"
   },
@@ -99,7 +99,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "Doc sheet 'KPI Tracker' tu Google Sheets. Phan tich KPI tuan:\n- Doanh thu vs target\n- San luong vs ke hoach\n- Chi phi vs ngan sach\n- Cac chi so bat thuong\nTao bang tong hop co emoji (xanh/vang/do). Gui CEO vao My Documents Zalo (target: 1982095867855370044)."
+      "message": "Doc sheet 'KPI Tracker' tu Google Sheets. Phan tich KPI tuan:\n- Doanh thu vs target\n- San luong vs ke hoach\n- Chi phi vs ngan sach\n- Cac chi so bat thuong\nTao bang tong hop co emoji (xanh/vang/do). Gui CEO qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na])."
     },
     "sessionTarget": "isolated"
   },
@@ -125,7 +125,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "BAO CAO TUAN CLIMANEXUS (cong ty con). Doc 3 sheet:\n1. 'ClimaNexus KPI' - Chi so hoat dong\n2. 'ClimaNexus Milestones' - Roadmap 12 thang, trang thai\n3. 'ClimaNexus Pipeline' - Du an tiem nang\n\nBao cao:\n- KPI: doanh thu, R&D, patent, VC meetings\n- Milestone: da hoan thanh vs qua han\n- Pipeline: tong gia tri, giai doan\n- De xuat 2-3 uu tien cho CEO\n\nGui vao My Documents Zalo (target: 1982095867855370044)."
+      "message": "BAO CAO TUAN CLIMANEXUS (cong ty con). Doc 3 sheet:\n1. 'ClimaNexus KPI' - Chi so hoat dong\n2. 'ClimaNexus Milestones' - Roadmap 12 thang, trang thai\n3. 'ClimaNexus Pipeline' - Du an tiem nang\n\nBao cao:\n- KPI: doanh thu, R&D, patent, VC meetings\n- Milestone: da hoan thanh vs qua han\n- Pipeline: tong gia tri, giai doan\n- De xuat 2-3 uu tien cho CEO\n\nGui qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na])."
     },
     "sessionTarget": "isolated"
   },
@@ -138,7 +138,7 @@
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "BAO CAO THI TRUONG QUOC TE (Santiago de los Reyes - OMDM). Doc 3 sheet:\n1. 'Export Revenue Tracker' - Doanh thu xuat khau theo thi truong\n2. 'International Pipeline' - Doi tac OEM/ODM/Distribution\n3. 'Santiago KPI Tracker' - KPI 24 thang theo MIP\n\nMIP targets:\n- GTM plan approved trong 3 thang\n- 3 doi tac chien luoc\n- Export revenue $300K Y1, $1M Y2\n- 2 trien lam quoc te/nam\n\nBoi canh: Thi truong VAV Box toan cau $6.4B (2024) -> $23.9B (2030), APAC 40%.\n\nPhan tich: pipeline, tien do KPI, co hoi thi truong.\nGui CEO vao My Documents Zalo (target: 1982095867855370044)."
+      "message": "BAO CAO THI TRUONG QUOC TE (Santiago de los Reyes - OMDM). Doc 3 sheet:\n1. 'Export Revenue Tracker' - Doanh thu xuat khau theo thi truong\n2. 'International Pipeline' - Doi tac OEM/ODM/Distribution\n3. 'Santiago KPI Tracker' - KPI 24 thang theo MIP\n\nMIP targets:\n- GTM plan approved trong 3 thang\n- 3 doi tac chien luoc\n- Export revenue $300K Y1, $1M Y2\n- 2 trien lam quoc te/nam\n\nBoi canh: Thi truong VAV Box toan cau $6.4B (2024) -> $23.9B (2030), APAC 40%.\n\nPhan tich: pipeline, tien do KPI, co hoi thi truong.\nGui CEO qua EMAIL cho Sep Khanh (dung gmail-send.js gui dhk@nsca.vn, Subject bat dau bang [Le Na])."
     },
     "sessionTarget": "isolated"
   }
