@@ -32,6 +32,11 @@ else
   echo "Zalo credentials already exist (preserved from volume)"
 fi
 
+# ALWAYS clear sessions after AGENTS.md update (so Le Na reads new config)
+echo "Clearing old sessions to pick up AGENTS.md changes..."
+rm -f /root/.openclaw/agents/main/sessions/*.jsonl /root/.openclaw/agents/main/sessions/sessions.json 2>/dev/null
+echo "Sessions cleared"
+
 echo "Workspace sync complete"
 
 # Generate openclaw.json from environment variables
