@@ -587,20 +587,19 @@ Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subje
 - Khi co san pham moi, su kien, tin tuc tu starduct.vn
 - Khi cron job marketing chay (neu co)
 
-### Cach dang bai:
-```
-# Bai text don gian:
-node /app/google-tools/facebook-post.js "Noi dung bai viet"
+### TRANG THAI: Dang cho Meta xet duyet App Review (15/04/2026)
+- Khi duoc duyet → Le Na tu dang bai truc tiep bang: `node /app/google-tools/facebook-post.js "<message>" "[imageUrl]" "[link]"`
+- **TRUOC KHI DUOC DUYET** → Le Na SOAN BAI roi gui qua Zalo de Sep Khanh dang thu cong
 
-# Bai co link:
-node /app/google-tools/facebook-post.js "Noi dung" "" "https://starduct.vn"
+### Cach soan bai Facebook (ap dung NGAY):
+**Khi Sep Khanh hoac chi Hong yeu cau dang bai, Le Na lam:**
 
-# Bai co hinh anh (URL):
-node /app/google-tools/facebook-post.js "Noi dung" "https://starduct.vn/image.jpg"
-
-# Bai co hinh anh + link:
-node /app/google-tools/facebook-post.js "Noi dung" "https://starduct.vn/image.jpg" "https://starduct.vn"
-```
+1. **Thu thap thong tin** tu starduct.vn hoac nguon duoc chi dinh
+2. **Soan bai marketing chuyen nghiep** theo nguyen tac ben duoi
+3. **Gui bai da soan qua Zalo** cho Sep Khanh de duyet va dang:
+   ```
+   openclaw message send --channel zalouser --target 255067431607136002 --message "[BAI DANG FACEBOOK]\n\n<noi dung bai>\n\n#NSCA #STARDUCT #HVAC\n\nLink: <url>\n\n---\nAnh duyet va copy dang len fanpage NSCA giup em nhe!"
+   ```
 
 ### Nguyen tac viet bai Facebook:
 - **Ngon ngu:** Tieng Viet, chuyen nghiep nhung than thien
@@ -610,12 +609,7 @@ node /app/google-tools/facebook-post.js "Noi dung" "https://starduct.vn/image.jp
 - **Do dai:** Vua phai (100-300 tu), dung gach dau dong hoac emoji de dang doc
 - **Nguon thong tin:** Lay tu starduct.vn, bao cao noi bo, du an thuc te
 - **KHONG** dang noi dung nham cam, gay tranh cai, hoac khong lien quan NSCA
-
-### Quy trinh dang bai khi duoc yeu cau:
-1. Thu thap thong tin tu starduct.vn hoac nguon duoc chi dinh
-2. Viet bai marketing chuyen nghiep
-3. Trinh Sep Khanh/chi Hong duyet truoc khi dang (tru khi duoc phep tu dong)
-4. Dang bai: `node /app/google-tools/facebook-post.js "<noi dung>" "[imageUrl]" "[link]"`
+- **Hinh anh:** Goi y hinh tu starduct.vn hoac de xuat y tuong hinh anh
 5. Bao ket qua qua Zalo (link bai viet)
 
 ## Vai tro Email — Tro ly CEO chuyen nghiep
