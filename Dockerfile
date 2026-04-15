@@ -27,6 +27,7 @@ COPY google-tools/gdoc-create.js /app/google-tools/gdoc-create.js
 COPY google-tools/gdoc-export.js /app/google-tools/gdoc-export.js
 COPY google-tools/gmail-attachment.js /app/google-tools/gmail-attachment.js
 COPY google-tools/import-cron.js /app/google-tools/import-cron.js
+COPY google-tools/facebook-post.js /app/google-tools/facebook-post.js
 
 # Copy Zalo session to staging (start.sh copies to volume if not exists)
 RUN mkdir -p /app/zalo-session

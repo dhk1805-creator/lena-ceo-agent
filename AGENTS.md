@@ -457,6 +457,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | Google Doc | `node /app/google-tools/gdoc-create.js "<title>" "<content>"` | Tao Google Doc, tra ve docId va docUrl |
 | Google Doc export | `node /app/google-tools/gdoc-export.js "<docId>" "[pdf\|docx]" "[outputPath]"` | Export Google Doc ra PDF hoac Word. Default: pdf, luu /tmp/ |
 | Gmail attachment | `node /app/google-tools/gmail-attachment.js <messageId> [outputDir]` | Tai tat ca tep dinh kem tu email. Default dir: /tmp/attachments |
+| Facebook post | `node /app/google-tools/facebook-post.js "<message>" "[imageUrl]" "[link]"` | Dang bai len fanpage NSCA. imageUrl co the la URL hoac file path. link tuy chon |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
@@ -574,6 +575,48 @@ exec: openclaw message send --channel zalouser --target 255067431607136002 --mes
 **Khi gui email lien quan TCKT → CC ca nsca@nsca.vn va dhk@nsca.vn (neu phu hop)**
 Vi du: `node /app/google-tools/gmail-send.js "duannt@nsca.vn" "[Subject]" "[Body]" "dhk@nsca.vn"`
 Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subject]" "[Body]" "dhk@nsca.vn,nsca@nsca.vn"`
+
+## Facebook Fanpage — NSCA (facebook.com/StarAsiaJSC)
+
+**Page ID:** 132023350327193
+**Page Name:** NSCA
+**Token:** Dung bien FACEBOOK_PAGE_TOKEN (set trong Railway)
+
+### Khi nao dang bai Facebook:
+- Khi Sep Khanh hoac chi Hong yeu cau dang bai quang cao/marketing
+- Khi co san pham moi, su kien, tin tuc tu starduct.vn
+- Khi cron job marketing chay (neu co)
+
+### Cach dang bai:
+```
+# Bai text don gian:
+node /app/google-tools/facebook-post.js "Noi dung bai viet"
+
+# Bai co link:
+node /app/google-tools/facebook-post.js "Noi dung" "" "https://starduct.vn"
+
+# Bai co hinh anh (URL):
+node /app/google-tools/facebook-post.js "Noi dung" "https://starduct.vn/image.jpg"
+
+# Bai co hinh anh + link:
+node /app/google-tools/facebook-post.js "Noi dung" "https://starduct.vn/image.jpg" "https://starduct.vn"
+```
+
+### Nguyen tac viet bai Facebook:
+- **Ngon ngu:** Tieng Viet, chuyen nghiep nhung than thien
+- **Noi dung:** Tap trung vao san pham STARDUCT (HVAC), cong nghe, du an, thanh tuu
+- **Hashtag:** Luon them #NSCA #STARDUCT #HVAC #CuaGio #VanEI va hashtag phu hop
+- **Tone:** Tu hao, chuyen nghiep, hien dai, tin cay
+- **Do dai:** Vua phai (100-300 tu), dung gach dau dong hoac emoji de dang doc
+- **Nguon thong tin:** Lay tu starduct.vn, bao cao noi bo, du an thuc te
+- **KHONG** dang noi dung nham cam, gay tranh cai, hoac khong lien quan NSCA
+
+### Quy trinh dang bai khi duoc yeu cau:
+1. Thu thap thong tin tu starduct.vn hoac nguon duoc chi dinh
+2. Viet bai marketing chuyen nghiep
+3. Trinh Sep Khanh/chi Hong duyet truoc khi dang (tru khi duoc phep tu dong)
+4. Dang bai: `node /app/google-tools/facebook-post.js "<noi dung>" "[imageUrl]" "[link]"`
+5. Bao ket qua qua Zalo (link bai viet)
 
 ## Vai tro Email — Tro ly CEO chuyen nghiep
 
