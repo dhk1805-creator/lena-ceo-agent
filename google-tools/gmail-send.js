@@ -1,22 +1,31 @@
 #!/usr/bin/env node
 // Gmail Send — Le Na CEO Agent
-// Usage: node gmail-send.js <to> <subject> <body> [cc]
-// cc: optional, comma-separated CC addresses
-// Example: node gmail-send.js "anh@nsca.vn" "Subject" "Body" "dhk@nsca.vn,nsca@nsca.vn"
+// Usage: node gmail-send.js <to> <subject> <body> [cc] [attachmentPath]
+// cc: optional, comma-separated CC addresses (use "" to skip)
+// attachmentPath: optional, path to file to attach
+//
+// Examples:
+//   node gmail-send.js "anh@nsca.vn" "Subject" "Body"
+//   node gmail-send.js "anh@nsca.vn" "Subject" "Body" "dhk@nsca.vn"
+//   node gmail-send.js "anh@nsca.vn" "Subject" "Body" "dhk@nsca.vn" "/tmp/report.pdf"
+//   node gmail-send.js "anh@nsca.vn" "Subject" "Body" "" "/tmp/report.pdf"
+
+const fs = require('fs');
+const path = require('path');
 
 const to = process.argv[2];
 const subject = process.argv[3];
 const body = process.argv[4];
-const cc = process.argv[5] || '';  // optional CC
+const cc = process.argv[5] || '';
+const attachmentPath = process.argv[6] || '';
 
 if (!to || !subject || !body) {
-  console.error('Usage: node gmail-send.js <to> <subject> <body> [cc]');
+  console.error('Usage: node gmail-send.js <to> <subject> <body> [cc] [attachmentPath]');
   process.exit(1);
 }
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-// Uu tien token cua lena@nsca.vn (sender rieng), fallback ve token dhk (CEO)
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN_LENA || process.env.GOOGLE_REFRESH_TOKEN;
 const SENDER_EMAIL = process.env.GOOGLE_REFRESH_TOKEN_LENA ? 'lena@nsca.vn' : 'dhk@nsca.vn';
 
@@ -36,40 +45,41 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-// Chu ky duoc Le Na tu them trong noi dung email (tu AGENTS.md)
-// gmail-send.js CHI gui noi dung, KHONG them chu ky
-
-// MIME encode subject (RFC 2047) — fix loi font tieng Viet trong Subject
 function mimeEncodeSubject(str) {
   const encoded = Buffer.from(str, 'utf-8').toString('base64');
   return `=?UTF-8?B?${encoded}?=`;
 }
 
-// MIME encode ten nguoi gui (RFC 2047)
 function mimeEncodeName(str) {
   const encoded = Buffer.from(str, 'utf-8').toString('base64');
   return `=?UTF-8?B?${encoded}?=`;
 }
 
-async function main() {
-  const token = await getAccessToken();
+// Guess MIME type from file extension
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const types = {
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.zip': 'application/zip',
+    '.csv': 'text/csv',
+    '.txt': 'text/plain',
+    '.html': 'text/html',
+    '.md': 'text/markdown',
+  };
+  return types[ext] || 'application/octet-stream';
+}
 
-  // Step 1: Remove newlines INSIDE HTML tags (e.g. <img src="..."\n  width="80">)
-  // This prevents <br> from being injected inside tags and breaking them
-  let processed = body.replace(/<[^>]*>/gs, (tag) => tag.replace(/[\r\n]+/g, ' '));
-  // Step 2: Replace remaining newlines with <br> (these are in text content)
-  const htmlBody = processed.replace(/\n/g, '<br>');
-
-  const headers = [
-    `To: ${to}`,
-  ];
-  if (cc) headers.push(`Cc: ${cc}`);
-  headers.push(
-    `From: ${mimeEncodeName('Đào Thị Lê Na - NSCA')} <${SENDER_EMAIL}>`,
-    `Subject: ${mimeEncodeSubject(subject)}`,
-    'MIME-Version: 1.0',
-  );
-
+function buildSimpleEmail(headers, htmlBody) {
   const email = [
     ...headers,
     'Content-Type: text/html; charset=utf-8',
@@ -77,6 +87,71 @@ async function main() {
     '',
     Buffer.from(`<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${htmlBody}</body></html>`, 'utf-8').toString('base64')
   ].join('\r\n');
+  return email;
+}
+
+function buildMultipartEmail(headers, htmlBody, filePath) {
+  const boundary = '----=_Part_' + Date.now().toString(36);
+  const fileName = path.basename(filePath);
+  const mimeType = getMimeType(filePath);
+  const fileData = fs.readFileSync(filePath);
+  const fileBase64 = fileData.toString('base64');
+
+  // MIME encode filename for Vietnamese/Unicode support
+  const encodedFileName = `=?UTF-8?B?${Buffer.from(fileName, 'utf-8').toString('base64')}?=`;
+
+  const parts = [
+    ...headers,
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(`<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${htmlBody}</body></html>`, 'utf-8').toString('base64'),
+    '',
+    `--${boundary}`,
+    `Content-Type: ${mimeType}; name="${encodedFileName}"`,
+    `Content-Disposition: attachment; filename="${encodedFileName}"`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    fileBase64,
+    '',
+    `--${boundary}--`
+  ].join('\r\n');
+
+  return parts;
+}
+
+async function main() {
+  const token = await getAccessToken();
+
+  // Process body: preserve HTML tags, convert newlines to <br>
+  let processed = body.replace(/<[^>]*>/gs, (tag) => tag.replace(/[\r\n]+/g, ' '));
+  const htmlBody = processed.replace(/\n/g, '<br>');
+
+  // Build headers
+  const headers = [`To: ${to}`];
+  if (cc) headers.push(`Cc: ${cc}`);
+  headers.push(
+    `From: ${mimeEncodeName('Đào Thị Lê Na - NSCA')} <${SENDER_EMAIL}>`,
+    `Subject: ${mimeEncodeSubject(subject)}`,
+    'MIME-Version: 1.0',
+  );
+
+  // Build email — with or without attachment
+  let email;
+  let attachedFile = null;
+
+  if (attachmentPath && fs.existsSync(attachmentPath)) {
+    email = buildMultipartEmail(headers, htmlBody, attachmentPath);
+    attachedFile = path.basename(attachmentPath);
+  } else {
+    email = buildSimpleEmail(headers, htmlBody);
+    if (attachmentPath && !fs.existsSync(attachmentPath)) {
+      console.error(`Warning: attachment file not found: ${attachmentPath}, sending without attachment`);
+    }
+  }
 
   const encoded = Buffer.from(email).toString('base64url');
 
@@ -92,7 +167,14 @@ async function main() {
   const result = await res.json();
 
   if (result.id) {
-    console.log(JSON.stringify({ success: true, messageId: result.id, to, cc: cc || undefined, subject }));
+    console.log(JSON.stringify({
+      success: true,
+      messageId: result.id,
+      to,
+      cc: cc || undefined,
+      subject,
+      attachment: attachedFile || undefined
+    }));
   } else {
     console.log(JSON.stringify({ success: false, error: result }));
   }

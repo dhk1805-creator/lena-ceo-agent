@@ -449,12 +449,13 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | Script | Lenh | Mo ta |
 |--------|------|-------|
 | Gmail doc | `node /app/google-tools/gmail-read.js [hours] [maxResults] [query]` | Doc email dhk@nsca.vn. Tham so 3 la Gmail query filter |
-| Gmail gui | `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>" "[cc]"` | Gui email tu lena@nsca.vn. CC tuy chon (phan cach bang dau phay) |
+| Gmail gui | `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>" "[cc]" "[attachmentPath]"` | Gui email tu lena@nsca.vn. CC va attachment tuy chon |
 | Sheets doc | `node /app/google-tools/sheets-read.js "<sheetId>" "<range>"` | Doc du lieu tu Google Sheets |
 | Sheets ghi | `node /app/google-tools/sheets-write.js "<sheetId>" "<range>" '<jsonData>'` | Ghi du lieu vao Sheets |
 | Calendar doc | `node /app/google-tools/calendar-read.js [days]` | Doc lich hop. Default: 2 ngay toi |
 | Calendar tao | `node /app/google-tools/calendar-create.js "<summary>" "<start_ISO>" "<end_ISO>" "[description]" "[location]"` | Tao event. Start/End: "2026-04-15T14:00:00+07:00" |
-| Google Doc | `node /app/google-tools/gdoc-create.js "<title>" "<content>"` | Tao Google Doc, tra ve docUrl |
+| Google Doc | `node /app/google-tools/gdoc-create.js "<title>" "<content>"` | Tao Google Doc, tra ve docId va docUrl |
+| Google Doc export | `node /app/google-tools/gdoc-export.js "<docId>" "[pdf\|docx]" "[outputPath]"` | Export Google Doc ra PDF hoac Word. Default: pdf, luu /tmp/ |
 | Gmail attachment | `node /app/google-tools/gmail-attachment.js <messageId> [outputDir]` | Tai tat ca tep dinh kem tu email. Default dir: /tmp/attachments |
 
 ### Vi du su dung:
@@ -535,6 +536,37 @@ BUOC 3 — Neu chua du, quet email gui cho CEO:
 - GOOGLE_SHEET_ID lay tu env variable `$GOOGLE_SHEET_ID`
 - Khi gui email PHAI dung ten va xung ho dung gioi tinh (xem MEMORY.md va memory/directory.md)
 - Khi CEO hoi ve Google Sheets → gui link URL tren
+
+### NGUYEN TAC TAO BAO CAO:
+**KHONG BAO GIO tao file .md roi de trong server.** Nguoi nhan KHONG doc duoc file .md!
+
+**QUY TRINH DUNG khi tao bao cao/phan tich:**
+1. **Tao Google Doc:** `node /app/google-tools/gdoc-create.js "<tieu de>" "<noi dung>"`
+   → Tra ve docId va docUrl (luu trong Google Drive cua Sep Khanh, truy suat duoc mai sau)
+2. **Export PDF:** `node /app/google-tools/gdoc-export.js "<docId>" "pdf" "/tmp/<ten_file>.pdf"`
+3. **Gui email kem file PDF:** `node /app/google-tools/gmail-send.js "<to>" "<subject>" "<body>" "<cc>" "/tmp/<ten_file>.pdf"`
+4. **Gui link Google Doc qua Zalo** (de doc online)
+
+**VI DU — Gui bao cao tuan:**
+```
+# Buoc 1: Tao Google Doc
+exec: node /app/google-tools/gdoc-create.js "Bao cao tuan 16 - NSCA" "<noi dung>"
+# → docId: "1abc...", docUrl: "https://docs.google.com/..."
+
+# Buoc 2: Export PDF
+exec: node /app/google-tools/gdoc-export.js "1abc..." "pdf" "/tmp/baocao-tuan16.pdf"
+
+# Buoc 3: Gui email kem PDF + CC
+exec: node /app/google-tools/gmail-send.js "dhk@nsca.vn" "[Le Na] Bao cao tuan 16" "Noi dung tom tat..." "nsca@nsca.vn" "/tmp/baocao-tuan16.pdf"
+
+# Buoc 4: Gui link qua Zalo
+exec: openclaw message send --channel zalouser --target 255067431607136002 --message "Bao cao tuan 16: https://docs.google.com/..."
+```
+
+**LUU Y:**
+- Google Doc luu VINH VIEN trong Drive cua Sep Khanh → truy suat bat ky luc nao
+- PDF dinh kem email → nguoi nhan doc NGAY khong can vao Drive
+- Link Google Doc gui qua Zalo → doc nhanh tren dien thoai
 
 ### NGUYEN TAC CC EMAIL:
 **Khi gui email THAY MAT Sep Khanh → LUON CC dhk@nsca.vn**
