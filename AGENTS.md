@@ -480,7 +480,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | GPT tra loi | `node /app/google-tools/gpt-respond.js "<message>" "[sender]" "[context]"` | Tra loi tin nhan Zalo cho nguoi ngoai (khong phai Sep/chi Hong) bang GPT-4o Mini |
 | Drive liet ke | `node /app/google-tools/drive-list.js "<folderId>" "[query]" "[max]"` | Liet ke file trong folder Google Drive. Tim anh theo ten |
 | Drive tai ve | `node /app/google-tools/drive-download.js "<fileId>" "[outputPath]"` | Tai file tu Drive ve /tmp de gui qua Zalo/email |
-| Ghep logo+text | `node /app/google-tools/image-overlay.js "<input_image>" "<text>" "[output_path]" "[position]"` | Ghep logo STARDUCT that + text tieng Viet dung chinh ta len anh. Position: bottom-left, top-left, top-right, bottom-right, center |
+| Ghep logo+text | `node /app/google-tools/image-overlay.js "<input_image>" "<text>" "[output_path]" "[layout]"` | Ghep logo STARDUCT + text tieng Viet. Layout: banner-bottom (thanh gradient duoi, logo trai, text phai — MAC DINH), banner-left (cot cam doc ben trai), hero (text lon giua, logo tren), minimal (logo goc + text nho) |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
