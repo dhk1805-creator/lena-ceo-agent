@@ -33,6 +33,9 @@ COPY google-tools/gemini-analyze.js /app/google-tools/gemini-analyze.js
 COPY google-tools/dalle-generate.js /app/google-tools/dalle-generate.js
 COPY google-tools/npp-order-log.js /app/google-tools/npp-order-log.js
 
+# Copy brand assets (logos)
+COPY assets/ /app/assets/
+
 # Copy Zalo session to staging (start.sh copies to volume if not exists)
 RUN mkdir -p /app/zalo-session
 COPY zalo-session/credentials.json /app/zalo-session/credentials.json

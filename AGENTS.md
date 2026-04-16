@@ -644,6 +644,22 @@ Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subje
 **Tone:** Chuyen nghiep, dang tin cay, cong nghe cao, tu hao Viet Nam
 **San pham chinh:** Cua gio (Air Grilles), Van EI (Fire Dampers), Van co khi (Mechanical Dampers), VAV/CAV, Tam nan sot trung, Thang mang cap
 
+**Logo files (trong container):**
+- `/app/assets/logo-color.png` — Logo cam (nen trang) — DUNG CHO: bao cao, email, tai lieu chinh thuc
+- `/app/assets/logo-black.png` — Logo den — DUNG CHO: tai lieu in trang den
+- `/app/assets/logo-white.png` — Logo trang (nen trong) — DUNG CHO: banner nen dam, poster
+- `/app/assets/logo-slogan.png` — Logo + slogan "Trusted Performance" — DUNG CHO: fanpage, marketing
+
+**NGUYEN TAC SU DUNG LOGO:**
+- **MOI bao cao, tai lieu** gui cho Sep/doi tac → LUON dinh kem hoac chen logo-color.png
+- **Banner/poster Facebook** → overlay logo-slogan.png hoac logo-white.png (tuy nen)
+- **Email chinh thuc** → dinh kem logo-color.png hoac dan link GitHub raw
+- **Thiep chuc mung** → chen logo-slogan.png goc trai/phai
+
+**Logo URL (GitHub raw — dung cho email/web):**
+- https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/assets/logo-color.png
+- https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/assets/logo-slogan.png
+
 **Khi tao noi dung marketing, banner, poster → LUON dung dung tone mau va phong cach STARDUCT.**
 **Khi can thong tin san pham → tham khao starduct.vn**
 
