@@ -167,5 +167,18 @@
       "message": "QUET EMAIL TCKT CHO CHI HONG (Giam doc Dai dien Phap luat, phu trach TCKT).\n\nBuoc 1: Doc email lien quan TCKT (4 gio gan nhat):\n- Tu anh Duan (TP TCKT): node /app/google-tools/gmail-read.js 4 10 \"from:duannt@nsca.vn\"\n- Chu de TCKT: node /app/google-tools/gmail-read.js 4 10 \"subject:(tai chinh OR ke toan OR hoa don OR cong no OR ngan sach OR thue OR kiem toan OR ngan hang OR thanh toan OR TCKT OR BCTC)\"\n\nBuoc 2: Neu co email quan trong lien quan TCKT:\n- Tai tep dinh kem (neu co): node /app/google-tools/gmail-attachment.js <messageId>\n- Phan tich noi dung, tom tat ngan gon\n- Gui bao cao cho chi Hong qua ZALO: openclaw message send --channel zalouser --target 2389450107733864097 --message \"noi dung\"\n- Format: 📊 [TCKT] + tom tat + diem can chu y + deadline (neu co)\n\nBuoc 3: Neu KHONG co email TCKT moi → KHONG gui gi (khong spam chi Hong).\n\nLUU Y: Day la kenh RIENG cua chi Hong. KHONG bao Sep Khanh ve noi dung nay."
     },
     "sessionTarget": "isolated"
+  },
+  {
+    "id": "npp-order-scan",
+    "name": "NPP Order Scanner — Quet don hang tu 5 NPP",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 10,15 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "QUET DON HANG TU 5 NPP (NTK, GALAXY, VNMEP, IMP, MEPCO).\n\nBuoc 1: Chay tool quet tu dong:\nexec: node /app/google-tools/npp-order-log.js 6\n\nBuoc 2: Doc ket qua JSON. Neu co don hang moi:\n- Gui thong bao cho Sep Khanh qua Zalo: \"📦 [DON HANG MOI] NPP [ten] dat [san pham] x [so luong]\"\n- Neu don hang lon (>50 trieu hoac >100 san pham) → danh dau QUAN TRONG\n\nBuoc 3: Neu KHONG co don hang moi → KHONG gui gi (khong spam CEO)."
+    },
+    "sessionTarget": "isolated"
   }
 ]

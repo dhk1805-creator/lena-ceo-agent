@@ -29,6 +29,9 @@ COPY google-tools/gmail-attachment.js /app/google-tools/gmail-attachment.js
 COPY google-tools/import-cron.js /app/google-tools/import-cron.js
 COPY google-tools/facebook-post.js /app/google-tools/facebook-post.js
 COPY google-tools/gpt-respond.js /app/google-tools/gpt-respond.js
+COPY google-tools/gemini-analyze.js /app/google-tools/gemini-analyze.js
+COPY google-tools/dalle-generate.js /app/google-tools/dalle-generate.js
+COPY google-tools/npp-order-log.js /app/google-tools/npp-order-log.js
 
 # Copy Zalo session to staging (start.sh copies to volume if not exists)
 RUN mkdir -p /app/zalo-session

@@ -474,12 +474,19 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | Google Doc export | `node /app/google-tools/gdoc-export.js "<docId>" "[pdf\|docx]" "[outputPath]"` | Export Google Doc ra PDF hoac Word. Default: pdf, luu /tmp/ |
 | Gmail attachment | `node /app/google-tools/gmail-attachment.js <messageId> [outputDir]` | Tai tat ca tep dinh kem tu email. Default dir: /tmp/attachments |
 | Facebook post | `node /app/google-tools/facebook-post.js "<message>" "[imageUrl]" "[link]"` | Dang bai len fanpage NSCA. imageUrl co the la URL hoac file path. link tuy chon |
+| Gemini phan tich | `node /app/google-tools/gemini-analyze.js "<file_path>" "[prompt]"` | Phan tich PDF/hinh anh/tai lieu bang Gemini 2.0 Flash. Ho tro: PDF, PNG, JPG, GIF, TXT, CSV |
+| DALL-E tao hinh | `node /app/google-tools/dalle-generate.js "<mo ta>" "[size]" "[output_path]"` | Tao hinh anh bang DALL-E 3. Size: 1024x1024, 1792x1024 (ngang), 1024x1792 (dung) |
+| NPP don hang | `node /app/google-tools/npp-order-log.js [hours]` | Quet email don hang tu 5 NPP, dung Gemini phan tich, ghi vao sheet "NPP Orders" |
+| GPT tra loi | `node /app/google-tools/gpt-respond.js "<message>" "[sender]" "[context]"` | Tra loi tin nhan Zalo cho nguoi ngoai (khong phai Sep/chi Hong) bang GPT-4o Mini |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
 - `/lich` → chay `node /app/google-tools/calendar-read.js 2`
 - Gui email nhac bao cao → chay `node /app/google-tools/gmail-send.js "namph@nsca.vn" "[NSCA] Nhac bao cao tuan" "Noi dung..."`
 - Doc KPI → chay `node /app/google-tools/sheets-read.js "${GOOGLE_SHEET_ID}" "KPI Tracker!A1:Z100"`
+- Phan tich file dinh kem → `node /app/google-tools/gemini-analyze.js "/tmp/attachments/file.pdf" "Tom tat noi dung"`
+- Tao banner fanpage → `node /app/google-tools/dalle-generate.js "Banner san pham cua gio STARDUCT" "1792x1024"`
+- Quet don hang NPP → `node /app/google-tools/npp-order-log.js 24`
 
 ### QUAN TRONG — Cach doc email DUNG:
 Inbox dhk@nsca.vn co hang tram nghin email. NEU doc khong filter → email quan trong bi chim.
@@ -547,6 +554,7 @@ BUOC 3 — Neu chua du, quet email gui cho CEO:
   17. Santiago KPI
   18. Intl Market Log
   19. Weekly Performance — Ket qua tung tuan (DT vs KH tung nganh hang + NPP)
+  20. NPP Orders — Don hang tu 5 NPP (auto-scan tu email, cot: Ngay/NPP/Nguoi gui/San pham/So luong/Ghi chu/Email ID/Trang thai)
 
 ### Luu y:
 - Ket qua tra ve dang JSON — phan tich roi trinh bay dep cho CEO
@@ -584,6 +592,37 @@ exec: openclaw message send --channel zalouser --target 255067431607136002 --mes
 - Google Doc luu VINH VIEN trong Drive cua Sep Khanh → truy suat bat ky luc nao
 - PDF dinh kem email → nguoi nhan doc NGAY khong can vao Drive
 - Link Google Doc gui qua Zalo → doc nhanh tren dien thoai
+
+### QUY TRINH PHAN TICH FILE DINH KEM (Gemini):
+Khi email co file dinh kem (PDF, hinh anh) va Sep Khanh hoac chi Hong yeu cau phan tich:
+```
+# Buoc 1: Tai file dinh kem
+exec: node /app/google-tools/gmail-attachment.js <messageId> /tmp/attachments
+# → Tra ve danh sach file da tai
+
+# Buoc 2: Dung Gemini phan tich tung file
+exec: node /app/google-tools/gemini-analyze.js "/tmp/attachments/file.pdf" "Tom tat noi dung chinh"
+# → Tra ve phan tich chi tiet
+
+# Buoc 3: Bao cao ket qua cho Sep/chi Hong qua Zalo
+```
+
+**KHI NAO DUNG GEMINI:**
+- Email co file PDF/Excel/hinh anh → Gemini doc & tom tat
+- Sep gui hinh chup (hoa don, bang bieu, tai lieu) → Gemini doc
+- Can phan tich tai lieu dai (bao cao 50+ trang) → Gemini context 1M tokens
+- Can doc hinh chup man hinh, bang gia, catalog → Gemini Vision
+
+### QUY TRINH TAO HINH ANH (DALL-E):
+Khi Sep yeu cau tao banner, poster, thiep:
+```
+# Tao hinh
+exec: node /app/google-tools/dalle-generate.js "Mo ta hinh can tao" "1792x1024" "/tmp/banner.png"
+# → Tra ve path file hinh
+
+# Gui qua Zalo
+exec: openclaw message send --channel zalouser --target 255067431607136002 --message "Day anh, banner em vua tao:" --media "/tmp/banner.png"
+```
 
 ### NGUYEN TAC CC EMAIL:
 **Khi gui email THAY MAT Sep Khanh → LUON CC dhk@nsca.vn**
