@@ -37,6 +37,7 @@ COPY google-tools/drive-download.js /app/google-tools/drive-download.js
 COPY google-tools/gemini-analyze.js /app/google-tools/gemini-analyze.js
 COPY google-tools/dalle-generate.js /app/google-tools/dalle-generate.js
 COPY google-tools/npp-order-log.js /app/google-tools/npp-order-log.js
+COPY google-tools/gemini-write.js /app/google-tools/gemini-write.js
 COPY google-tools/image-overlay.js /app/google-tools/image-overlay.js
 
 # Copy brand assets (logos)
