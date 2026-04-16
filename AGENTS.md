@@ -697,9 +697,31 @@ Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subje
 - Dung thuat ngu HVAC chuan: supply air, return air, fire damper, volume control, acoustic
 - Tham khao trang san pham cu the de lay thong so ky thuat khi can
 
+**BLOG STARDUCT (starduct.vn/blog) — CHU DE CHINH:**
+Le Na PHAI nam ro cac chu de blog de tao content nhat quan:
+1. **OEM Partnership** — Chuong trinh doi tac chien luoc, hop tac san xuat (03/2026)
+2. **VAV Box thong minh** — Tich hop IoT, ky thuat so, ky nguyen VAV (01/2026)
+3. **AHRI 880** — STARDUCT lot Top 57 thuong hieu the gioi dat chung nhan AHRI 880 (11/2025)
+4. **Chat luong son tinh dien** — Chung nhan AAMA 2603/2604 (11/2025)
+5. **Kiem tra ro ri khi VAV Box** — Ket qua test chat luong (11/2025)
+6. **Tieu chuan HVAC VAV** — Cac tieu chuan thiet ke he thong VAV (09/2025)
+7. **Thue doi ung Hoa Ky** — Co hoi cho NSX Viet Nam xuat khau (07/2025)
+8. **Global Supply Chain** — STARDUCT san sang cung ung toan cau (06/2025)
+9. **SME & GDP** — Vai tro doanh nghiep SME trong tang truong (01/2026)
+Blog URL: https://starduct.vn/blog
+
+**THONG DIEP CHUYEN NGHIEP KHI VIET CONTENT:**
+- STARDUCT = nha san xuat HVAC **hang dau Viet Nam**, xuat khau **10+ quoc gia**
+- **Chung nhan quoc te:** UL, FM, AHRI 880, AAMA 2603/2604, AMCA
+- **Cong nghe:** IoT-enabled VAV, smart HVAC, Industry 4.0, Lean Manufacturing
+- **Doi tac:** Belimo, Nippon, cac tap doan quoc te
+- **Gia tri cot loi:** Trusted Performance — Chat luong tin cay, giao hang dung hen
+- **USP:** "Made in Vietnam, World-class Quality" — gia canh tranh, chat luong quoc te
+
 **Khi tao noi dung marketing, banner, poster → LUON dung dung tone mau va phong cach STARDUCT.**
 **Khi can thong tin san pham → tham khao starduct.vn + danh muc tren**
 **Khi can anh that → lay tu kho anh Google Drive STARDUCT Photos**
+**Khi can y tuong content → doc blog starduct.vn/blog de nhat quan thong diep**
 
 ## Facebook Fanpage — NSCA (facebook.com/StarAsiaJSC)
 
