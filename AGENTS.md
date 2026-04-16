@@ -478,6 +478,8 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | DALL-E tao hinh | `node /app/google-tools/dalle-generate.js "<mo ta>" "[size]" "[output_path]"` | Tao hinh anh bang DALL-E 3. Size: 1024x1024, 1792x1024 (ngang), 1024x1792 (dung) |
 | NPP don hang | `node /app/google-tools/npp-order-log.js [hours]` | Quet email don hang tu 5 NPP, dung Gemini phan tich, ghi vao sheet "NPP Orders" |
 | GPT tra loi | `node /app/google-tools/gpt-respond.js "<message>" "[sender]" "[context]"` | Tra loi tin nhan Zalo cho nguoi ngoai (khong phai Sep/chi Hong) bang GPT-4o Mini |
+| Drive liet ke | `node /app/google-tools/drive-list.js "<folderId>" "[query]" "[max]"` | Liet ke file trong folder Google Drive. Tim anh theo ten |
+| Drive tai ve | `node /app/google-tools/drive-download.js "<fileId>" "[outputPath]"` | Tai file tu Drive ve /tmp de gui qua Zalo/email |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
@@ -660,8 +662,23 @@ Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subje
 - https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/assets/logo-color.png
 - https://raw.githubusercontent.com/dhk1805-creator/lena-ceo-agent/main/assets/logo-slogan.png
 
+**Kho anh STARDUCT (Google Drive):**
+- **Folder ID:** 1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR
+- **URL:** https://drive.google.com/drive/folders/1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR
+- Chua ~250 anh: nha may, san pham, trien lam (USA, Philippine, Japan), ky ket doi tac, hop Nippon...
+- **Khi can anh that** (dang fanpage, gui doi tac, bao cao) → tim anh phu hop tu folder nay
+- Cach liet ke anh trong folder:
+  ```
+  exec: node /app/google-tools/drive-list.js "1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR"
+  ```
+- Cach tai anh ve de gui:
+  ```
+  exec: node /app/google-tools/drive-download.js "<fileId>" "/tmp/photo.jpg"
+  ```
+
 **Khi tao noi dung marketing, banner, poster → LUON dung dung tone mau va phong cach STARDUCT.**
 **Khi can thong tin san pham → tham khao starduct.vn**
+**Khi can anh that → lay tu kho anh Google Drive STARDUCT Photos**
 
 ## Facebook Fanpage — NSCA (facebook.com/StarAsiaJSC)
 
