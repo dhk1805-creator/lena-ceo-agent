@@ -51,7 +51,7 @@ BRAND GUIDELINES — STARDUCT by NSCA:
 - Products: Air grilles, fire dampers, mechanical dampers, VAV/CAV, cable trays
 - Mood: Professional, reliable, high-tech manufacturing, Vietnamese pride
 - Website: starduct.vn
-- DO NOT include any text/logo in the image unless specifically requested.`;
+- CRITICAL: NEVER render ANY text, letters, words, numbers, logos, watermarks, labels, or captions in the image. The image must be PURELY visual with ZERO text elements. This is mandatory — AI-generated text in Vietnamese is always garbled and unusable.`;
 
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',

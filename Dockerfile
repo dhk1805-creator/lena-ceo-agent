@@ -5,8 +5,8 @@ WORKDIR /app
 # Install git (required by openclaw)
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
-# Install OpenClaw globally
-RUN npm install -g openclaw@latest
+# Install OpenClaw and sharp (image processing) globally
+RUN npm install -g openclaw@latest sharp
 
 # Copy agent files to staging area (start.sh syncs to volume at runtime)
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
@@ -34,6 +34,7 @@ COPY google-tools/drive-download.js /app/google-tools/drive-download.js
 COPY google-tools/gemini-analyze.js /app/google-tools/gemini-analyze.js
 COPY google-tools/dalle-generate.js /app/google-tools/dalle-generate.js
 COPY google-tools/npp-order-log.js /app/google-tools/npp-order-log.js
+COPY google-tools/image-overlay.js /app/google-tools/image-overlay.js
 
 # Copy brand assets (logos)
 COPY assets/ /app/assets/
