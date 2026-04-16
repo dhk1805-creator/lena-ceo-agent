@@ -5,8 +5,11 @@ WORKDIR /app
 # Install git (required by openclaw)
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
-# Install OpenClaw and sharp (image processing) globally
-RUN npm install -g openclaw@latest sharp
+# Install OpenClaw globally
+RUN npm install -g openclaw@latest
+
+# Install sharp locally in /app (so require('sharp') works)
+RUN cd /app && npm install sharp
 
 # Copy agent files to staging area (start.sh syncs to volume at runtime)
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
