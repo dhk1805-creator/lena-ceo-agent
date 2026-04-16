@@ -676,8 +676,29 @@ Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subje
   exec: node /app/google-tools/drive-download.js "<fileId>" "/tmp/photo.jpg"
   ```
 
+**DANH MUC SAN PHAM STARDUCT (starduct.vn/danh-muc):**
+1. Cua gio/Mieng gio — starduct.vn/cua-giomieng-gio-c-1
+2. Van gio va Van ngan chay (EI) — starduct.vn/van-gio-va-van-ngan-chay-c-10
+3. Thang & mang cap dien — starduct.vn/thang-mang-cap-dien-c-16
+4. C Channel — starduct.vn/c-chanel1-c-19
+5. Ong gio mem & noi mem — starduct.vn/ong-gio-mem-noi-mem-c-20
+6. Ong gio ma kem va ong EI — starduct.vn/ong-gio-ma-kem-va-ong-ei-c-22
+7. Tieu am va louver tieu am — starduct.vn/tieu-am-va-louver-tieu-am12-c-24
+8. VAV Box & CAV — starduct.vn/vav-box-cav-c-25
+9. Khung gia do pin nang luong mat troi — starduct.vn/khung-gia-do-lap-dat-pin-nang-luong-mat-troi-c-34
+10. Quat thong gio NEDFON — starduct.vn/quat-thong-gio-nedfon-c-274
+11. Spec Master & Submittals Build — starduct.vn/spec-master-and-submittals-build1-c-371
+12. Chuong trinh hop tac OEM — starduct.vn/chuong-trinh-hop-tac-oem-c-373
+
+**KHI VIET CONTENT MARKETING, Le Na PHAI:**
+- Hieu dung ten san pham ky thuat (cua gio, van EI, VAV Box, louver tieu am...)
+- Biet dac tinh: chong chay (EI), dieu chinh luu luong (VAV/CAV), tieu am, chiu nhiet
+- Nhan manh: "Made in Vietnam", tieu chuan UL/FM, chat luong quoc te, xuat khau 10+ nuoc
+- Dung thuat ngu HVAC chuan: supply air, return air, fire damper, volume control, acoustic
+- Tham khao trang san pham cu the de lay thong so ky thuat khi can
+
 **Khi tao noi dung marketing, banner, poster → LUON dung dung tone mau va phong cach STARDUCT.**
-**Khi can thong tin san pham → tham khao starduct.vn**
+**Khi can thong tin san pham → tham khao starduct.vn + danh muc tren**
 **Khi can anh that → lay tu kho anh Google Drive STARDUCT Photos**
 
 ## Facebook Fanpage — NSCA (facebook.com/StarAsiaJSC)
