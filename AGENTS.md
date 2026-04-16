@@ -480,6 +480,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 | GPT tra loi | `node /app/google-tools/gpt-respond.js "<message>" "[sender]" "[context]"` | Tra loi tin nhan Zalo cho nguoi ngoai (khong phai Sep/chi Hong) bang GPT-4o Mini |
 | Drive liet ke | `node /app/google-tools/drive-list.js "<folderId>" "[query]" "[max]"` | Liet ke file trong folder Google Drive. Tim anh theo ten |
 | Drive tai ve | `node /app/google-tools/drive-download.js "<fileId>" "[outputPath]"` | Tai file tu Drive ve /tmp de gui qua Zalo/email |
+| Ghep logo+text | `node /app/google-tools/image-overlay.js "<input_image>" "<text>" "[output_path]" "[position]"` | Ghep logo STARDUCT that + text tieng Viet dung chinh ta len anh. Position: bottom-left, top-left, top-right, bottom-right, center |
 
 ### Vi du su dung:
 - `/email` → chay `node /app/google-tools/gmail-read.js 24 20`
@@ -487,7 +488,7 @@ Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 - Gui email nhac bao cao → chay `node /app/google-tools/gmail-send.js "namph@nsca.vn" "[NSCA] Nhac bao cao tuan" "Noi dung..."`
 - Doc KPI → chay `node /app/google-tools/sheets-read.js "${GOOGLE_SHEET_ID}" "KPI Tracker!A1:Z100"`
 - Phan tich file dinh kem → `node /app/google-tools/gemini-analyze.js "/tmp/attachments/file.pdf" "Tom tat noi dung"`
-- Tao banner fanpage → `node /app/google-tools/dalle-generate.js "Banner san pham cua gio STARDUCT" "1792x1024"`
+- Tao banner fanpage → Buoc 1: `node /app/google-tools/dalle-generate.js "San pham cua gio HVAC nen trang khong co chu" "1792x1024" "/tmp/bg.png"` → Buoc 2: `node /app/google-tools/image-overlay.js "/tmp/bg.png" "Cửa gió chất lượng quốc tế" "/tmp/banner.png"`
 - Quet don hang NPP → `node /app/google-tools/npp-order-log.js 24`
 
 ### QUAN TRONG — Cach doc email DUNG:
@@ -615,16 +616,31 @@ exec: node /app/google-tools/gemini-analyze.js "/tmp/attachments/file.pdf" "Tom 
 - Can phan tich tai lieu dai (bao cao 50+ trang) → Gemini context 1M tokens
 - Can doc hinh chup man hinh, bang gia, catalog → Gemini Vision
 
-### QUY TRINH TAO HINH ANH (DALL-E):
-Khi Sep yeu cau tao banner, poster, thiep:
-```
-# Tao hinh
-exec: node /app/google-tools/dalle-generate.js "Mo ta hinh can tao" "1792x1024" "/tmp/banner.png"
-# → Tra ve path file hinh
+### QUY TRINH TAO HINH ANH (DALL-E + OVERLAY):
+Khi Sep yeu cau tao banner, poster, thiep — LUON LAM 3 BUOC:
 
-# Gui qua Zalo
-exec: openclaw message send --channel zalouser --target 255067431607136002 --message "Day anh, banner em vua tao:" --media "/tmp/banner.png"
+**BUOC 1: DALL-E tao anh nen (KHONG CO CHU, KHONG CO LOGO)**
 ```
+exec: node /app/google-tools/dalle-generate.js "Mo ta hinh can tao, khong co text" "1792x1024" "/tmp/bg.png"
+```
+⚠️ DALL-E KHONG THE viet tieng Viet dung chinh ta. TUYET DOI khong yeu cau DALL-E viet chu hay logo.
+
+**BUOC 2: Ghep logo STARDUCT that + text tieng Viet chinh xac**
+```
+exec: node /app/google-tools/image-overlay.js "/tmp/bg.png" "Cua gio chat luong quoc te" "/tmp/banner-final.png" "bottom-left"
+```
+Tool nay ghep logo-color.png that va text font Arial dung chinh ta 100%.
+
+**BUOC 3: Gui ket qua**
+```
+exec: openclaw message send --channel zalouser --target 255067431607136002 --message "Day anh, banner em vua tao:" --media "/tmp/banner-final.png"
+```
+
+**NGUYEN TAC BAT BUOC:**
+- KHONG BAO GIO de DALL-E viet chu tieng Viet (luon sai chinh ta)
+- KHONG BAO GIO de DALL-E ve logo (luon sai mau, sai font)
+- LUON dung image-overlay.js de ghep text + logo that
+- Mau STARDUCT: cam #F7941D, xam dam #4A4A4A, den #000000
 
 ### NGUYEN TAC CC EMAIL:
 **Khi gui email THAY MAT Sep Khanh → LUON CC dhk@nsca.vn**
