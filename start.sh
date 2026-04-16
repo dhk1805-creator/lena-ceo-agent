@@ -17,6 +17,14 @@ mkdir -p /root/.openclaw/workspace/skills /root/.openclaw/workspace/memory
 mkdir -p /root/.openclaw/agents/main/sessions
 mkdir -p /root/.openclaw/credentials/zalouser
 
+# Inject current date/time into AGENTS.md before copying
+CURRENT_DATE=$(date '+%Y-%m-%d %H:%M %Z (%A)')
+sed -i "1i\\
+## NGAY GIO HIEN TAI: ${CURRENT_DATE}\\
+Moi thong tin ve ngay/thang/nam/thu — LUON dung lenh: date '+%Y-%m-%d %H:%M %Z (%A)'\\
+TUYET DOI KHONG tu doan ngay thang. Neu can biet ngay, PHAI chay lenh date.\\
+" /app/workspace/AGENTS.md
+
 # Always update AGENTS.md, MEMORY.md, skills (from Docker image)
 cp -f /app/workspace/AGENTS.md /root/.openclaw/workspace/AGENTS.md 2>/dev/null
 cp -f /app/workspace/MEMORY.md /root/.openclaw/workspace/MEMORY.md 2>/dev/null
