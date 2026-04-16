@@ -1,42 +1,52 @@
 #!/usr/bin/env node
-// Import cron jobs via Gateway WebSocket API
+// Import cron jobs via OpenClaw CLI (openclaw cron add)
+const { spawnSync } = require('child_process');
 const fs = require('fs');
-const TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || process.env.GATEWAY_PASSWORD;
-const PORT = process.env.OPENCLAW_GATEWAY_PORT || process.env.PORT || '8080';
 const CRON_FILE = process.argv[2] || '/app/cron-jobs.json';
-if (!TOKEN) { console.error('No gateway token found'); process.exit(1); }
+const TZ = 'Asia/Ho_Chi_Minh';
 
-async function main() {
+function main() {
   const jobs = JSON.parse(fs.readFileSync(CRON_FILE, 'utf8'));
-  console.log(`Found ${jobs.length} cron jobs to import`);
+  console.log(`Found ${jobs.length} cron jobs to import via CLI`);
 
+  // First, list existing jobs to avoid duplicates
+  const existing = spawnSync('openclaw', ['cron', 'list'], { encoding: 'utf8', timeout: 15000 });
+  console.log('Existing cron jobs:', existing.stdout || '(none)');
+
+  let ok = 0, fail = 0;
   for (const job of jobs) {
     try {
-      const res = await fetch(`http://localhost:${PORT}/api/cron`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(job)
+      const args = [
+        'cron', 'add',
+        '--name', job.name || job.id,
+        '--cron', job.schedule.expr,
+        '--message', job.payload.message,
+        '--tz', TZ
+      ];
+
+      const result = spawnSync('openclaw', args, {
+        encoding: 'utf8',
+        timeout: 30000
       });
-      const text = await res.text();
-      console.log(`[${res.status}] ${job.id}: ${text.substring(0, 100)}`);
+
+      if (result.status === 0) {
+        console.log(`[OK] ${job.id}`);
+        ok++;
+      } else {
+        console.error(`[FAIL] ${job.id}: ${(result.stderr || result.stdout || '').substring(0, 200)}`);
+        fail++;
+      }
     } catch (e) {
-      console.error(`FAIL ${job.id}: ${e.message}`);
+      console.error(`[ERROR] ${job.id}: ${e.message}`);
+      fail++;
     }
   }
 
-  // List all cron jobs
-  try {
-    const res = await fetch(`http://localhost:${PORT}/api/cron`, {
-      headers: { 'Authorization': `Bearer ${TOKEN}` }
-    });
-    const data = await res.text();
-    console.log(`\nCron jobs after import:\n${data}`);
-  } catch (e) {
-    console.log('Could not list cron jobs:', e.message);
-  }
+  console.log(`\nImport done: ${ok} OK, ${fail} failed`);
+
+  // List all cron jobs after import
+  const list = spawnSync('openclaw', ['cron', 'list'], { encoding: 'utf8', timeout: 15000 });
+  console.log(`\nCron jobs after import:\n${list.stdout || list.stderr || '(empty)'}`);
 }
 
-main().catch(e => console.error(e));
+main();
