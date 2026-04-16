@@ -120,7 +120,7 @@ async function overlay() {
         <rect x="0" y="0" width="${textBlockWidth}" height="${textBlockHeight}" rx="8" ry="8" fill="${BRAND_ORANGE}" opacity="0.9"/>
         ${lines.map((line, i) =>
           `<text x="${padding}" y="${padding + fontSize + i * lineHeight}"
-                 font-family="Arial, Helvetica, sans-serif"
+                 font-family="Noto Sans, Noto Sans CJK, Arial, Helvetica, sans-serif"
                  font-size="${fontSize}"
                  font-weight="bold"
                  fill="${BRAND_WHITE}"

@@ -2,8 +2,8 @@ FROM node:24-slim
 
 WORKDIR /app
 
-# Install git (required by openclaw)
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+# Install git + Vietnamese fonts (required for image-overlay text rendering)
+RUN apt-get update && apt-get install -y git fonts-noto-core fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/* && fc-cache -fv
 
 # Install OpenClaw globally
 RUN npm install -g openclaw@latest
