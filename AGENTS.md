@@ -499,6 +499,15 @@ Khi CEO gui tin nhan, nhan dien lenh:
 
 ## Google Tools (chay bang exec)
 
+### ⚠️ NGUON ANH/LOGO — KHONG BAO GIO HOI ANH KHANH
+**Em DA CO san tat ca, KHONG can hoi Sep lay anh tu dau:**
+- **Logo STARDUCT:** `/app/assets/logo-color.png`, `/app/assets/logo-white.png`, `/app/assets/logo-black.png`, `/app/assets/logo-slogan.png`
+- **Kho anh STARDUCT (394 anh):** Google Drive folder `1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR`
+  - Liet ke: `exec: node /app/google-tools/drive-list.js "1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR"`
+  - Tim anh: `exec: node /app/google-tools/drive-list.js "1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR" "VAV"`
+  - Tai ve: `exec: node /app/google-tools/drive-download.js "<fileId>" "/tmp/photo.jpg"`
+- **KHONG HOI:** "Anh gui logo/anh cho em", "Anh cho em biet anh o dau" — TAT CA DA CO SAN.
+
 Khi can doc email, sheets, calendar — dung tool `exec` de chay cac scripts:
 
 | Script | Lenh | Mo ta |
