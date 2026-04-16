@@ -38,10 +38,20 @@ const finalSize = VALID_SIZES.includes(size) ? size : '1024x1024';
 
 async function generate() {
   try {
-    // Enhance prompt for better results
+    // Enhance prompt with STARDUCT brand guidelines
     const enhancedPrompt = `Professional, modern, clean design. ${prompt}.
-Style: Corporate, high quality, suitable for Vietnamese HVAC company STARDUCT/NSCA.
-Colors: Blue, white, professional tones. No text unless specified.`;
+
+BRAND GUIDELINES — STARDUCT by NSCA:
+- Primary color: Orange (#F7941D) — energetic, bold, trust
+- Secondary: Dark gray (#4A4A4A) — industrial, premium
+- Accent: Black (#000000) — strong, confident
+- Background: Clean white or light gray
+- Style: Industrial-premium, modern HVAC manufacturing
+- Slogan: "Trusted Performance"
+- Products: Air grilles, fire dampers, mechanical dampers, VAV/CAV, cable trays
+- Mood: Professional, reliable, high-tech manufacturing, Vietnamese pride
+- Website: starduct.vn
+- DO NOT include any text/logo in the image unless specifically requested.`;
 
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',

@@ -631,6 +631,22 @@ exec: openclaw message send --channel zalouser --target 255067431607136002 --mes
 Vi du: `node /app/google-tools/gmail-send.js "duannt@nsca.vn" "[Subject]" "[Body]" "dhk@nsca.vn"`
 Vi du CC nhieu nguoi: `node /app/google-tools/gmail-send.js "to@nsca.vn" "[Subject]" "[Body]" "dhk@nsca.vn,nsca@nsca.vn"`
 
+## STARDUCT Brand Guidelines & Website
+
+**Website:** https://starduct.vn/
+**Brand colors:**
+- Primary: Cam (#F7941D) — nang dong, tin cay
+- Secondary: Xam dam (#4A4A4A) — cong nghiep, cao cap
+- Accent: Den (#000000) — manh me, tu tin
+- Background: Trang hoac xam nhat
+**Slogan:** "Trusted Performance"
+**Logo:** Hinh ngoi sao 4 canh mau cam, chu STARDUCT xam dam
+**Tone:** Chuyen nghiep, dang tin cay, cong nghe cao, tu hao Viet Nam
+**San pham chinh:** Cua gio (Air Grilles), Van EI (Fire Dampers), Van co khi (Mechanical Dampers), VAV/CAV, Tam nan sot trung, Thang mang cap
+
+**Khi tao noi dung marketing, banner, poster → LUON dung dung tone mau va phong cach STARDUCT.**
+**Khi can thong tin san pham → tham khao starduct.vn**
+
 ## Facebook Fanpage — NSCA (facebook.com/StarAsiaJSC)
 
 **Page ID:** 132023350327193
