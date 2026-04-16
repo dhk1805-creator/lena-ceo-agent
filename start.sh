@@ -31,14 +31,10 @@ cp -f /app/workspace/MEMORY.md /root/.openclaw/workspace/MEMORY.md 2>/dev/null
 cp -rf /app/workspace/skills/* /root/.openclaw/workspace/skills/ 2>/dev/null
 cp -rf /app/workspace/memory/* /root/.openclaw/workspace/memory/ 2>/dev/null
 
-# Only copy Zalo credentials if not already exists (preserve login session)
-if [ ! -f /root/.openclaw/credentials/zalouser/credentials.json ]; then
-  cp -f /app/zalo-session/credentials.json /root/.openclaw/credentials/zalouser/credentials.json 2>/dev/null
-  cp -f /app/zalo-session/zalouser-pairing.json /root/.openclaw/credentials/zalouser-pairing.json 2>/dev/null
-  echo "Zalo credentials copied (first deploy)"
-else
-  echo "Zalo credentials already exist (preserved from volume)"
-fi
+# Force refresh Zalo credentials (fix NORMAL_CLOSURE after many restarts)
+cp -f /app/zalo-session/credentials.json /root/.openclaw/credentials/zalouser/credentials.json 2>/dev/null
+cp -f /app/zalo-session/zalouser-pairing.json /root/.openclaw/credentials/zalouser-pairing.json 2>/dev/null
+echo "Zalo credentials refreshed"
 
 # ALWAYS clear sessions after AGENTS.md update (so Le Na reads new config)
 echo "Clearing old sessions to pick up AGENTS.md changes..."

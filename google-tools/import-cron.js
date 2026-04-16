@@ -12,7 +12,7 @@ async function main() {
 
   for (const job of jobs) {
     try {
-      const res = await fetch('http://localhost:${PORT}/api/cron', {
+      const res = await fetch(`http://localhost:${PORT}/api/cron`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${TOKEN}`,
@@ -29,7 +29,7 @@ async function main() {
 
   // List all cron jobs
   try {
-    const res = await fetch('http://localhost:${PORT}/api/cron', {
+    const res = await fetch(`http://localhost:${PORT}/api/cron`, {
       headers: { 'Authorization': `Bearer ${TOKEN}` }
     });
     const data = await res.text();
