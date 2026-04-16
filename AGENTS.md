@@ -620,31 +620,30 @@ exec: node /app/google-tools/gemini-analyze.js "/tmp/attachments/file.pdf" "Tom 
 - Can phan tich tai lieu dai (bao cao 50+ trang) → Gemini context 1M tokens
 - Can doc hinh chup man hinh, bang gia, catalog → Gemini Vision
 
-### QUY TRINH TAO HINH ANH (DALL-E + OVERLAY):
-Khi Sep yeu cau tao banner, poster, thiep — LUON LAM 3 BUOC:
+### QUY TRINH TAO HINH ANH:
+Khi tao banner, poster, thiep — dung tool image_generate voi cac NGUYEN TAC:
 
-**BUOC 1: DALL-E tao anh nen (KHONG CO CHU, KHONG CO LOGO)**
-```
-exec: node /app/google-tools/dalle-generate.js "Mo ta hinh can tao, khong co text" "1792x1024" "/tmp/bg.png"
-```
-⚠️ DALL-E KHONG THE viet tieng Viet dung chinh ta. TUYET DOI khong yeu cau DALL-E viet chu hay logo.
+**MAU SAC BAT BUOC:**
+- Mau chu dao: CAM #F7941D — LUON co trong moi banner
+- Mau phu: xam dam #4A4A4A, den #000000
+- Nen: trang hoac xam nhat
+- KHONG dung mau xanh duong, xanh la, tim, hong
 
-**BUOC 2: Ghep logo STARDUCT that + text tieng Viet chinh xac**
-```
-exec: node /app/google-tools/image-overlay.js "/tmp/bg.png" "Cua gio chat luong quoc te" "/tmp/banner-final.png" "bottom-left"
-```
-Tool nay ghep logo-color.png that va text font Arial dung chinh ta 100%.
+**TEXT TIENG VIET:**
+- Neu can viet tieng Viet → PHAI dung DUNG chinh ta, dung dau
+- Giu text ngan gon, toi da 5-7 tu
+- Font in dam, de doc
 
-**BUOC 3: Gui ket qua**
-```
-exec: openclaw message send --channel zalouser --target 255067431607136002 --message "Day anh, banner em vua tao:" --media "/tmp/banner-final.png"
-```
+**NOI DUNG:**
+- San pham STARDUCT: cua gio, van EI, van co khi, VAV/CAV, thang mang cap
+- Phong cach: cong nghiep cao cap, hien dai, chuyen nghiep
+- Slogan: "Trusted Performance"
+- Website: starduct.vn
 
-**NGUYEN TAC BAT BUOC:**
-- KHONG BAO GIO de DALL-E viet chu tieng Viet (luon sai chinh ta)
-- KHONG BAO GIO de DALL-E ve logo (luon sai mau, sai font)
-- LUON dung image-overlay.js de ghep text + logo that
-- Mau STARDUCT: cam #F7941D, xam dam #4A4A4A, den #000000
+**LOGO:**
+- Logo STARDUCT that co tai /app/assets/logo-color.png va /app/assets/logo-white.png
+- Neu can ghep logo that len anh → dung: `node /app/google-tools/image-overlay.js "<anh>" "<text>" "<output>" "<layout>"`
+- Layout: banner-bottom, banner-left, hero, minimal
 
 ### NGUYEN TAC CC EMAIL:
 **Khi gui email THAY MAT Sep Khanh → LUON CC dhk@nsca.vn**
