@@ -32,18 +32,12 @@ cp -rf /app/workspace/skills/* /root/.openclaw/workspace/skills/ 2>/dev/null
 cp -rf /app/workspace/memory/* /root/.openclaw/workspace/memory/ 2>/dev/null
 
 # === ZALO RE-PAIRING ===
-# If ZALO_REPAIR=1, delete old credentials to force fresh Zalo login
-if [ "${ZALO_REPAIR:-0}" = "1" ]; then
-  echo "ZALO_REPAIR=1 → Deleting old Zalo credentials for fresh pairing..."
-  rm -rf /root/.openclaw/credentials/zalouser /root/.openclaw/credentials/zalouser-pairing.json
-  mkdir -p /root/.openclaw/credentials/zalouser
-  echo "Old Zalo credentials deleted. Watch logs for new pairing QR/link."
-else
-  # Normal: copy credentials from Docker image
-  cp -f /app/zalo-session/credentials.json /root/.openclaw/credentials/zalouser/credentials.json 2>/dev/null
-  cp -f /app/zalo-session/zalouser-pairing.json /root/.openclaw/credentials/zalouser-pairing.json 2>/dev/null
-  echo "Zalo credentials loaded from image"
-fi
+# TEMPORARY: Force delete old Zalo credentials to trigger QR code pairing
+# After successful pairing, revert this to normal credential copy
+echo "ZALO RE-PAIR MODE: Deleting old credentials to show QR code..."
+rm -rf /root/.openclaw/credentials/zalouser /root/.openclaw/credentials/zalouser-pairing.json
+mkdir -p /root/.openclaw/credentials/zalouser
+echo "Zalo credentials deleted. QR code will appear in logs."
 
 # ALWAYS clear sessions after AGENTS.md update (so Le Na reads new config)
 echo "Clearing old sessions to pick up AGENTS.md changes..."
