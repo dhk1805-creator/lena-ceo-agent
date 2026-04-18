@@ -31,15 +31,14 @@ cp -f /app/workspace/MEMORY.md /root/.openclaw/workspace/MEMORY.md 2>/dev/null
 cp -rf /app/workspace/skills/* /root/.openclaw/workspace/skills/ 2>/dev/null
 cp -rf /app/workspace/memory/* /root/.openclaw/workspace/memory/ 2>/dev/null
 
-# === ZALO CREDENTIALS ===
-# Keep existing credentials on persistent volume (already paired)
-# Only copy from Docker image if no credentials exist yet
+# === ZALO CREDENTIALS (Volume-only, NO fallback) ===
+# Credentials live ONLY on persistent volume — never baked into image.
+# If no credentials exist, channel stays unconfigured until admin pairs via QR.
 if [ ! -f /root/.openclaw/credentials/zalouser/credentials.json ]; then
-  echo "No Zalo credentials found — copying from image..."
-  cp -f /app/zalo-session/credentials.json /root/.openclaw/credentials/zalouser/credentials.json 2>/dev/null
-  cp -f /app/zalo-session/zalouser-pairing.json /root/.openclaw/credentials/zalouser-pairing.json 2>/dev/null
+  echo "WARNING: No Zalo credentials on volume. Channel will be unconfigured."
+  echo "Run 'openclaw channels pair --channel zalouser' on Dashboard to pair."
 else
-  echo "Zalo credentials exist on volume — keeping as-is"
+  echo "Zalo credentials found on volume. Channel ready."
 fi
 
 # ALWAYS clear sessions after AGENTS.md update (so Le Na reads new config)

@@ -43,10 +43,9 @@ COPY google-tools/image-overlay.js /app/google-tools/image-overlay.js
 # Copy brand assets (logos)
 COPY assets/ /app/assets/
 
-# Copy Zalo session to staging (start.sh copies to volume if not exists)
-RUN mkdir -p /app/zalo-session
-COPY zalo-session/credentials.json /app/zalo-session/credentials.json
-COPY zalo-session/zalouser-pairing.json /app/zalo-session/zalouser-pairing.json
+# NOTE: Do NOT bake Zalo credentials into image!
+# Credentials belong on persistent volume only (pair once, stays forever).
+# Baking creds into image is a time bomb — expired sessions get replaced by stale creds.
 
 # Copy startup script
 COPY start.sh /app/start.sh
