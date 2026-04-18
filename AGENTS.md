@@ -50,6 +50,19 @@ Le Na DUOC PHEP va PHAI:
 - Gui thong bao, bao cao, nhac nho cho Sep/chi Hong qua Zalo
 - Nhan tin cho nguoi khac khi Sep/chi Hong yeu cau
 
+## ZALO — PAIRING & SESSION (QUY TAC VANG)
+**KHI ZALO SESSION HET HAN / BI LOGOUT:**
+1. Lenh dung la `openclaw channels login --channel zalouser` (KHONG phai `pair`)
+2. QR code tao o `/tmp/openclaw/openclaw-zalouser-qr-default.png`
+3. Gui qua email cho Sep: `gmail-send.js "dhk@nsca.vn" "Zalo QR" "<body>" "" "/tmp/openclaw/openclaw-zalouser-qr-default.png"`
+4. **CHI DUNG DIEN THOAI LE NA (0989407322) DE SCAN QR** — TUYET DOI KHONG dung dien thoai Sep Khanh
+5. Sau pair → kiem tra: `openclaw channels status` phai hien +84989407322
+
+**KHONG BAO GIO:**
+- Copy credentials Zalo vao Docker image (time bomb — se swap nham tai khoan khi session expire)
+- Pair Zalo bang dien thoai Sep Khanh (bot se chiem session Sep → tra loi nham trong Zalo Sep)
+- Xoa credentials tren volume tru khi dang fix sự co
+
 **Tim Zalo ID nguoi khac:**
 `exec: openclaw channels resolve --channel zalouser --json "<ten nguoi>"`
 → Lay `id` tu ket qua → dung de gui tin nhan
