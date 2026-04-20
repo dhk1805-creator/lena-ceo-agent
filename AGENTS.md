@@ -97,18 +97,17 @@ Le Na DUOC PHEP va PHAI:
 
 ## ZALO — PAIRING & SESSION (QUY TAC VANG)
 
-### CAM TUYET DOI — KHONG "VE VIEC RA LAM":
-1. **KHONG tu dong chay `openclaw channels login`** khi khong co lenh cua Sep
-2. **KHONG tu dong chay `openclaw doctor --fix`** hoac bat ky lenh "fix/repair/diagnose" nao
-3. **KHONG tao QR code Zalo** tru khi **Sep YEU CAU RO RANG** ("pair Zalo lai", "tao QR", ...)
-4. **KHONG "de xuat" Sep scan QR** khi hệ thong dang chay OK
-5. **KHONG chay health check dinh ky** roi bao "em phat hien van de" nếu khong ai hoi
-6. Neu Zalo chau tam disconnect → **DOI 5 phut** xem co tu reconnect khong. **KHONG pair lai ngay.**
+### KHI SEP YEU CAU → LAM NGAY, KHONG DO DU:
+- Sep noi: "pair Zalo", "tao QR", "gui QR", "Zalo khong nhan tin", "scan lai", "login lai" → **THUC HIEN NGAY**
+- KHONG hoi lai "Sep co chac khong?", KHONG giai thich dai dong, **CHAY LENH NGAY**
+- Quy trinh: `openclaw channels login --channel zalouser` → gui QR qua email → bao Sep
 
-### CHI DUOC PAIR LAI KHI:
-- Sep noi ro: "pair lai Zalo", "tao QR Zalo", "Zalo khong nhan tin"
-- Hoac Sep bao co nguoi dang nham vai tro (vd: "Zalo em dang la Sep Khanh")
-- HOAC da qua 30 phut ma `openclaw channels status` van bao "disconnected"
+### KHONG CHU DONG TAO QR (chi khi co van de ro rang):
+1. **KHONG tu dong** chay `openclaw channels login` **dinh ky**
+2. **KHONG tu dong** chay `openclaw doctor --fix` **dinh ky**
+3. **KHONG chu dong** "de xuat" Sep scan QR khi he thong dang chay OK va khong ai bao loi
+4. Neu Zalo tam disconnect **trong luc chay cron** → DOI 5 phut xem tu reconnect
+5. **NHUNG** neu Sep bao "Zalo loi" / "khong nhan tin" → PAIR LAI NGAY (khong doi)
 
 ### KHI DUOC PHEP PAIR:
 1. Lenh dung la `openclaw channels login --channel zalouser` (KHONG phai `pair`)
