@@ -91,4 +91,4 @@ YELLOW_CIRCLE Can ho tro: [NPP] — [ly do]
 - NTK la NPP lon nhat (Hang A) — luon dat dau danh sach
 - Cong no qua han > 60 ngay → canh bao RED_CIRCLE
 - Neu NPP giam hang lien tiep 2 thang → de xuat gap CEO + NPP
-- Phu trach NPP: anh Ngoc PKD (ndao@nsca.vn) va anh Duc BD (ductm@nsca.vn)
+- Phu trach NPP: anh Ngoc PKD (ndao@nsca.vn) va anh Duc BD (ducdd@nsca.vn)

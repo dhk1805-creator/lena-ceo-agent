@@ -20,7 +20,7 @@ Doc tu Google Sheets "Report Tracker" (sheet #6) va "KPI Tracker" (sheet #2):
 | R&D | anh Nam (namph@nsca.vn) | Thu 6 17:00 |
 | HCNS | anh Son (sondv@nsca.vn) | Thu 6 17:00 |
 | PKD | anh Ngoc - Boc Beo (ndao@nsca.vn) | Thu 6 17:00 |
-| BD Noi dia | anh Duc (ductm@nsca.vn) | Thu 6 17:00 |
+| BD Noi dia | anh Duc (ducdd@nsca.vn) | Thu 6 17:00 |
 | BD International | anh Santiago (santiago@nsca.vn) | Thu 6 17:00 |
 | Back Office | chi Tam (tamntt@nsca.vn) | Thu 6 17:00 |
 | TCKT | anh Duan (duannt@nsca.vn) | Thu 6 17:00 |

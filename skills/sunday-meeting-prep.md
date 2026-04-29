@@ -57,7 +57,7 @@ KHONG gioi han subject — doc TAT CA email tu moi nguoi trong 7 ngay, roi TU NH
 node /app/google-tools/gmail-read.js 168 15 "from:namph@nsca.vn"
 node /app/google-tools/gmail-read.js 168 15 "from:sondt@nsca.vn"
 node /app/google-tools/gmail-read.js 168 15 "from:ndao@nsca.vn"
-node /app/google-tools/gmail-read.js 168 15 "from:ductm@nsca.vn"
+node /app/google-tools/gmail-read.js 168 15 "from:ducdd@nsca.vn"
 node /app/google-tools/gmail-read.js 168 15 "from:santiago@nsca.vn"
 node /app/google-tools/gmail-read.js 168 15 "from:tamntt@nsca.vn"
 node /app/google-tools/gmail-read.js 168 15 "from:duannt@nsca.vn"
@@ -92,7 +92,7 @@ node /app/google-tools/gmail-read.js 168 30 "to:dhk@nsca.vn from:nsca.vn"
   1. R&D — anh Nam (namph@nsca.vn)
   2. HCNS — anh Son (sondt@nsca.vn) ⚠️ sondt@ KHONG PHAI sondv@
   3. PKD — anh Ngoc (ndao@nsca.vn)
-  4. BD Noi dia — anh Duc (ductm@nsca.vn)
+  4. BD Noi dia — anh Duc (ducdd@nsca.vn)
   5. BD International — anh Santiago (santiago@nsca.vn)
   6. Back Office — chi Tam (tamntt@nsca.vn)
   7. TCKT — anh Duan (duannt@nsca.vn)

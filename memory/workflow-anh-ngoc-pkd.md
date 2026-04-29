@@ -16,7 +16,7 @@
 ### 3 CAP DUOI TRUC TIEP CUA ANH NGOC:
 | Cap duoi | Vi tri | Email | Pham vi |
 |---|---|---|---|
-| **Đức Trần Minh** | TP BD Noi dia | ductm@nsca.vn | Khach hang noi dia, du an, pipeline VN |
+| **Đỗ Đình Đức** | TP BD Noi dia | ducdd@nsca.vn | Khach hang noi dia, du an, pipeline VN |
 | **Santiago de los Reyes** | TP BD Quoc te | santiago@nsca.vn | Export, OEM, ODM, Distribution quoc te |
 | **chị Tâm** | TP Back Office | tamntt@nsca.vn | Hanh chinh, don hang, hoa don, logistics |
 
@@ -32,8 +32,8 @@ NTK (A-Bac), GALAXY (B-Trung), VNMEP (B-Nam), IMP (C-HCM), MEPCO (C-BD)
 - Chi Tam co don hang nao bi cham? Cong no nao den han?
 
 **Cach lam:**
-- Quet email TU 3 cap duoi (filter `from:ductm@`, `from:santiago@`, `from:tamntt@`)
-- Quet email TU 3 cap duoi GUI cho anh Ngoc (`from:ductm@ to:ndao@`)
+- Quet email TU 3 cap duoi (filter `from:ducdd@`, `from:santiago@`, `from:tamntt@`)
+- Quet email TU 3 cap duoi GUI cho anh Ngoc (`from:ducdd@ to:ndao@`)
 - Doc cac sheet: NPP Tracker, International Pipeline, Export Revenue, Activity Log
 
 ### 2. NHAC NHO + FOLLOW-UP CAP DUOI (theo lenh anh Ngoc)

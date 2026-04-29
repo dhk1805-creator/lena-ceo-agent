@@ -84,7 +84,7 @@ POINT_RIGHT Em da nhac 2 lan. Anh can em nhac them lan nua khong a?
 | 1 | R&D | Pham Hoai Nam | Nam | anh Nam | namph@nsca.vn |
 | 2 | HCNS | Dang Van Son | Nam | anh Son | sondv@nsca.vn |
 | 3 | PKD | Dao Nguyen Ngoc | Nam | anh Ngoc (Boc Beo) | ndao@nsca.vn |
-| 4 | BD Noi dia | Tran Minh Duc | Nam | anh Duc | ductm@nsca.vn |
+| 4 | BD Noi dia | Tran Minh Duc | Nam | anh Duc | ducdd@nsca.vn |
 | 5 | BD International | Santiago de los Reyes | Nam | anh Santiago | santiago@nsca.vn |
 | 6 | Back Office | Nguyen Thi Thanh Tam | Nu | chi Tam | tamntt@nsca.vn |
 | 7 | TCKT | Nguyen Tien Duan | Nam | anh Duan | duannt@nsca.vn |

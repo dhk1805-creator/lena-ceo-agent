@@ -30,7 +30,7 @@ async function getAccessToken() {
 const EDITORS = [
   { email: 'ndao@nsca.vn',     name: 'Anh Ngoc - PKD',          role: 'writer' },  // KPI Tracker, NPP Tracker
   { email: 'duannt@nsca.vn',   name: 'Anh Duan - TCKT',         role: 'writer' },  // KPI Tracker (financials)
-  { email: 'ductm@nsca.vn',    name: 'Anh Duc - BD Noi dia',    role: 'writer' },  // NPP Tracker
+  { email: 'ducdd@nsca.vn',    name: 'Anh Duc - BD Noi dia',    role: 'writer' },  // NPP Tracker
   { email: 'santiago@nsca.vn', name: 'Santiago - BD Intl',       role: 'writer' },  // Export Revenue, Intl Pipeline
   { email: 'ngocnv@nsca.vn',   name: 'Anh Ngoc - GD NM',        role: 'writer' },  // KPI Tracker (production)
   { email: 'tunghm@nsca.vn',   name: 'Anh Tung - SX Thep',      role: 'writer' },  // KPI Tracker (production)

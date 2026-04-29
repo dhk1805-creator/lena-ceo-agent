@@ -17,7 +17,7 @@ BUOC 2 — 8 BP con lai:
 - `node /app/google-tools/gmail-read.js 168 15 "from:duannt@nsca.vn"` — TCKT
 - `node /app/google-tools/gmail-read.js 168 15 "from:sondt@nsca.vn"` — HCNS (LUU Y: sondt@)
 - `node /app/google-tools/gmail-read.js 168 15 "from:ndao@nsca.vn"` — PKD
-- `node /app/google-tools/gmail-read.js 168 15 "from:ductm@nsca.vn"` — BD Noi dia
+- `node /app/google-tools/gmail-read.js 168 15 "from:ducdd@nsca.vn"` — BD Noi dia
 - `node /app/google-tools/gmail-read.js 168 15 "from:santiago@nsca.vn"` — BD Intl
 - `node /app/google-tools/gmail-read.js 168 15 "from:tamntt@nsca.vn"` — Back Office
 - `node /app/google-tools/gmail-read.js 168 15 "from:namph@nsca.vn"` — R&D
@@ -26,7 +26,7 @@ BUOC 2 — 8 BP con lai:
 LUU Y:
 - HCNS: email la sondt@nsca.vn (KHONG PHAI sondv)
 - SX Nhom: chi Xuan (khsx01@nsca.vn) gui thay anh Ngoc
-- Giao Hang: ducvt@nsca.vn (khac BD Noi dia ductm@nsca.vn)
+- Giao Hang: ducvt@nsca.vn (khac BD Noi dia ducdd@nsca.vn)
 
 ## Phan loai email
 1. TRA LOI DUOC NGAY: xac nhan, lich hop, thong tin cong khai, nhac nho

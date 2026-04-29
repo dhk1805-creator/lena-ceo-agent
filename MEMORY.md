@@ -20,7 +20,7 @@
 | Code | Ho ten | Gioi tinh | Chuc vu | Email | SDT/Zalo |
 |------|--------|-----------|---------|-------|----------|
 | PKD01 | Đào Nguyên Ngọc | Nam | TP PKD (Bộc Béo) | ndao@nsca.vn | 0902115796 |
-| PKD02 | Trần Minh Đức | Nam | BD Nội địa (Đức BD) | ductm@nsca.vn | 0912345678 |
+| PKD02 | Trần Minh Đức | Nam | BD Nội địa (Đức BD) | ducdd@nsca.vn | 0912345678 |
 | PKD03 | Santiago de los Reyes | Nam | Xuất khẩu (Santi) - OMDM | santiago@nsca.vn | 0978123456 |
 | PKD04 | Nguyễn Thị Thanh Tâm | Nữ | Back Office (Chị Tâm) | tamntt@nsca.vn | 0934567890 |
 | PKD05 | PKD-Admin | - | Admin | pkd05@nsca.vn | 0945678901 |
@@ -80,7 +80,7 @@
 | R&D | Phạm Hoài Nam | Nam | anh Nam | namph@nsca.vn |
 | HCNS | Đặng Thanh Sơn | Nam | anh Sơn | sondt@nsca.vn |
 | PKD | Đào Nguyên Ngọc | Nam | anh Ngọc (Bộc Béo) | ndao@nsca.vn |
-| BD Nội địa | Trần Minh Đức | Nam | anh Đức | ductm@nsca.vn |
+| BD Nội địa | Trần Minh Đức | Nam | anh Đức | ducdd@nsca.vn |
 | BD International | Santiago de los Reyes | Nam | anh Santiago / Santi | santiago@nsca.vn |
 | Back Office | Nguyễn Thị Thanh Tâm | Nữ | chị Tâm | tamntt@nsca.vn |
 | TCKT | Nguyễn Tiến Duẩn | Nam | anh Duẩn | duannt@nsca.vn |

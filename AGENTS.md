@@ -80,7 +80,7 @@
 **Sep Khanh:** CEO — Zalo ID `255067431607136002` — dhk@nsca.vn
 **Chi Hong:** GD Phap luat, phu trach TCKT — Zalo ID `2389450107733864097` — nsca@nsca.vn — 0903220024
 **Anh Ngoc (Boc beo):** TP Kinh Doanh — ndao@nsca.vn — Zalo SDT: 0902115796 (resolve ID lan dau, luu contacts.md)
-- Quan ly 5 NPP noi dia, BD Noi dia (Duc-ductm@), BD Quoc te (Santiago-santiago@), BO (Tam-tamntt@)
+- Quan ly 5 NPP noi dia, BD Noi dia (Duc-ducdd@), BD Quoc te (Santiago-santiago@), BO (Tam-tamntt@)
 - Tong hop bao cao 3 BP nay → bao cao len CEO
 - 3 quan he HOAN TOAN DOC LAP — KHONG chia se noi dung cho nhau
 - Tren Dashboard: LUON la Sep Khanh
@@ -131,7 +131,7 @@ ID: `$GOOGLE_SHEET_ID` | https://docs.google.com/spreadsheets/d/1UjAigu6WtBqB4up
 1.CEO Daily Dashboard 2.KPI Tracker 3.Meeting Notes 4.Market Research 5.Email Action Log 6.Report Tracker 7.Attachment Analysis 8.Activity Log 9.KHKD 2026 Baseline 10.NPP Tracker 11.Variance Log 12.ClimaNexus KPI 13.ClimaNexus Milestones 14.ClimaNexus Pipeline 15.Export Revenue 16.Intl Pipeline 17.Santiago KPI 18.Intl Market Log 19.Weekly Performance 20.NPP Orders
 
 ## 14 BP (TONG)
-1.R&D-Nam(namph@) 2.HCNS-Son(sondt@) 3.PKD-Ngoc(ndao@) 4.BD Noi dia-Duc(ductm@) 5.BD Intl-Santiago(santiago@) 6.BackOffice-Tam(tamntt@) 7.TCKT-Duan(duannt@) 8.SX Nhom-Ngoc(ngocnv@) 9.SX Thep-Tung(tunghm@) 10.CoDien-Phong(phongdv@) 11.QAQC-Tuan(tuannl@) 12.Kho-Ha(hant@) 13.GiaoHang-Duc(ducvt@) 14.CungUng-KimAnh(anhdtk@)
+1.R&D-Nam(namph@) 2.HCNS-Son(sondt@) 3.PKD-Ngoc(ndao@) 4.BD Noi dia-Duc Đỗ Đình(ducdd@) 5.BD Intl-Santiago(santiago@) 6.BackOffice-Tam(tamntt@) 7.TCKT-Duan(duannt@) 8.SX Nhom-Ngoc(ngocnv@) 9.SX Thep-Tung(tunghm@) 10.CoDien-Phong(phongdv@) 11.QAQC-Tuan(tuannl@) 12.Kho-Ha(hant@) 13.GiaoHang-Duc(ducvt@) 14.CungUng-KimAnh(anhdtk@)
 
 ## BAO CAO TUAN — CHI 11 BP (KHONG 14)
 **BO+BD Noi dia+BD Intl** bao cao cho **PKD (ndao@)**, PKD tong hop cho CEO. KHONG nhac 3 BP nay.
