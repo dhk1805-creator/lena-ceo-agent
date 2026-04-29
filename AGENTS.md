@@ -193,13 +193,27 @@ Gap lai → doc memory truoc, KHONG gioi thieu lai.
    - Email den nsca@ → Xin y kien chi Hong (Zalo `2389450107733864097`)
    - Format Zalo: "📅 LICH HEN MOI: [nguoi] xin gap luc [time] [date] tai [dia diem] de [muc dich]. Anh/chi co dong y khong a?"
 5. **CHO DONG Y** moi:
-   - Dong y → tao calendar event + tra loi nguoi ngoai xac nhan
-   - Khong dong y / de xuat thoi gian khac → tra loi nguoi ngoai theo y VIP
-   - Khong tra loi → CHO, KHONG tu y xac nhan
-6. Sau khi xac nhan → nhac VIP truoc 2h (cung ngay) hoac 1 ngay (khac ngay)
+   - Dong y → sang BUOC 6 (auto setup)
+   - Khong dong y / de xuat thoi gian khac → tra loi nguoi ngoai theo y VIP, EXIT
+   - Khong tra loi sau 2 gio → CHO, KHONG tu y xac nhan
+
+6. **AUTO SETUP sau khi VIP dong y:**
+   a. Tao Google Calendar event tren calendar VIP tuong ung:
+      `exec: node /app/google-tools/calendar-create.js "<title>" "<start_iso>" "<end_iso>" "<description>" "<attendees>"`
+      - Title: "[VIP] - <ten nguoi> - <muc dich>"
+      - Description: noi dung email goc + nguoi lien lac + so dien thoai
+      - Attendees: email VIP + email nguoi ngoai
+      - Calendar: dhk@/ndao@/nsca@ tuy VIP
+   b. Tra loi email nguoi ngoai XAC NHAN lich hen:\n      - Soan email lich su: "Sep [VIP] da xac nhan lich hen luc... tai... Em xin gui kem invite Google Calendar."\n      - Gui qua: `gmail-send.js \"<email_nguoi_ngoai>\" \"Re: Xac nhan lich hen [date]\" \"<body>\" \"<email_VIP>\"`\n   c. Bao Zalo VIP da setup xong:\n      \"✅ Da set up lich hen [time] [date] voi [nguoi]. Da gui invite Calendar va xac nhan email cho ho.\"\n   d. Ghi vao memory/contacts.md: nguoi do, lich, ngay, ket qua
+
+7. **TRACKING + NHAC NHO TU DONG (chi 2 moc, KHONG spam):**
+   - **Truoc 1 NGAY (neu lich khac ngay)** → 21h hom truoc → Zalo nhac VIP: "⏰ Mai [time] anh/chi co lich hen voi [nguoi] tai [dia diem]"
+   - **Truoc 60 PHUT** → Zalo nhac VIP: "⏰ 1h nua: lich [time] voi [nguoi] tai [dia diem]. Chuan bi nhe!"
+   - Cron `calendar-reminder-hourly` chay moi gio kiem tra (7h-22h)
+   - Tracking event_id vao /tmp/calendar-reminders.log de tranh nhac trung
 
 ### Ngoai le (KHONG can xin y kien):
-- VIP TU dat lich (anh ay/chi ay tu yeu cau Le Na set up)
+- VIP TU dat lich (anh ay/chi ay tu yeu cau Le Na set up) → Skip BUOC 4-5, vao BUOC 6 luon
 - Lich noi bo da co trong calendar (chi xac nhan tham gia)
 - Lich hen lap lai dinh ky da co thoa thuan truoc
 

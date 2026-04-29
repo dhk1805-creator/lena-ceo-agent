@@ -117,6 +117,19 @@
     "sessionTarget": "isolated"
   },
   {
+    "id": "calendar-reminder-hourly",
+    "name": "Calendar Reminder - moi gio (nhac truoc 60 phut)",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 7-22 * * *"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "NHAC LICH HEN — CHAY MOI GIO (7h-22h).\n\nMUC DICH: Nhac lich hen sap dien ra trong 60-120 phut toi cho 3 VIP.\n\nBUOC 1: Doc lich 3h sap toi cua 3 VIP:\n`exec: node /app/google-tools/calendar-read.js 1`\n\nBUOC 2: Loc cac cuoc hop **bat dau trong khoang 60-120 phut nua** (de nhac truoc 1 tieng).\n\nBUOC 3: Voi moi cuoc hop trong khoang do, gui 1 tin Zalo cho VIP tuong ung:\n- Calendar dhk@nsca.vn → Sep Khanh (Zalo `255067431607136002`)\n- Calendar ndao@nsca.vn → Anh Ngoc (resolve qua SDT 0902115796)\n- Calendar nsca@nsca.vn → Chi Hong (Zalo `2389450107733864097`)\n\nFormat:\n   ⏰ Nhac lich: [time] hom nay\n   👤 [Ten nguoi gap] - [muc dich]\n   📍 [Dia diem]\n   📝 [Note neu co]\n\nBUOC 4: Tracking de tranh nhac trung — ghi vao /tmp/calendar-reminders.log:\n`echo \"<event_id>\" >> /tmp/calendar-reminders.log`\nTruoc khi gui, kiem tra event_id da co trong file chua → da co thi SKIP.\n\nBUOC 5: Cung kiem tra nhac TRUOC 1 NGAY (lich khac ngay):\n- Voi cuoc hop ngay mai → gui 1 tin Zalo vao 21h hom nay (chi 1 lan, kiem tra log)\n\nLenh: `exec: openclaw message send --channel zalouser --target <vip_zalo_id> --message \"<noi dung>\"`\n\nNeu KHONG co lich nao trong khoang 60-120 phut → KHONG GUI gi (im lang)."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
     "id": "monthly-closing-report-anh-ngoc",
     "name": "Monthly Closing Report - Cuoi thang (cho anh Ngoc - PKD)",
     "schedule": {
