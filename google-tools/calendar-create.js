@@ -56,8 +56,9 @@ async function main() {
     reminders: {
       useDefault: false,
       overrides: [
-        { method: 'popup', minutes: 120 },  // 2 tieng truoc
-        { method: 'popup', minutes: 30 }     // 30 phut truoc
+        { method: 'email', minutes: 60 },   // Email 60 phut truoc
+        { method: 'popup', minutes: 60 },   // Popup 60 phut truoc
+        { method: 'popup', minutes: 10 }    // Popup 10 phut truoc (chot)
       ]
     }
   };

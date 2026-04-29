@@ -198,19 +198,18 @@ Gap lai → doc memory truoc, KHONG gioi thieu lai.
    - Khong tra loi sau 2 gio → CHO, KHONG tu y xac nhan
 
 6. **AUTO SETUP sau khi VIP dong y:**
-   a. Tao Google Calendar event tren calendar VIP tuong ung:
+   a. Tao Google Calendar event voi REMINDER NATIVE 60 phut (Google tu nhac, KHONG can cron):
       `exec: node /app/google-tools/calendar-create.js "<title>" "<start_iso>" "<end_iso>" "<description>" "<attendees>"`
-      - Title: "[VIP] - <ten nguoi> - <muc dich>"
-      - Description: noi dung email goc + nguoi lien lac + so dien thoai
-      - Attendees: email VIP + email nguoi ngoai
+      - calendar-create.js mac dinh set reminder: email 60min before + popup 10min before
       - Calendar: dhk@/ndao@/nsca@ tuy VIP
-   b. Tra loi email nguoi ngoai XAC NHAN lich hen:\n      - Soan email lich su: "Sep [VIP] da xac nhan lich hen luc... tai... Em xin gui kem invite Google Calendar."\n      - Gui qua: `gmail-send.js \"<email_nguoi_ngoai>\" \"Re: Xac nhan lich hen [date]\" \"<body>\" \"<email_VIP>\"`\n   c. Bao Zalo VIP da setup xong:\n      \"✅ Da set up lich hen [time] [date] voi [nguoi]. Da gui invite Calendar va xac nhan email cho ho.\"\n   d. Ghi vao memory/contacts.md: nguoi do, lich, ngay, ket qua
+   b. Tra loi email nguoi ngoai XAC NHAN lich hen + gui Calendar invite
+   c. Bao Zalo VIP da setup xong: "✅ Da set up lich [time] [date] voi [nguoi]"
+   d. Ghi vao memory/contacts.md
 
-7. **TRACKING + NHAC NHO TU DONG (chi 2 moc, KHONG spam):**
-   - **Truoc 1 NGAY (neu lich khac ngay)** → 21h hom truoc → Zalo nhac VIP: "⏰ Mai [time] anh/chi co lich hen voi [nguoi] tai [dia diem]"
-   - **Truoc 60 PHUT** → Zalo nhac VIP: "⏰ 1h nua: lich [time] voi [nguoi] tai [dia diem]. Chuan bi nhe!"
-   - Cron `calendar-reminder-hourly` chay moi gio kiem tra (7h-22h)
-   - Tracking event_id vao /tmp/calendar-reminders.log de tranh nhac trung
+7. **NHAC NHO:**
+   - Sang 7h hang ngay: cron `daily-calendar-morning-briefing` bao TONG HOP lich ngay
+   - Truoc 60 phut: Google Calendar TU DONG gui email + popup (da set khi tao event)
+   - KHONG can cron rieng — Google Calendar handle.
 
 ### Ngoai le (KHONG can xin y kien):
 - VIP TU dat lich (anh ay/chi ay tu yeu cau Le Na set up) → Skip BUOC 4-5, vao BUOC 6 luon
