@@ -1,27 +1,14 @@
 [
   {
-    "id": "daily-email-morning",
-    "name": "Daily Email Scan - 8h sang",
+    "id": "weekly-email-scan-sep-khanh",
+    "name": "Weekly Email Scan Sep Khanh - 21h T7",
     "schedule": {
       "kind": "cron",
-      "expr": "0 8 * * 1-6"
+      "expr": "0 21 * * 6"
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "QUET EMAIL BUOI SANG (8h) — NGAN GON.\n\nQUY TAC TUYET DOI:\n1. CHI quet email gui TRUC TIEP cho dhk@nsca.vn (to: dhk@nsca.vn). KHONG quan tam email co CC dhk@nsca.vn.\n2. Filter: `node /app/google-tools/gmail-read.js 14 20 \"to:dhk@nsca.vn -cc:dhk@nsca.vn\"`\n3. CHI GUI 1 TIN NHAN ZALO DUY NHAT cho Sep Khanh, format:\n   📧 EMAIL SANG (HH:MM)\n   - Tong: N email moi (noi bo M, ngoai K)\n   - Can xu ly: [liet ke 3-5 email QUAN TRONG nhat, moi email 1 dong]\n4. Neu khong co email moi → GUI: '📧 Sang [date]: 0 email moi. Yen tinh.'\n5. TUYET DOI KHONG gui nhieu tin, KHONG them 'em se lam...', KHONG phan tich dai.\n6. Lenh gui Zalo: `exec: openclaw message send --channel zalouser --target 255067431607136002 --message \"<noi dung>\"`"
-    },
-    "sessionTarget": "isolated"
-  },
-  {
-    "id": "daily-email-afternoon",
-    "name": "Daily Email Scan - 17h chieu",
-    "schedule": {
-      "kind": "cron",
-      "expr": "0 17 * * 1-6"
-    },
-    "payload": {
-      "kind": "agentTurn",
-      "message": "QUET EMAIL BUOI CHIEU (17h) — NGAN GON.\n\nQUY TAC TUYET DOI:\n1. CHI quet email gui TRUC TIEP cho dhk@nsca.vn (to: dhk@nsca.vn). KHONG quan tam email co CC dhk@nsca.vn.\n2. Filter tu 8h sang den 17h: `node /app/google-tools/gmail-read.js 9 20 \"to:dhk@nsca.vn -cc:dhk@nsca.vn\"`\n3. CHI GUI 1 TIN NHAN ZALO DUY NHAT cho Sep Khanh, format:\n   📧 EMAIL CHIEU (HH:MM)\n   - Tong: N email moi\n   - Can xu ly: [3-5 email QUAN TRONG, moi email 1 dong]\n4. Neu khong co email moi → GUI: '📧 Chieu [date]: 0 email moi.'\n5. TUYET DOI KHONG spam, KHONG phan tich.\n6. Lenh gui Zalo: `exec: openclaw message send --channel zalouser --target 255067431607136002 --message \"<noi dung>\"`"
+      "message": "QUET EMAIL TUAN CUA SEP KHANH — 21H T7 HANG TUAN.\n\nMUC DICH: Tom tat tat ca email QUAN TRONG ma Sep nhan duoc trong tuan (T2-T7), de Sep nhin lai ca tuan, biet con email nao chua xu ly.\n\nQUY TAC:\n1. CHI quet email gui TRUC TIEP cho dhk@nsca.vn (to: dhk@nsca.vn). KHONG quan tam CC.\n2. Filter 7 ngay (168h): `exec: node /app/google-tools/gmail-read.js 168 100 \"to:dhk@nsca.vn -cc:dhk@nsca.vn\"`\n3. Phan loai 4 nhom:\n   - 🔴 KHAN/CHUA tra loi: Email co tu 'urgent', 'gap', deadline, hoac chua co response\n   - 📋 NOI BO: Tu @nsca.vn (BP, NPP)\n   - 🌐 NGOAI: Khach hang, doi tac, OEM\n   - 💼 DOI TAC QUOC TE: Tu nuoc ngoai (santiago@, OEM nuoc ngoai)\n4. Giao Gemini tom tat (FREE):\n   `node /app/google-tools/gemini-write.js \"Tom tat email tuan cho CEO theo 4 nhom (urgent/noi bo/ngoai/quoc te). Moi email 1 dong: [nguoi gui] - [tom tat 1 cau]. Ket thuc: liet ke email QUAN TRONG chua co tra loi.\" 4000`\n5. Tao Google Doc:\n   `exec: node /app/google-tools/gdoc-create.js \"Tom tat email tuan [XX] - [DD/MM]\" \"<content Gemini>\"`\n6. Gui email Sep + 1 tin Zalo:\n   - Email: `exec: node /app/google-tools/gmail-send.js \"dhk@nsca.vn\" \"[Le Na] Tom tat email tuan [XX]\" \"<HTML voi tom tat + link Doc + chu ky Le Na>\" \"\"`\n   - Zalo: `exec: openclaw message send --channel zalouser --target 255067431607136002 --message \"📧 EMAIL TUAN [XX]\\n🔴 Khan/chua tra loi: N\\n📋 Noi bo: M | 🌐 Ngoai: K | 💼 Quoc te: L\\n📄 Chi tiet: <link Doc>\"`\n\nKHONG phan tich chien luoc, KHONG de xuat. Chi tom tat thong ke."
     },
     "sessionTarget": "isolated"
   },
@@ -91,15 +78,15 @@
     "sessionTarget": "isolated"
   },
   {
-    "id": "weekly-npp-report-anh-ngoc",
-    "name": "Weekly NPP Report - 9h T2 (cho anh Ngoc)",
+    "id": "weekly-pkd-team-report-anh-ngoc",
+    "name": "Weekly PKD Team Report - 9h T2 (cho anh Ngoc - quan ly cap duoi)",
     "schedule": {
       "kind": "cron",
       "expr": "0 9 * * 1"
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "BAO CAO NPP TUAN — 9H T2 cho anh Ngoc (Boc beo, TP KD).\n\nBUOC 1: Doc workflow: cat /root/.openclaw/workspace/memory/workflow-anh-ngoc-pkd.md\n\nBUOC 2: Doc 3 sheet:\n- NPP Tracker (tab 10): doanh so 5 NPP tuan truoc\n- KHKD Baseline (tab 9): target tung NPP\n- Weekly Performance (tab 19): lich su\n\nBUOC 3: Giao Gemini tom tat (FREE):\n`node /app/google-tools/gemini-write.js \"Tom tat ngan gon NPP tuan [XX]: doanh so 5 NPP, % dat target, top performer, NPP yeu, de xuat 2-3 hanh dong tuan toi cho TP Kinh doanh.\" 3000`\n\nBUOC 4: Gui email cho anh Ngoc:\n`exec: node /app/google-tools/gmail-send.js \"ndao@nsca.vn\" \"[Le Na] Bao cao NPP Tuan [XX]\" \"<HTML voi noi dung Gemini + chu ky Le Na>\" \"\"`\n\nBUOC 5: 1 tin Zalo TOM TAT cho anh Ngoc (resolve Zalo ID neu chua co):\n`exec: openclaw message send --channel zalouser --target <zalo_id_anh_ngoc> --message \"📊 NPP TUAN [XX]\\nTop: [NPP A] dat XXX%\\nYeu: [NPP B] dat YY%\\nTong: Z ty (WW% target)\\n📄 Email chi tiet da gui.\"`\n\nKHONG phan tich chien luoc, KHONG forward thong tin Sep Khanh."
+      "message": "BAO CAO TUAN PKD — 9H T2 cho anh Ngoc (Boc beo). MUC DICH: giup anh Ngoc QUAN LY 3 cap duoi + 5 NPP, lay du lieu de bao cao len CEO.\n\nBUOC 1: Doc workflow: cat /root/.openclaw/workspace/memory/workflow-anh-ngoc-pkd.md\n\nBUOC 2: Quet email bao cao tuan tu 3 CAP DUOI:\n- `exec: node /app/google-tools/gmail-read.js 168 5 \"from:ductm@nsca.vn (bao cao OR report OR tuan OR weekly)\"` (Đức - BD Noi dia)\n- `exec: node /app/google-tools/gmail-read.js 168 5 \"from:santiago@nsca.vn (report OR weekly)\"` (Santiago - BD Quoc te, tieng Anh OK)\n- `exec: node /app/google-tools/gmail-read.js 168 5 \"from:tamntt@nsca.vn (bao cao OR report OR tuan)\"` (chi Tâm - BO)\n\nBUOC 3: Quet email anh Ngoc giao viec tuan truoc (de doi chieu):\n`exec: node /app/google-tools/gmail-read.js 168 30 \"from:ndao@nsca.vn (to:ductm@nsca.vn OR to:santiago@nsca.vn OR to:tamntt@nsca.vn)\"`\n\nBUOC 4: Doc 4 sheet:\n- NPP Tracker (tab 10), KHKD Baseline (tab 9), International Pipeline (tab 16), Activity Log (tab 8)\n\nBUOC 5: Giao Gemini tong hop (FREE, 6000 tokens):\n`node /app/google-tools/gemini-write.js \"Tong hop bao cao tuan PKD cho TP Kinh doanh:\\n[1] BD NOI DIA (Đức): cong viec da giao -> ket qua -> % hoan thanh + diem manh/yeu\\n[2] BD QUOC TE (Santiago): pipeline quoc te, deal moi, % MIP target\\n[3] BO (chi Tâm): don hang, cong no, logistics\\n[4] 5 NPP NOI DIA: doanh so, % target, top/yeu\\n[5] DE XUAT cho anh Ngoc: 3-5 viec can luu y de quan ly cap duoi tuan toi\\n[6] GOI Y noi dung anh Ngoc bao cao len CEO.\\nFormat dau dong, ngan, danh gia khach quan.\" 6000`\n\nBUOC 6: Tao Google Doc + email anh Ngoc:\n- Doc: `exec: node /app/google-tools/gdoc-create.js \"PKD Team Report Tuan [XX] - [DD/MM]\" \"<content Gemini>\"`\n- Email: `exec: node /app/google-tools/gmail-send.js \"ndao@nsca.vn\" \"[Le Na] PKD Team Report - Tuan [XX]\" \"<HTML voi tom tat + link Doc + chu ky Le Na>\" \"\"` (KHONG CC Sep)\n\nBUOC 7: 1 tin Zalo TOM TAT cho anh Ngoc (resolve ID lan dau qua SDT 0902115796):\n`exec: openclaw message send --channel zalouser --target <zalo_id_anh_ngoc> --message \"📊 PKD TUAN [XX] (T2 9h)\\n👥 Đức: [tom tat 1 dong] | Santiago: [...] | chi Tâm: [...]\\n📦 5 NPP: top [A], yeu [B]\\n⚡ Can luu y: [3-5 viec tuan toi]\\n📄 Chi tiet: <link Doc>\"`\n\nKHONG forward Sep Khanh, KHONG bao cao chien luoc cong ty (quyen Sep)."
     },
     "sessionTarget": "isolated"
   },
