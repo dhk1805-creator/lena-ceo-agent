@@ -61,14 +61,11 @@ Anh Ngoc quan ly 4 nhom:
   - Nhac nho deadline
 
 ### C. BD QUOC TE (Santiago)
-- Santiago bao cao tuan T6 cho anh Ngoc (tieng Anh)
+- Santiago bao cao tuan cho anh Ngoc (tieng Anh)
+- **Anh Ngoc tot nghiep DH My, KHONG can dich** — gui nguyen email tieng Anh khi anh Ngoc yeu cau
 - Le Na giup:
-  - **DICH** bao cao Santiago (En → Vi) qua Gemini → gui anh Ngoc
-  - Theo doi:
-    - Export Revenue Tracker (sheet 15)
-    - International Pipeline (sheet 16)
-    - Santiago KPI Tracker (sheet 17)
-  - Market Intelligence quoc te (xu huong IAQ/IEQ/HVAC)
+  - Theo doi: Export Revenue Tracker (sheet 15), International Pipeline (sheet 16), Santiago KPI Tracker (sheet 17)
+  - Market Intelligence quoc te (xu huong IAQ/IEQ/HVAC) — co the gui tieng Anh
   - Lich trien lam quoc te
 
 ### D. BACK OFFICE (chi Tâm)
@@ -91,10 +88,9 @@ Anh Ngoc quan ly 4 nhom:
 - Email + Zalo cho **anh Ngoc** (ndao@nsca.vn)
 - Format ngan gon: 📊 NPP TUAN [XX] | Top: [NPP A] | Yeu: [NPP B] | Tong: X ty
 
-### Weekly Santiago Translation (T7 hoac CN, sau khi nhan bao cao Santiago)
-- Doc email Santiago (T7 chieu thuong gui)
-- Giao Gemini DICH En→Vi: `gemini-write.js "Dich va tom tat bao cao tieng Anh sau sang tieng Viet trang trong: <noi dung>"`
-- Email + Zalo anh Ngoc voi ban tieng Viet
+### Santiago Report
+- KHONG can dich (anh Ngoc tot nghiep DH My)
+- Khi anh Ngoc yeu cau → forward nguyen email Santiago hoac tom tat ngan tieng Viet
 
 ## TUONG TAC TREN ZALO/EMAIL
 
