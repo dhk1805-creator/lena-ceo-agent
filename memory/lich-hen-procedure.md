@@ -1,7 +1,26 @@
 # QUY TRINH LICH HEN — CHI TIET
 
-## NGUYEN TAC VANG
-**KHONG TU Y XAC NHAN lich hen tu nguoi ngoai. Phai xin y kien VIP truoc.**
+## 3 LUONG INPUT VAO LE NA
+
+### LUONG 1: NGUOI NGOAI gui yeu cau lich hen den email VIP
+- Email/Zalo tu khach gui den dhk@/ndao@/nsca@
+- → Le Na PHAI XIN Y KIEN VIP truoc khi xac nhan
+- Xem chi tiet "QUY TRINH 7 BUOC" o duoi
+
+### LUONG 2: VIP da chot lich voi khach (qua Zalo ca nhan/dien thoai), forward cho Le Na
+- VIP nhan Zalo cho Le Na: "Em set lich hen khach [ten] ngay [DD/MM] [HH:MM] tai [dia diem]"
+- → Le Na TU DONG tao calendar (KHONG can hoi lai VIP, vi VIP da quyet dinh)
+- Neu THIEU thong tin (vd khong co dia diem, khong co email khach) → hoi NGAN: "Anh cho em dia diem"
+- Sau khi tao xong → email invite cho khach (neu co email) + bao Zalo VIP da setup
+
+### LUONG 3: VIP yeu cau Le Na dat lich (chu dong)
+- VIP nhan: "Em dat lich hop voi anh A ngay mai 14h tai van phong"
+- → Tuong tu LUONG 2
+
+## NGUYEN TAC CHUNG
+- Lich tu NGUOI NGOAI (luong 1) → BAT BUOC xin y kien VIP truoc
+- Lich tu VIP (luong 2, 3) → TU DONG tao luon, KHONG hoi lai
+- Tat ca lich → Calendar event voi reminder 60min native (Google tu nhac)
 
 ## Routing theo email nhan:
 | Email den | Xin y kien | Zalo ID |

@@ -97,16 +97,30 @@ Chi tiet quy trinh email: `memory/email-procedures.md`.
 [De xuat hanh dong]
 ```
 
-## LICH HEN
-**KHONG TU Y XAC NHAN lich tu nguoi ngoai. Xin y kien VIP truoc qua Zalo.**
+## LICH HEN — 3 LUONG INPUT
 
-Tom tat 4 buoc:
+### LUONG 1: Email/Zalo tu NGUOI NGOAI gui den dhk@/ndao@/nsca@
+**KHONG TU Y XAC NHAN.** Xin y kien VIP qua Zalo truoc.
 1. Phat hien yeu cau → check trung lich → Zalo xin y kien VIP
-2. Doi VIP dong y (khong dong y/khong tra loi → KHONG TAO)
-3. Tao Calendar event (calendar-create.js tu set reminder 60min email + popup)
-4. Tra loi nguoi ngoai + bao Zalo VIP da setup
+2. Doi VIP dong y → tao Calendar event (calendar-create.js tu set reminder 60min)
+3. Tra loi nguoi ngoai + bao Zalo VIP da setup
 
-**Nhac:** Sang 7h cron `daily-calendar-morning-briefing` bao tong hop lich. Truoc 60 phut Google tu nhac (native).
+### LUONG 2: VIP TU CHOT LICH voi khach (qua Zalo ca nhan/cuoc goi) → forward cho Le Na
+VIP nhan Zalo cho Le Na (0989407322): "Em set lich hen khach [ten] ngay [DD/MM] [HH:MM] tai [dia diem] ve [muc dich]"
+→ Le Na TU DONG:
+1. Tao Calendar event tren calendar VIP tuong ung (reminder 60min native)
+2. Neu co email khach → soan email invite + gui qua gmail-send.js (CC VIP)
+3. Bao Zalo VIP: "✅ Da set lich [time] [date] voi [khach]. Da gui invite (neu co email)."
+4. Ghi memory/contacts.md
+**KHONG hoi lai VIP** (vi VIP da quyet dinh roi). Neu thieu thong tin → hoi NGAN: "Anh cho em dia diem" hoac "anh cho em email khach (de gui invite)?"
+
+### LUONG 3: VIP TU yeu cau Le Na dat lich
+Tuong tu LUONG 2.
+
+### NHAC NHO (chung cho ca 3 luong)
+- Sang 7h cron `daily-calendar-morning-briefing` bao tong hop lich ngay
+- Truoc 60 phut Google tu nhac (email + popup, native)
+- KHONG can cron nhac rieng
 
 Quy trinh chi tiet: `memory/lich-hen-procedure.md`.
 
