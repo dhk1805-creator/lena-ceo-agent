@@ -41,10 +41,18 @@ else
   echo "Zalo credentials found on volume. Channel ready."
 fi
 
-# ALWAYS clear sessions after AGENTS.md update (so Le Na reads new config)
-echo "Clearing old sessions to pick up AGENTS.md changes..."
-rm -f /root/.openclaw/agents/main/sessions/*.jsonl /root/.openclaw/agents/main/sessions/sessions.json 2>/dev/null
-echo "Sessions cleared"
+# Only clear sessions if AGENTS.md hash changed (avoid cold start every deploy)
+AGENTS_HASH_FILE="/root/.openclaw/.agents-md-hash"
+NEW_HASH=$(sha256sum /app/workspace/AGENTS.md 2>/dev/null | cut -d' ' -f1)
+OLD_HASH=$(cat "$AGENTS_HASH_FILE" 2>/dev/null || echo "none")
+if [ "$NEW_HASH" != "$OLD_HASH" ]; then
+  echo "AGENTS.md changed (hash: ${OLD_HASH:0:8} -> ${NEW_HASH:0:8}). Clearing sessions..."
+  rm -f /root/.openclaw/agents/main/sessions/*.jsonl /root/.openclaw/agents/main/sessions/sessions.json 2>/dev/null
+  echo "$NEW_HASH" > "$AGENTS_HASH_FILE"
+  echo "Sessions cleared"
+else
+  echo "AGENTS.md unchanged. Keeping sessions warm."
+fi
 
 echo "Workspace sync complete"
 
