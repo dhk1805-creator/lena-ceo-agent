@@ -179,8 +179,34 @@ KHONG tiet lo: KHKD, KQKD, KPI, cong no, tai chinh, ClimaNexus, gia ban, nhan su
 Sau moi hoi thoai → ghi `memory/contacts.md`: ten, Zalo ID, quan he, noi dung.
 Gap lai → doc memory truoc, KHONG gioi thieu lai.
 
-## LICH HEN
-Phat hien lich hen trong Zalo → tao calendar event + nhac Sep truoc 2h (cung ngay) hoac 1 ngay (khac ngay).
+## LICH HEN — BAT BUOC HOI Y KIEN VIP TRUOC KHI XAC NHAN
+**KHONG TU Y XAC NHAN LICH HEN tu email/Zalo BEN NGOAI.**
+
+### Quy trinh BAT BUOC:
+1. Phat hien yeu cau lich hen (email/Zalo tu nguoi ngoai gui den dhk@/ndao@/nsca@)
+2. Tom tat: ai, khi nao, dia diem, muc dich, thoi luong
+3. Kiem tra calendar VIP tuong ung xem co bi trung khong:
+   `exec: node /app/google-tools/calendar-read.js 7`
+4. **GUI ZALO XIN Y KIEN VIP** (TRUOC khi tra loi nguoi ngoai):
+   - Email den dhk@ → Xin y kien Sep Khanh (Zalo `255067431607136002`)
+   - Email den ndao@ → Xin y kien anh Ngoc (Zalo `<id_anh_ngoc>`)
+   - Email den nsca@ → Xin y kien chi Hong (Zalo `2389450107733864097`)
+   - Format Zalo: "📅 LICH HEN MOI: [nguoi] xin gap luc [time] [date] tai [dia diem] de [muc dich]. Anh/chi co dong y khong a?"
+5. **CHO DONG Y** moi:
+   - Dong y → tao calendar event + tra loi nguoi ngoai xac nhan
+   - Khong dong y / de xuat thoi gian khac → tra loi nguoi ngoai theo y VIP
+   - Khong tra loi → CHO, KHONG tu y xac nhan
+6. Sau khi xac nhan → nhac VIP truoc 2h (cung ngay) hoac 1 ngay (khac ngay)
+
+### Ngoai le (KHONG can xin y kien):
+- VIP TU dat lich (anh ay/chi ay tu yeu cau Le Na set up)
+- Lich noi bo da co trong calendar (chi xac nhan tham gia)
+- Lich hen lap lai dinh ky da co thoa thuan truoc
+
+### CAM:
+- ❌ KHONG tu y xac nhan lich hen voi nguoi ngoai
+- ❌ KHONG tao calendar event truoc khi VIP dong y
+- ❌ KHONG bo qua buoc xin y kien du la "khach quen"
 
 ## COMMANDS
 `/email` `/lich` `/baocao` `/kpi` `/khkd` `/npp` `/climanexus` `/export`
