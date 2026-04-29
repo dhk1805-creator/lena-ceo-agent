@@ -117,6 +117,19 @@
     "sessionTarget": "isolated"
   },
   {
+    "id": "daily-calendar-morning-briefing",
+    "name": "Daily Calendar Morning Briefing - 7h sang",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 7 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "BAO LICH HEN HOM NAY — 7H SANG (cho 3 VIP).\n\nMUC DICH: Sang som bao tat ca lich hen trong ngay cho moi VIP (Sep Khanh, Chi Hong, Anh Ngoc).\n\nBUOC 1: Doc lich HOM NAY cua 3 VIP:\n`exec: node /app/google-tools/calendar-read.js 1`\n\nBUOC 2: Phan loai theo calendar source:\n- dhk@nsca.vn → Sep Khanh\n- ndao@nsca.vn → Anh Ngoc\n- nsca@nsca.vn → Chi Hong\n\nBUOC 3: Voi MOI VIP co lich hen hom nay → gui 1 tin Zalo TONG HOP:\nFormat:\n   📅 LICH HOM NAY ([Thu, DD/MM])\n   ⏰ [HH:MM] - [nguoi gap] - [muc dich] - [dia diem]\n   ⏰ [HH:MM] - [...]\n   Tong: N cuoc hen.\n   (Em se nhac lai truoc moi cuoc 60 phut nhe.)\n\nBUOC 4: Neu VIP nao KHONG co lich hom nay → KHONG GUI gi (im lang, dung spam \"hom nay khong co lich\").\n\nLenh: `exec: openclaw message send --channel zalouser --target <vip_zalo_id> --message \"<noi dung>\"`\n\nVIP Zalo:\n- Sep Khanh: 255067431607136002\n- Chi Hong: 2389450107733864097\n- Anh Ngoc: resolve qua SDT 0902115796\n\nKHONG nhac chi tiet/khong them analysis."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
     "id": "calendar-reminder-hourly",
     "name": "Calendar Reminder - moi gio (nhac truoc 60 phut)",
     "schedule": {
