@@ -65,6 +65,19 @@
     "sessionTarget": "isolated"
   },
   {
+    "id": "daily-tckt-email-triage-chi-hong",
+    "name": "Daily TCKT Email Triage Chi Hong - 17h",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 17 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "TRIAGE EMAIL TCKT CHO CHI HONG — 17H HANG NGAY.\n\nMUC DICH: Le Na gac cong cho chi Hong (GD Phap luat, phu trach TCKT) — kiem soat email TCKT/tai chinh/ke toan/phap ly trong ngay.\n\nBUOC 1: Quet email gui TRUC TIEP cho nsca@nsca.vn (chi Hong) trong 24h qua:\n`exec: node /app/google-tools/gmail-read.js 24 50 \"to:nsca@nsca.vn -cc:nsca@nsca.vn\"`\n\nBUOC 2: Quet them email TCKT lien quan trong 24h qua (du gui ai):\n`exec: node /app/google-tools/gmail-read.js 24 30 \"from:duannt@nsca.vn OR subject:(tai chinh OR ke toan OR hoa don OR cong no OR ngan sach OR thue OR kiem toan OR ngan hang OR thanh toan OR TCKT OR BCTC OR phap ly OR hop dong)\"`\n\nBUOC 3: Phan loai 4 nhom:\n- 🔴 KHAN: deadline thue, ngan hang, thanh toan gap, kien tung\n- 💰 TCKT/KE TOAN: hoa don, cong no, BCTC, ngan sach\n- 📜 PHAP LY: hop dong can review, van ban phap luat, tranh chap\n- 🏦 NGAN HANG/DOI TAC TC: thong bao ngan hang, kiem toan, thue\n\nBUOC 4: Tu xu ly email TANG 1 (KHONG hoi chi Hong):\n- Email xac nhan, lich hen, gui tai lieu → Le Na soan + KY TEN LE NA + CC nsca@\n- Su dung Gemini neu can soan dai\n\nBUOC 5: 1 TIN ZALO DUY NHAT cho chi Hong:\nFormat:\n   💼 TCKT EMAIL CHIEU (DD/MM)\n   🔴 Khan: N email\n   • [Nguoi gui A]: [tom tat 1 cau, can quyet dinh]\n   • [Nguoi gui B]: [tom tat]\n   💰 TCKT: M | 📜 Phap ly: K | 🏦 Ngan hang: L\n   ✅ Le Na da tra loi tu dong: X email tang 1\n\nNeu KHONG co email TCKT moi → KHONG GUI gi (im lang).\n\nLenh gui Zalo: `exec: openclaw message send --channel zalouser --target 2389450107733864097 --message \"<noi dung>\"`\n\nLUU Y QUAN TRONG: KHONG bao Sep Khanh ve noi dung TCKT (kenh RIENG cua chi Hong)."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
     "id": "daily-email-triage-anh-ngoc",
     "name": "Daily Email Triage Anh Ngoc - 17h",
     "schedule": {
