@@ -104,6 +104,19 @@
     "sessionTarget": "isolated"
   },
   {
+    "id": "monthly-closing-report-anh-ngoc",
+    "name": "Monthly Closing Report - Cuoi thang (cho anh Ngoc - PKD)",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 21 28-31 * *"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "BAO CAO THANG CHO ANH NGOC (PKD) — NGAY KHOA SO 21H.\n\nKIEM TRA: Chi chay neu HOM NAY LA NGAY CUOI thang. `exec: date -d tomorrow +%d` (neu khong phai '01' → EXIT).\n\nMUC DICH: Tong ket thang cho TP Kinh doanh — pham vi PKD (cap duoi + NPP + khach hang).\n\nNOI DUNG:\n1. **Performance 3 cap duoi:**\n   - Đức (BD Noi dia): pipeline thang, KH chot, doanh so, % KPI ca nhan\n   - Santiago (BD Quoc te): deal quoc te, MIP target progress, doi tac moi\n   - Chi Tâm (BO): don hang xu ly, cong no, logistics issues\n   - **CHAM KPI tung nguoi: A/B/C/D** (de anh Ngoc dung evaluate)\n\n2. **5 NPP noi dia:** doanh so thang, % dat target, top/yeu, pipeline\n\n3. **Khach hang OEM/quoc te:** deal lon thang, pipeline, KH co tiem nang\n\n4. **So sanh thang truoc:** doanh thu, so don, KH moi (+/- %)\n\n5. **De xuat thang sau:** 5-7 uu tien cho team PKD\n\nCACH LAM:\n- Doc sheets: NPP Tracker, Export Revenue, Intl Pipeline, Activity Log, Weekly Performance\n- Quet email cap duoi 30 ngay qua\n- Gemini tong hop (FREE, 8000 tokens)\n- Tao Google Doc: `gdoc-create.js \"PKD Monthly [MM/YYYY]\" \"<content>\"`\n- Export PDF: `gdoc-export.js \"<docId>\" \"pdf\"`\n- Email anh Ngoc + attach PDF (KHONG CC Sep)\n- 1 tin Zalo NGAN cho anh Ngoc:\n   📊 PKD THANG [MM]\n   👥 Đức:N% | Santiago:M% | Tâm:K%\n   📦 5 NPP: top [A], yeu [B] (W% target)\n   💼 Quoc te: X deal moi, Y ty\n   ⚡ Uu tien T sau: [3-5 viec]\n   📄 Chi tiet + PDF: <link>\n\nKHONG forward Sep Khanh, KHONG bao cao tai chinh chi tiet (TCKT)."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
     "id": "monthly-closing-report",
     "name": "Monthly Closing Report - Ngay cuoi thang",
     "schedule": {
