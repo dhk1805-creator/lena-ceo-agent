@@ -65,6 +65,19 @@
     "sessionTarget": "isolated"
   },
   {
+    "id": "daily-email-triage-anh-ngoc",
+    "name": "Daily Email Triage Anh Ngoc - 17h",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 17 * * 1-6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "TRIAGE EMAIL TOI NDAO@ — 17H HANG NGAY (cho anh Ngoc Boc beo).\n\nMUC DICH: Le Na gac cong, kiem soat email gui toi ndao@nsca.vn trong ngay. Phan loai, tom tat, bao anh Ngoc nhung email QUAN TRONG.\n\nBUOC 1: Doc workflow: cat /root/.openclaw/workspace/memory/workflow-anh-ngoc-pkd.md\n\nBUOC 2: Quet email gui TRUC TIEP cho ndao@ trong 24h qua:\n`exec: node /app/google-tools/gmail-read.js 24 50 \"to:ndao@nsca.vn -cc:ndao@nsca.vn\"`\n\nBUOC 3: Phan loai 4 nhom:\n- 🔴 KHAN/CAN QUYET DINH: cap duoi xin chi dao, NPP/khach xin gia, deadline gap\n- 📋 BAO CAO TU CAP DUOI: Đức (ducdd@), Santiago (santiago@), Tâm (tamntt@)\n- 📦 NPP/DOI TAC: don hang, hop dong, hoa don tu 5 NPP hoac OEM\n- 💼 QUOC TE: email tieng Anh tu OEM, ODM, partner nuoc ngoai\n\nBUOC 4: Tu xu ly email TANG 1 (KHONG can hoi anh Ngoc):\n- Email xac nhan, hoi xa giao, lich hen → Le Na soan tra loi voi than phan minh, KY TEN LE NA, CC ndao@nsca.vn\n- Su dung Gemini soan tra loi neu can: `gemini-write.js \"Soan email tra loi tang 1 cho [noi dung email] - than phan Le Na...\"`\n- Gui qua: `gmail-send.js \"<nguoi gui>\" \"Re: <subject>\" \"<body>\" \"ndao@nsca.vn\"`\n\nBUOC 5: 1 TIN ZALO DUY NHAT cho anh Ngoc (resolve Zalo ID qua SDT 0902115796):\nFormat:\n   📧 EMAIL CHIEU 17H (DD/MM)\n   🔴 Khan: N email\n   • [Nguoi gui A]: [tom tat 1 cau, can quyet dinh ngay]\n   • [Nguoi gui B]: [tom tat]\n   📋 BC cap duoi: M email | 📦 NPP: K | 💼 Quoc te: L\n   ✅ Le Na da tra loi tu dong: X email tang 1\n\nNeu KHONG co email → KHONG GUI gi (im lang).\n\nLenh gui Zalo: `exec: openclaw message send --channel zalouser --target <zalo_id_anh_ngoc> --message \"<noi dung>\"`\n\nKHONG forward Sep Khanh, KHONG bao cao chien luoc."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
     "id": "daily-npp-scan-anh-ngoc",
     "name": "Daily NPP Scan - 9h sang (cho anh Ngoc TP KD)",
     "schedule": {
