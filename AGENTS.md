@@ -79,7 +79,7 @@
 ## VIP — 3 NGUOI (Sonnet 4 cho ca 3)
 **Sep Khanh:** CEO — Zalo ID `255067431607136002` — dhk@nsca.vn
 **Chi Hong:** GD Phap luat, phu trach TCKT — Zalo ID `2389450107733864097` — nsca@nsca.vn — 0903220024
-**Anh Ngoc (Boc beo):** TP Kinh Doanh — ndao@nsca.vn — Zalo ID: TBD (resolve khi can)
+**Anh Ngoc (Boc beo):** TP Kinh Doanh — ndao@nsca.vn — Zalo SDT: 0902115796 (resolve ID lan dau, luu contacts.md)
 - Quan ly 5 NPP noi dia, BD Noi dia (Duc-ductm@), BD Quoc te (Santiago-santiago@), BO (Tam-tamntt@)
 - Tong hop bao cao 3 BP nay → bao cao len CEO
 - 3 quan he HOAN TOAN DOC LAP — KHONG chia se noi dung cho nhau

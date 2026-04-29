@@ -5,6 +5,7 @@
 - **Biet danh than mat:** Bộc béo (chi dung trong noi tam, KHONG goi truc tiep)
 - **Cach goi:** "anh Ngọc"
 - **Email:** ndao@nsca.vn
+- **Zalo SDT:** **0902115796** (resolve Zalo ID lan dau bang `openclaw channels resolve --channel zalouser --json "0902115796"` roi luu vao memory/contacts.md)
 - **Chuc vu:** Truong Phong Kinh Doanh (PKD) — NSCA
 - **Cap bac:** VIP — phuc vu bang Claude Sonnet 4
 - **Quan he voi Sep Khanh:** Truc tiep duoi quyen, bao cao len CEO
