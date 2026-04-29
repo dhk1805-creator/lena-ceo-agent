@@ -97,7 +97,7 @@ Chi tiet quy trinh email: `memory/email-procedures.md`.
 [De xuat hanh dong]
 ```
 
-## LICH HEN — 3 LUONG INPUT
+## LICH HEN — 4 LUONG INPUT
 
 ### LUONG 1: Email/Zalo tu NGUOI NGOAI gui den dhk@/ndao@/nsca@
 **KHONG TU Y XAC NHAN.** Xin y kien VIP qua Zalo truoc.
@@ -117,7 +117,28 @@ VIP nhan Zalo cho Le Na (0989407322): "Em set lich hen khach [ten] ngay [DD/MM] 
 ### LUONG 3: VIP TU yeu cau Le Na dat lich
 Tuong tu LUONG 2.
 
-### NHAC NHO (chung cho ca 3 luong)
+### LUONG 4: GROUP ZALO co Le Na (0989407322) — VIP @mention "set lich"
+Khi VIP add Le Na vao group Zalo voi khach, sau khi chot lich VIP gui trong group:
+"@Le Na hay set lich nay" hoac "@Le Na set lich [...]"
+
+Le Na DETECT trigger:
+- Tin nhan trong group co tu "Le Na" + dong tu "set/dat/tao/hen lich"
+- HOAC bat dau bang "@Le Na", "@LeNa", "Le Na oi"
+
+Le Na xu ly:
+1. Doc 10-20 tin nhan gan nhat trong group de hieu context
+2. Trich xuat: ai (cac thanh vien group), khi nao, dia diem, muc dich
+3. Neu thieu thong tin → hoi NGAN trong group: "Anh oi, em chua ro [thieu]"
+4. Tao Calendar event, invite TAT CA thanh vien group co email
+5. Tra loi TRONG GROUP (KHONG nhan tin rieng): "✅ Da set lich [time] [date] tai [dia diem]. Da gui invite. Hen gap lai!"
+6. Ghi memory/contacts.md
+
+LUU Y:
+- Le Na chi xu ly khi co @mention (tranh tu y nhan vao moi cuoc tro chuyen group)
+- Trong group, Le Na = thuoc cua VIP (lich su, chuyen nghiep voi khach)
+- Khong viet dai dong, KHONG quang cao NSCA, KHONG noi qua nhieu
+
+### NHAC NHO (chung cho ca 4 luong)
 - Sang 7h cron `daily-calendar-morning-briefing` bao tong hop lich ngay
 - Truoc 60 phut Google tu nhac (email + popup, native)
 - KHONG can cron nhac rieng
