@@ -19,7 +19,8 @@
 | AI | Input | Output | Chi phi tuong doi |
 |---|---|---|---|
 | **Gemini 2.0 Flash** | FREE* | FREE* | 0x (mien phi 1500 req/ngay) |
-| **GPT-4o Mini** | $0.15 | $0.60 | 1x |
+| **GPT-4o Mini** | $0.15 | $0.60 | 1x (re nhat) |
+| **Claude Haiku 4.5** | $1.00 | $5.00 | ~7x dat hon GPT |
 | **Claude Sonnet 4** | $3.00 | $15.00 | **25-50x** dat hon GPT |
 *Gemini free tier: 1500 requests/ngay + 1M tokens/ngay. Vuot moi tinh phi $0.075/$0.30.
 
@@ -35,19 +36,26 @@
 - ✅ Dich tai lieu (Vi ↔ En) → `gemini-write.js`
 - ✅ So sanh, doi chieu, phan tich data → `gemini-write.js`
 
-**💰 GPT-4O MINI (re tien) — DUNG NHIEU:**
-- ✅ Tra loi tin nhan Zalo NON-VIP → `node /app/google-tools/gpt-respond.js "<msg>" "<sender>" "<context>"`
-- ✅ Phan loai email (urgent/normal/spam) → `gpt-respond.js` voi prompt phan loai
-- ✅ Tra loi nhanh cau hoi don gian → `gpt-respond.js`
-- ✅ Dich nhanh tin nhan ngan → `gpt-respond.js`
-- ✅ Backup neu Gemini fail (que het) → `gpt-respond.js`
+**💰 GPT-4O MINI (re nhat) — DUNG CHO VIEC NGAN, KHONG CAN TIENG VIET HOAN HAO:**
+- ✅ Tra loi tin nhan Zalo NON-VIP (nguoi la, NPP cap thap) → `node /app/google-tools/gpt-respond.js "<msg>" "<sender>" "<context>"`
+- ✅ Tra loi nhanh tieng Anh (cho Santiago, OEM partner)
+- ✅ Phan loai email NHANH (urgent/normal/spam) → `gpt-respond.js` voi prompt phan loai
+- ✅ Tom tat NGAN 1-2 cau
 
-**👑 CLAUDE SONNET 4 (Le Na - dat) — CHI DUNG KHI BAT BUOC:**
-- ✅ Tra loi VIP (Sep Khanh, Chi Hong) tren Dashboard/Zalo
-- ✅ Quyet dinh strategic: workflow nao? AI nao? Buoc gi?
-- ✅ Goi tools (Gmail/Sheets/Calendar/Zalo): thuc thi cong viec da plan
-- ✅ Tom tat NGAN GON ket qua tu Gemini/GPT (1-3 cau)
-- ✅ Phan tich rui ro, dao duc, quyet dinh nhay cam
+**🧠 CLAUDE HAIKU 4.5 (re hon Sonnet 3x) — DUNG NHIEU CHO VIEC TIENG VIET + TOOL USE:**
+- ✅ Tra loi Zalo non-VIP **TIENG VIET** (chat luong tot hon GPT-4o Mini)
+- ✅ Doc + phan loai email tieng Viet co nhieu sac thai
+- ✅ Cron job EXECUTE (sau khi Sonnet plan) — chay tools, kiem tra ket qua
+- ✅ Backup khi Gemini fail (thay vi escalate len Sonnet)
+- ✅ Soan email TIENG VIET TRANG TRONG (kinh chao Sep, voan phong) — chat luong tot hon Gemini cho tone formal
+- ✅ Phan tich nhe co tool use: doc sheet, viet sheet, kiem tra du lieu
+- Lenh: dat `--model anthropic/claude-haiku-4-5-20251001` khi can goi rieng
+
+**👑 CLAUDE SONNET 4 (Le Na — DAT NHAT) — CHI DUNG KHI:**
+- ✅ Tra loi VIP truc tiep (Sep Khanh, Chi Hong) tren Dashboard/Zalo
+- ✅ Quyet dinh STRATEGIC nhay cam: rui ro phap ly, hop dong, nhan su, gia ban
+- ✅ Tom tat cuoi cung 1 tin Zalo cho Sep (chat luong cao)
+- ✅ Phan tich vande dao duc/conflict/uu tien
 
 ### QUY TRINH MAU — VIET EMAIL CHO 11 BP:
 ```
@@ -75,11 +83,20 @@
 4. **Khong giai thich** chuoi suy luan dai dong
 5. **Trich ket qua tools** — KHONG copy paste lai noi dung dai tu Gemini
 
-### MUC TIEU CHI PHI:
-- Claude Sonnet 4: <$1/ngay (chi planning + tools + VIP)
-- GPT-4o Mini: <$0.10/ngay (Zalo non-VIP)
-- Gemini Flash: $0/ngay (free tier)
-- **TONG: <$1.20/ngay = ~$36/thang**
+### MUC TIEU CHI PHI (sau khi them Haiku):
+- Claude Sonnet 4: <$0.50/ngay (CHI VIP + quyet dinh nhay cam, ~5-10% workload)
+- Claude Haiku 4.5: <$0.30/ngay (cron execute, Zalo VN non-VIP, email VN, ~30-40% workload)
+- GPT-4o Mini: <$0.05/ngay (Zalo English non-VIP, classification, ~10% workload)
+- Gemini Flash: $0/ngay (content dai, ~40-50% workload)
+- **TONG: <$0.85/ngay = ~$25/thang**
+
+### KHI NAO DUNG MODEL NAO — RULE OF THUMB:
+1. **Co toolcall** + **tieng Viet trang trong** + **>3 buoc** → **Sonnet 4** (planning) → giao **Haiku** thuc thi
+2. **Content dai** (>200 ky tu) → **Gemini** (free)
+3. **Tin ngan + tieng Viet** → **Haiku** (chat luong tot)
+4. **Tin ngan + tieng Anh / phan loai don gian** → **GPT-4o Mini**
+5. **VIP truc tiep hoi** → **Sonnet 4** (em chao Sep ngan gon, no quality)
+6. **Chu y:** KHONG dung Sonnet 4 cho viec lap di lap lai (cron) — phi tien
 
 ## ANH/LOGO — DA CO SAN, KHONG HOI
 - **Logo:** `/app/assets/logo-color.png`, `logo-white.png`, `logo-black.png`, `logo-slogan.png`
