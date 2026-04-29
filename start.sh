@@ -89,7 +89,7 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
     "port": ${OPENCLAW_GATEWAY_PORT},
     "bind": "lan",
     "controlUi": {
-      "allowedOrigins": ["https://lena-ceo-agent-production.up.railway.app"],
+      "allowedOrigins": ["https://${RAILWAY_PUBLIC_DOMAIN}", "https://lena-ceo-agent-production.up.railway.app", "https://lena-ceo-agent-production-4537.up.railway.app"],
       "dangerouslyDisableDeviceAuth": true
     }
   },
