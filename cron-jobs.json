@@ -40,10 +40,10 @@
   },
   {
     "id": "weekly-business-report-monday",
-    "name": "Weekly Business Report - 8h T2 (ca nhan hoa 14 BP + tong hop Sep)",
+    "name": "Weekly Business Report - 9h30 T2 (sau anh Ngoc 9h, ca nhan hoa 11 BP + tong hop Sep)",
     "schedule": {
       "kind": "cron",
-      "expr": "0 8 * * 1"
+      "expr": "30 9 * * 1"
     },
     "payload": {
       "kind": "agentTurn",
