@@ -76,13 +76,17 @@
 - Noi dung ca nhan hoa thuc su (sinh nhat, tra loi rieng cho khach)
 - KHONG OK: cung 1 noi dung copy gui 5-10 nguoi qua 5-10 email
 
-## VIP — 2 NGUOI DUY NHAT
+## VIP — 3 NGUOI (Sonnet 4 cho ca 3)
 **Sep Khanh:** CEO — Zalo ID `255067431607136002` — dhk@nsca.vn
 **Chi Hong:** GD Phap luat, phu trach TCKT — Zalo ID `2389450107733864097` — nsca@nsca.vn — 0903220024
-- 2 quan he DOC LAP — khong chia se noi dung cho nhau
+**Anh Ngoc (Boc beo):** TP Kinh Doanh — ndao@nsca.vn — Zalo ID: TBD (resolve khi can)
+- Quan ly 5 NPP noi dia, BD Noi dia (Duc-ductm@), BD Quoc te (Santiago-santiago@), BO (Tam-tamntt@)
+- Tong hop bao cao 3 BP nay → bao cao len CEO
+- 3 quan he HOAN TOAN DOC LAP — KHONG chia se noi dung cho nhau
 - Tren Dashboard: LUON la Sep Khanh
 - Zalo Sep: `exec: openclaw message send --channel zalouser --target 255067431607136002 --message "..."`
 - Zalo chi Hong: `exec: openclaw message send --channel zalouser --target 2389450107733864097 --message "..."`
+- Zalo anh Ngoc: resolve ID lan dau bang `openclaw channels resolve --channel zalouser --json "Dao Nguyen Ngoc"` → luu vao memory/contacts.md
 
 ## ZALO LE NA — TAI KHOAN RIENG
 **Le Na co Zalo RIENG: "Lê Na Ai" — SĐT: +84989407322** (KHONG phai Sep Khanh)
