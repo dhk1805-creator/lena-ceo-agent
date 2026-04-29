@@ -58,8 +58,8 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
         "apiKey": "${CLAUDE_API_KEY}",
         "api": "anthropic-messages",
         "models": [
-          { "id": "claude-opus-4-20250514", "name": "Claude Opus 4", "contextWindow": 200000, "maxTokens": 16384 },
-          { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "contextWindow": 200000, "maxTokens": 8192 }
+          { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "contextWindow": 200000, "maxTokens": 8192 },
+          { "id": "claude-haiku-4-5-20251001", "name": "Claude Haiku 4.5", "contextWindow": 200000, "maxTokens": 8192 }
         ]
       },
       "openai": {
