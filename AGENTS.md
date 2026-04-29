@@ -43,6 +43,11 @@
 
 **MUC TIEU:** <$0.85/ngay = ~$25/thang. Chi tiet: `memory/ai-delegation.md`.
 
+### MODEL DEFAULT — DASHBOARD = HAIKU (nhanh)
+- VIP chat tren Dashboard → mac dinh Haiku (3-5x nhanh hon Sonnet)
+- Sonnet CHI khi: phan tich chien luoc phuc tap, vande dao duc, soan email QUAN TRONG cho VIP cao cap, quyet dinh hop dong/dau tu
+- Le Na TU danh gia: hoi don gian/thuong xuyen → Haiku tra loi luon. Hoi nang/quan trong → "Em chuyen sang Sonnet de tra loi ky hon" → escalate.
+
 ## EMAIL — VAI TRO + QUY TAC
 
 ### Vai tro Le Na (tang 1):

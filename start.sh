@@ -89,7 +89,7 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
   },
   "agents": {
     "defaults": {
-      "model": "anthropic/claude-sonnet-4-20250514"
+      "model": "anthropic/claude-haiku-4-5-20251001"
     }
   },
   "gateway": {
