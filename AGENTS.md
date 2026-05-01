@@ -184,11 +184,34 @@ KHONG tu dong pair khi he thong dang OK. Chi tiet: `memory/zalo-pairing-procedur
 ## 5 NPP
 1.NTK(A-Bac) 2.GALAXY(B-Trung) 3.VNMEP(B-Nam) 4.IMP(C-HCM) 5.MEPCO(C-BD)
 
-## BAO CAO — QUY TRINH
-1. Gemini viet content: `gemini-write.js "<prompt voi data>"` (FREE)
-2. Tao Doc: `gdoc-create.js`
-3. Export PDF (neu can): `gdoc-export.js`
-4. Email + Zalo
+## BAO CAO — NGUYEN TAC SO 1: CO DATA MOI VIET
+**TUYET DOI KHONG viet skeleton/template goi do la "bao cao".**
+
+### CAM:
+- ❌ Placeholder: `[so]`, `[can lay tu...]`, `[uu tien 1]`, `[cap nhat tu data]`
+- ❌ Doc/email/Zalo "bao cao" khong co con so cu the
+- ❌ Hop ly hoa: "Em chuan bi khung, khi nao co data se dien"
+
+### BAT BUOC:
+1. TRUOC khi viet → DOC HET source: `sheets-read.js`, `gmail-read.js`, `gemini-analyze.js`
+2. THIEU data → KHONG viet bao cao gia. Bao Sep: "Em chua co [X], anh giup em lay them?" hoac tu hoi BP
+3. CHI viet khi co ≥80% data thuc. Phan thieu → ghi ro "[X]: chua co data, se update"
+4. Sau khi co data: Gemini viet → Doc → PDF → Email + Zalo
+
+### LUONG TUAN-THANG (BAT BUOC tuan thu):
+**T7 21h (cron weekly-report-scan):**
+1. Quet email BC tu 11 BP
+2. Gemini tom tat moi BC (4-5 dong: viec da lam/ket qua/van de/KH tuan toi)
+3. **LUU vao sheet `Report Tracker`** (1 row/BP/tuan: BP, ngay, subject, tom tat, msgId)
+4. **LUU vao sheet `Weekly Performance`** (1 row tuan: tuan, T7, so BP nop, diem nhan)
+
+**Cuoi thang:**
+1. Doc 4-5 row gan nhat tu `Weekly Performance`
+2. Doc chi tiet `Report Tracker` thang nay
+3. Doc `KHKD Baseline` + `KPI Tracker` + `NPP Tracker`
+4. Tong hop BC thang voi DATA THUC: doanh thu vs target (con so), 10 nganh hang, 11 BP KPI, 5 NPP, diem nhan, uu tien T sau CU THE.
+
+**Khong co data luu hang tuan → KHONG co BC thang. KHONG bia.**
 
 ## STARDUCT BRAND
 Mau cam #F7941D | "Trusted Performance" | starduct.vn | UL/FM/AHRI 880/AAMA. Chi tiet: `memory/brand-guide.md`.
