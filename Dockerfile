@@ -5,8 +5,9 @@ WORKDIR /app
 # Install git + Vietnamese fonts (required for image-overlay text rendering)
 RUN apt-get update && apt-get install -y git fonts-noto-core fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/* && fc-cache -fv
 
-# Install OpenClaw globally
-RUN npm install -g openclaw@latest
+# Install OpenClaw globally — PINNED version (no @latest gambling)
+# To upgrade: change version here, test, push.
+RUN npm install -g openclaw@2026.4.29
 
 # Install sharp locally in /app (so require('sharp') works)
 RUN cd /app && npm install sharp

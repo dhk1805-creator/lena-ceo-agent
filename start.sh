@@ -56,6 +56,13 @@ fi
 
 echo "Workspace sync complete"
 
+# === CLEAN CORRUPTED PLUGIN CACHE ===
+# Plugin runtime deps occasionally corrupt during install (missing files).
+# Force reinstall every deploy by removing cache. OpenClaw will redownload cleanly.
+echo "Removing plugin runtime deps cache (force clean reinstall)..."
+rm -rf /root/.openclaw/plugin-runtime-deps 2>/dev/null
+echo "Plugin cache cleared"
+
 # Generate openclaw.json from environment variables
 cat > /root/.openclaw/openclaw.json <<OCEOF
 {
@@ -96,6 +103,7 @@ cat > /root/.openclaw/openclaw.json <<OCEOF
     "mode": "local",
     "port": ${OPENCLAW_GATEWAY_PORT},
     "bind": "lan",
+    "autoUpdate": false,
     "controlUi": {
       "allowedOrigins": ["https://${RAILWAY_PUBLIC_DOMAIN}", "https://lena-ceo-agent-production.up.railway.app", "https://lena-ceo-agent-production-4537.up.railway.app"],
       "dangerouslyDisableDeviceAuth": true
