@@ -31,14 +31,16 @@ cp -f /app/workspace/MEMORY.md /root/.openclaw/workspace/MEMORY.md 2>/dev/null
 cp -rf /app/workspace/skills/* /root/.openclaw/workspace/skills/ 2>/dev/null
 cp -rf /app/workspace/memory/* /root/.openclaw/workspace/memory/ 2>/dev/null
 
-# === ZALO CREDENTIALS (Volume-only, NO fallback) ===
-# Credentials live ONLY on persistent volume — never baked into image.
-# If no credentials exist, channel stays unconfigured until admin pairs via QR.
-if [ ! -f /root/.openclaw/credentials/zalouser/credentials.json ]; then
-  echo "WARNING: No Zalo credentials on volume. Channel will be unconfigured."
-  echo "Run 'openclaw channels pair --channel zalouser' on Dashboard to pair."
-else
+# === ZALO CREDENTIALS (Volume + env var fallback) ===
+mkdir -p /root/.openclaw/credentials/zalouser
+if [ -f /root/.openclaw/credentials/zalouser/credentials.json ]; then
   echo "Zalo credentials found on volume. Channel ready."
+elif [ -n "$ZALO_CREDS_B64" ]; then
+  echo "No credentials on volume. Restoring from ZALO_CREDS_B64 env var..."
+  echo "$ZALO_CREDS_B64" | base64 -d > /root/.openclaw/credentials/zalouser/credentials.json
+  echo "Zalo credentials restored from env var ($(wc -c < /root/.openclaw/credentials/zalouser/credentials.json) bytes)"
+else
+  echo "WARNING: No Zalo credentials anywhere. Channel will be unconfigured."
 fi
 
 # Only clear sessions if AGENTS.md hash changed (avoid cold start every deploy)
