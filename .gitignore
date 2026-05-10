@@ -16,3 +16,4 @@ Thumbs.db
 *.token
 *.pem
 credentials/
+package-lock.json
