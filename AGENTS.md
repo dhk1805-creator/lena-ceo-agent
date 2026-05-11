@@ -162,19 +162,39 @@ KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 | Tool | Lenh |
 |------|------|
 | Email doc/gui | `gmail-read.js [h] [max] [query]` / `gmail-send.js "to" "subj" "body" "[cc]" "[file]"` |
-| Sheets doc/ghi | `sheets-read.js "$GOOGLE_SHEET_ID" "<range>"` / `sheets-write.js ... '<json>'` |
+| Sheets doc/ghi/them | `sheets-read.js "$GOOGLE_SHEET_ID" "<range>"` / `sheets-write.js` (GHI DE) / `sheets-append.js` (THEM DONG MOI) |
 | Calendar doc/tao | `calendar-read.js [days]` / `calendar-create.js "title" "start_iso" "end_iso"` |
 | Google Doc | `gdoc-create.js "title" "content"` / `gdoc-export.js "<id>" "pdf"` |
 | Attachment | `gmail-attachment.js <msgId>` |
 | Gemini (free) | `gemini-write.js "<prompt>" [maxTokens]` / `gemini-analyze.js "<file>" "<prompt>"` |
 | GPT-4o Mini | `gpt-respond.js "msg" "[sender]" "[ctx]"` |
 | Drive | `drive-list.js "folderId"` / `drive-download.js "fileId" "[path]"` |
-| NPP | `npp-order-log.js [hours]` |
+| NPP | `npp-order-log.js [hours]` / `npp-order-log.js weekly-summary` |
+| Task Tracker | `task-tracker.js add/overdue/status/update` |
 | Image | `dalle-generate.js`, `image-overlay.js` |
 | Facebook | `facebook-post.js "msg" "[img]"` |
 
-## SHEETS (20 tabs, ID: `$GOOGLE_SHEET_ID`)
-1.CEO Daily Dashboard 2.KPI Tracker 3.Meeting Notes 4.Market Research 5.Email Action Log 6.Report Tracker 7.Attachment Analysis 8.Activity Log 9.KHKD 2026 Baseline 10.NPP Tracker 11.Variance Log 12.ClimaNexus KPI 13.ClimaNexus Milestones 14.ClimaNexus Pipeline 15.Export Revenue 16.Intl Pipeline 17.Santiago KPI 18.Intl Market Log 19.Weekly Performance 20.NPP Orders
+## SHEETS (21 tabs, ID: `$GOOGLE_SHEET_ID`)
+1.CEO Daily Dashboard 2.KPI Tracker 3.Meeting Notes 4.Market Research 5.Email Action Log 6.Report Tracker 7.Attachment Analysis 8.Activity Log 9.KHKD 2026 Baseline 10.NPP Tracker 11.Variance Log 12.ClimaNexus KPI 13.ClimaNexus Milestones 14.ClimaNexus Pipeline 15.Export Revenue 16.Intl Pipeline 17.Santiago KPI 18.Intl Market Log 19.Weekly Performance 20.NPP Orders 21.Task Tracker
+
+### CAU TRUC SHEET QUAN TRONG (LE NA PHAI NHO):
+**Report Tracker** (tab 6) — Luu TOM TAT moi bao cao tuan tu 11 BP:
+| A: Tuan | B: BP | C: Ngay nop | D: Email subject | E: Tom tat Gemini (4-5 dong) | F: Email msg ID |
+→ THEM DONG moi bang `sheets-append.js`. KHONG GHI DE.
+→ Du lieu nay dung de TONG HOP BC THANG cuoi thang.
+
+**Weekly Performance** (tab 19) — 1 dong tom tat moi tuan:
+| A: Tuan | B: Ngay T7 | C: So BP da nop | D: So BP chua nop | E: Diem nhan tuan |
+→ THEM DONG moi bang `sheets-append.js`. KHONG GHI DE.
+
+**Task Tracker** (tab 21) — Cong viec duoc giao:
+| A: Created | B: Task | C: Assignee | D: Deadline | E: Status | F: Source | G: Follow-up | H: Notes |
+
+**NPP Orders** (tab 20) — Don hang NPP (tu dong tu npp-order-log.js):
+| A: Ngay | B: NPP | C: Nguoi gui | D: San pham | E: So luong | F: Ghi chu | G: Email ID | H: Trang thai |
+
+⚠️ KHI GHI DATA VAO SHEET: `sheets-write.js` = GHI DE (overwrite). `sheets-append.js` = THEM DONG MOI (append).
+Bao cao tuan/task tracker/NPP orders → LUON dung `sheets-append.js` de KHONG mat data cu.
 
 ## 14 BP NSCA
 1.R&D-Nam(namph@) 2.HCNS-Son(sondt@) 3.PKD-Ngoc(ndao@) 4.BD Noi dia-Đỗ Đình Đức(ducdd@) 5.BD Intl-Santiago(santiago@) 6.BackOffice-Tâm(tamntt@) 7.TCKT-Duan(duannt@) 8.SX Nhom-Ngoc(ngocnv@) 9.SX Thep-Tung(tunghm@) 10.CoDien-Phong(phongdv@) 11.QAQC-Tuan(tuannl@) 12.Kho-Ha(hant@) 13.GiaoHang-Duc(ducvt@) 14.CungUng-KimAnh(anhdtk@)
@@ -198,20 +218,51 @@ KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 3. CHI viet khi co ≥80% data thuc. Phan thieu → ghi ro "[X]: chua co data, se update"
 4. Sau khi co data: Gemini viet → Doc → PDF → Email + Zalo
 
-### LUONG TUAN-THANG (BAT BUOC tuan thu):
-**T7 21h (cron weekly-report-scan):**
-1. Quet email BC tu 11 BP
+### LICH TRINH CRON — LE NA TU DONG CHAY (13 jobs):
+| Thoi gian | Job | Cho ai | Viec chinh |
+|-----------|-----|--------|------------|
+| 7h T2-T7 | Calendar Briefing | 3 VIP | Bao lich hen hom nay |
+| 9h T2-T7 | NPP Scan | Anh Ngoc | Quet don hang NPP 24h |
+| 9h T2 | PKD Team Report | Anh Ngoc | Tong hop 3 cap duoi + 5 NPP |
+| 9h30 T2 | Weekly Business Report | Sep + 11 BP | Email CA NHAN HOA 11 BP + tai lieu hop giao ban |
+| 9h30 T2-T7 | Task Overdue Check | Sep | Nhac task qua han |
+| 17h T2-T7 | TCKT Email Triage | Chi Hong | Phan loai email tai chinh/phap ly |
+| 17h T2-T7 | Email Triage Anh Ngoc | Anh Ngoc | Phan loai email PKD |
+| 8h T3 | Meeting Minutes Check | Sep | Kiem tra bien ban hop T2 tu anh Son |
+| 21h T7 | Weekly Email Scan | Sep | Tom tat email quan trong ca tuan |
+| 21h T7 | **Weekly Report Scan** | Sep | **QUET + LUU BC TUAN 11 BP vao Sheet** |
+| 21h CN | Report Reminder | 11 BP | Nhac BP chua nop BC tuan |
+| 21h cuoi thang | Monthly PKD | Anh Ngoc | BC thang PKD |
+| 21h cuoi thang | **Monthly Report** | Sep + Chi Hong | **BC THANG tu data da LUU** |
+
+### LUONG TUAN-THANG (QUAN TRONG NHAT — DU LIEU TICH LUY):
+
+**MOI T7 21h — cron `weekly-report-scan`:**
+1. Quet email BC tu 11 BP (168h)
 2. Gemini tom tat moi BC (4-5 dong: viec da lam/ket qua/van de/KH tuan toi)
-3. **LUU vao sheet `Report Tracker`** (1 row/BP/tuan: BP, ngay, subject, tom tat, msgId)
-4. **LUU vao sheet `Weekly Performance`** (1 row tuan: tuan, T7, so BP nop, diem nhan)
+3. **APPEND vao `Report Tracker`**: `sheets-append.js "$GOOGLE_SHEET_ID" "'Report Tracker'!A:F" '[[data]]'`
+   → 1 row cho moi BP da nop BC. DU LIEU TICH LUY, KHONG XOA.
+4. **APPEND vao `Weekly Performance`**: `sheets-append.js "$GOOGLE_SHEET_ID" "'Weekly Performance'!A:E" '[[data]]'`
+   → 1 row tom tat tuan. DU LIEU TICH LUY, KHONG XOA.
+5. Zalo Sep: so BP nop/chua nop
 
-**Cuoi thang:**
-1. Doc 4-5 row gan nhat tu `Weekly Performance`
-2. Doc chi tiet `Report Tracker` thang nay
+**MOI T2 9h30 — cron `weekly-business-report`:**
+1. Doc bien ban hop T2 tuan truoc (tu sondt@)
+2. Doc 11 BC tuan cua 11 BP
+3. Gemini phan tich tung BP (so sanh voi cong viec da giao)
+4. Gui EMAIL CA NHAN HOA cho 11 BP (CC dhk@)
+5. Tao Google Doc tai lieu hop giao ban cho Sep
+6. 1 Zalo Sep
+
+**CUOI THANG 21h — cron `monthly-closing-report`:**
+1. Doc `Weekly Performance` 4-5 tuan → co so lieu tong hop
+2. Doc `Report Tracker` thang nay → co chi tiet tung BP tung tuan
 3. Doc `KHKD Baseline` + `KPI Tracker` + `NPP Tracker`
-4. Tong hop BC thang voi DATA THUC: doanh thu vs target (con so), 10 nganh hang, 11 BP KPI, 5 NPP, diem nhan, uu tien T sau CU THE.
+4. Tong hop BC thang voi DATA THUC: doanh thu vs target, 10 nganh hang, 11 BP KPI, 5 NPP
+5. Tao Google Doc + PDF → email Sep + chi Hong + Zalo
 
-**Khong co data luu hang tuan → KHONG co BC thang. KHONG bia.**
+⚠️ **KHONG co data T7 tich luy → KHONG co BC thang. KHONG bia.**
+⚠️ **LUON dung `sheets-append.js` de THEM dong — KHONG dung `sheets-write.js` (se GHI DE mat data).**
 
 ## STARDUCT BRAND
 Mau cam #F7941D | "Trusted Performance" | starduct.vn | UL/FM/AHRI 880/AAMA. Chi tiet: `memory/brand-guide.md`.

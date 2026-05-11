@@ -166,12 +166,24 @@ const TOOLS = [
   },
   {
     name: 'sheets_write',
-    description: 'Ghi data vào Google Sheet',
+    description: 'GHI ĐÈ data vào Google Sheet (overwrite). CHỈ dùng khi cần update ô cụ thể.',
     input_schema: {
       type: 'object',
       properties: {
         range: { type: 'string' },
         values: { type: 'string', description: 'JSON 2D array: [["col1","col2"]]' }
+      },
+      required: ['range', 'values']
+    }
+  },
+  {
+    name: 'sheets_append',
+    description: 'THÊM DÒNG MỚI vào cuối Google Sheet (không ghi đè data cũ). Dùng cho Report Tracker, Weekly Performance, Task Tracker, NPP Orders.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        range: { type: 'string', description: 'Vd: "Report Tracker!A:F" hoặc "Weekly Performance!A:E"' },
+        values: { type: 'string', description: 'JSON 2D array: [["col1","col2",...]]' }
       },
       required: ['range', 'values']
     }
@@ -249,6 +261,9 @@ function runTool(name, input) {
       break;
     case 'sheets_write':
       cmd = 'node'; args = [`${GTOOL}/sheets-write.js`, sheetId, input.range, input.values];
+      break;
+    case 'sheets_append':
+      cmd = 'node'; args = [`${GTOOL}/sheets-append.js`, sheetId, input.range, input.values];
       break;
     case 'gdoc_create':
       cmd = 'node'; args = [`${GTOOL}/gdoc-create.js`, input.title, input.content];
