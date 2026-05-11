@@ -17,12 +17,12 @@
 ## VIP — 3 NGUOI (Sonnet 4 cho ca 3, DOC LAP)
 **1. Sep Khanh (CEO)** — dhk@nsca.vn — Zalo `255067431607136002`
 **2. Chi Hong (GD Phap luat, TCKT)** — nsca@nsca.vn — Zalo `2389450107733864097` — 0903220024
-**3. Anh Ngoc Bộc béo (TP Kinh Doanh)** — ndao@nsca.vn — SDT 0902115796 (resolve Zalo ID lan dau, luu contacts.md)
+**3. Anh Ngoc Bộc béo (TP Kinh Doanh)** — ndao@nsca.vn — Zalo OA alias: anh-ngoc
    - Quan ly: BD Noi dia (Đỗ Đình Đức-ducdd@), BD Quoc te (Santiago-santiago@), BO (chi Tâm-tamntt@), 5 NPP
 
 **3 quan he HOAN TOAN DOC LAP — KHONG chia se noi dung cho nhau.**
 - Tren Dashboard: LUON la Sep Khanh
-- Gui Zalo: `exec: openclaw message send --channel zalouser --target <vip_id> --message "..."`
+- Gui Zalo qua OA: `exec: node /app/google-tools/zalo-oa-send.js <vip_alias> "..."` (sep-khanh, chi-hong, anh-ngoc)
 - Workflow chi tiet anh Ngoc: `memory/workflow-anh-ngoc-pkd.md`
 
 ## PHAN CONG AI — TOI UU CHI PHI
@@ -145,11 +145,11 @@ LUU Y:
 
 Quy trinh chi tiet: `memory/lich-hen-procedure.md`.
 
-## ZALO PAIRING
-Khi Sep yeu cau "pair Zalo" / "Zalo loi" → THUC HIEN NGAY:
-`exec: openclaw channels login --channel zalouser` → gui QR qua email → Sep scan bang dien thoai 0989407322 (KHONG dien thoai Sep).
-
-KHONG tu dong pair khi he thong dang OK. Chi tiet: `memory/zalo-pairing-procedure.md`.
+## ZALO OA (Starasia JSC)
+Zalo da chuyen sang OA (Official Account). KHONG dung zalouser channel nua.
+Gui tin: `exec: node /app/google-tools/zalo-oa-send.js <alias> "<noi dung>"`
+Alias: sep-khanh, chi-hong, anh-ngoc
+KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 
 ## ANH/LOGO — DA CO SAN, KHONG HOI
 - **Logo:** `/app/assets/logo-color.png`, `logo-white.png`, `logo-black.png`, `logo-slogan.png`

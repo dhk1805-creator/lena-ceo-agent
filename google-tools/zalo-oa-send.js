@@ -16,10 +16,23 @@
 //   [Lê Na] <message>
 //   — Đào Thị Lê Na
 
-const ACCESS_TOKEN = process.env.ZALO_OA_ACCESS_TOKEN;
+const fs = require('fs');
+const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+
+function getAccessToken() {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+      if (data.access_token) return data.access_token;
+    }
+  } catch (e) {}
+  return process.env.ZALO_OA_ACCESS_TOKEN;
+}
+
+const ACCESS_TOKEN = getAccessToken();
 
 if (!ACCESS_TOKEN) {
-  console.error(JSON.stringify({ success: false, error: 'ZALO_OA_ACCESS_TOKEN env var not set' }));
+  console.error(JSON.stringify({ success: false, error: 'No OA access token (file or env var)' }));
   process.exit(1);
 }
 

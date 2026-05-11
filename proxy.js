@@ -14,10 +14,65 @@ const FRONT_PORT = parseInt(process.env.PORT || '8080', 10);
 const OPENCLAW_PORT = parseInt(process.env.OPENCLAW_INTERNAL_PORT || '8090', 10);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-const ZALO_OA_ACCESS_TOKEN = process.env.ZALO_OA_ACCESS_TOKEN;
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
 const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';      // For complex VIP requests
+
+// === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
+const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+
+function getOAToken() {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+      if (data.access_token) return data.access_token;
+    }
+  } catch (e) {}
+  return process.env.ZALO_OA_ACCESS_TOKEN;
+}
+
+function getRefreshToken() {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+      if (data.refresh_token) return data.refresh_token;
+    }
+  } catch (e) {}
+  return process.env.ZALO_OA_REFRESH_TOKEN;
+}
+
+async function refreshOAToken() {
+  const refreshToken = getRefreshToken();
+  const appId = process.env.ZALO_OA_APP_ID;
+  const secret = process.env.ZALO_OA_SECRET;
+  if (!refreshToken || !appId || !secret) {
+    console.error('[token] Missing credentials for refresh');
+    return false;
+  }
+  try {
+    const res = await fetch('https://oauth.zaloapp.com/v4/oa/access_token', {
+      method: 'POST',
+      headers: { 'secret_key': secret, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ refresh_token: refreshToken, app_id: appId, grant_type: 'refresh_token' }).toString()
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      fs.writeFileSync(TOKEN_FILE, JSON.stringify({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        refreshed_at: new Date().toISOString(),
+        expires_in: data.expires_in
+      }, null, 2));
+      console.log(`[token] Refreshed OK at ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Next in 20h.`);
+      return true;
+    }
+    console.error('[token] Refresh failed:', JSON.stringify(data));
+    return false;
+  } catch (e) {
+    console.error('[token] Refresh error:', e.message);
+    return false;
+  }
+}
 
 const VIP_USERS = {
   [process.env.ZALO_OA_USER_SEP_KHANH || '_none_sep']: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO', model: CLAUDE_MODEL_VIP },
@@ -341,10 +396,12 @@ LƯU Ý: 3 VIP độc lập, KHÔNG forward thông tin giữa họ trừ khi đ�
 
 async function sendZaloMessage(userId, message) {
   const formatted = `${message.trim()}\n\n— Lê Na`;
+  const token = getOAToken();
+  if (!token) throw new Error('No OA access token available');
   const res = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
     method: 'POST',
     headers: {
-      'access_token': ZALO_OA_ACCESS_TOKEN,
+      'access_token': token,
       'Content-Type': 'application/json; charset=UTF-8'
     },
     body: JSON.stringify({
@@ -379,6 +436,14 @@ const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
   console.log(`[proxy] Public ${FRONT_PORT} -> OpenClaw ${OPENCLAW_PORT}`);
   console.log(`[proxy] Static: ${PUBLIC_DIR}`);
   console.log(`[proxy] Zalo OA 2-way bridge: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
+
+  // Auto-refresh OA token every 20h (token expires 25h, 5h buffer)
+  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20h
+  setTimeout(() => {
+    refreshOAToken();
+    setInterval(refreshOAToken, REFRESH_INTERVAL);
+  }, REFRESH_INTERVAL);
+  console.log(`[token] Auto-refresh scheduled every 20h. Current token: ${getOAToken() ? 'OK' : 'MISSING'}`);
 });
 
 server.on('upgrade', ocProxy.upgrade);

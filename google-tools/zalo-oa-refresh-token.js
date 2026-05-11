@@ -9,12 +9,26 @@
 //   { access_token, refresh_token, expires_in } — token mới
 //   → Update Railway env vars: ZALO_OA_ACCESS_TOKEN + ZALO_OA_REFRESH_TOKEN
 
+const fs = require('fs');
+const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+
 const APP_ID = process.env.ZALO_OA_APP_ID;
 const SECRET = process.env.ZALO_OA_SECRET;
-const REFRESH_TOKEN = process.env.ZALO_OA_REFRESH_TOKEN;
+
+function getRefreshToken() {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+      if (data.refresh_token) return data.refresh_token;
+    }
+  } catch (e) {}
+  return process.env.ZALO_OA_REFRESH_TOKEN;
+}
+
+const REFRESH_TOKEN = getRefreshToken();
 
 if (!APP_ID || !SECRET || !REFRESH_TOKEN) {
-  console.error(JSON.stringify({ success: false, error: 'Missing env vars: ZALO_OA_APP_ID, ZALO_OA_SECRET, ZALO_OA_REFRESH_TOKEN' }));
+  console.error(JSON.stringify({ success: false, error: 'Missing: ZALO_OA_APP_ID, ZALO_OA_SECRET, or refresh token (file/env)' }));
   process.exit(1);
 }
 
@@ -38,14 +52,17 @@ async function refreshToken() {
   const data = await res.json();
 
   if (data.access_token) {
-    console.log(JSON.stringify({
-      success: true,
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
+      refreshed_at: new Date().toISOString(),
       expires_in: data.expires_in
     }, null, 2));
-    // NOTE: Auto-update Railway env vars via CLI requires manual step
-    // Or: store on volume + script reads from file (not env var)
+    console.log(JSON.stringify({
+      success: true,
+      saved_to: TOKEN_FILE,
+      expires_in: data.expires_in
+    }, null, 2));
   } else {
     console.error(JSON.stringify({ success: false, error: data }, null, 2));
     process.exit(1);
