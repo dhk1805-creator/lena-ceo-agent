@@ -27,6 +27,30 @@ app.use((req, res, next) => {
   next();
 });
 
+// === ZALO OA WEBHOOK RECEIVER ===
+// Zalo gửi POST request đến /zalo-webhook khi có event (user nhắn OA, follow, unfollow...)
+const zaloWebhookHandler = express.json();
+app.post('/zalo-webhook', zaloWebhookHandler, (req, res) => {
+  const event = req.body;
+  console.log('[zalo-webhook]', JSON.stringify(event, null, 2));
+
+  // Lưu vào file để xem
+  try {
+    const logPath = '/root/.openclaw/zalo-events.jsonl';
+    fs.appendFileSync(logPath, JSON.stringify({ time: new Date().toISOString(), event }) + '\n');
+  } catch (e) {
+    console.error('[zalo-webhook] save error:', e.message);
+  }
+
+  // Zalo cần status 200
+  res.json({ status: 'ok' });
+});
+
+// GET /zalo-webhook để verify (Zalo có thể check)
+app.get('/zalo-webhook', (req, res) => {
+  res.json({ status: 'Zalo webhook endpoint active' });
+});
+
 // Proxy everything else to OpenClaw on internal port
 const ocProxy = createProxyMiddleware({
   target: `http://127.0.0.1:${OPENCLAW_PORT}`,
