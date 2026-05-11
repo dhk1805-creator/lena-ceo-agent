@@ -40,6 +40,8 @@ COPY google-tools/dalle-generate.js /app/google-tools/dalle-generate.js
 COPY google-tools/npp-order-log.js /app/google-tools/npp-order-log.js
 COPY google-tools/gemini-write.js /app/google-tools/gemini-write.js
 COPY google-tools/image-overlay.js /app/google-tools/image-overlay.js
+COPY google-tools/zalo-oa-send.js /app/google-tools/zalo-oa-send.js
+COPY google-tools/zalo-oa-refresh-token.js /app/google-tools/zalo-oa-refresh-token.js
 
 # Copy brand assets (logos)
 COPY assets/ /app/assets/
