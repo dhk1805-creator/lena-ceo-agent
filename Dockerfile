@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y git fonts-noto-core fonts-noto-cjk font
 # To upgrade: change version here, test, push.
 RUN npm install -g openclaw@2026.4.29
 
-# Install sharp locally in /app (so require('sharp') works)
-RUN cd /app && npm install sharp
+# Install sharp + express + http-proxy-middleware locally in /app
+RUN cd /app && npm install sharp express http-proxy-middleware
 
 # Copy agent files to staging area (start.sh syncs to volume at runtime)
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
@@ -43,6 +43,12 @@ COPY google-tools/image-overlay.js /app/google-tools/image-overlay.js
 
 # Copy brand assets (logos)
 COPY assets/ /app/assets/
+
+# Copy public static files (Zalo domain verification, etc.)
+COPY public/ /app/public/
+
+# Copy proxy server (serves /public/* + proxies rest to OpenClaw)
+COPY proxy.js /app/proxy.js
 
 # NOTE: Do NOT bake Zalo credentials into image!
 # Credentials belong on persistent volume only (pair once, stays forever).

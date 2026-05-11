@@ -6,8 +6,11 @@
 echo "=== Le Na CEO Agent - Starting on Railway ==="
 export TZ=Asia/Ho_Chi_Minh
 
-# Railway provides PORT env
-export OPENCLAW_GATEWAY_PORT="${PORT:-8080}"
+# Railway provides PORT env (Express proxy listens here on PUBLIC port)
+# OpenClaw runs on INTERNAL port (8090), proxy forwards all traffic
+export FRONT_PORT="${PORT:-8080}"
+export OPENCLAW_INTERNAL_PORT="8090"
+export OPENCLAW_GATEWAY_PORT="$OPENCLAW_INTERNAL_PORT"
 export OPENCLAW_GATEWAY_TOKEN="${GATEWAY_PASSWORD:-LeNa2026!}"
 
 # === PERSISTENT VOLUME SYNC ===
@@ -126,6 +129,15 @@ echo "Gateway Token set: yes"
 # Import cron jobs after gateway starts (background)
 (sleep 30 && node /app/google-tools/import-cron.js /app/cron-jobs.json 2>&1 && echo "Cron jobs imported") &
 
-# Start gateway
-echo "=== Starting OpenClaw Gateway on port ${OPENCLAW_GATEWAY_PORT} ==="
-exec openclaw gateway --verbose
+# Start OpenClaw gateway on INTERNAL port (background)
+echo "=== Starting OpenClaw Gateway on internal port ${OPENCLAW_INTERNAL_PORT} ==="
+openclaw gateway --verbose &
+OPENCLAW_PID=$!
+
+# Wait briefly for OpenClaw to bind port
+sleep 3
+
+# Start Express proxy on PUBLIC port (this is what Railway exposes)
+# Proxy serves /public/* (Zalo domain verify) + forwards everything else to OpenClaw
+echo "=== Starting Express proxy on public port ${FRONT_PORT} (forwards to OpenClaw ${OPENCLAW_INTERNAL_PORT}) ==="
+exec node /app/proxy.js
