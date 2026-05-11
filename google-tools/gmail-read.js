@@ -44,30 +44,26 @@ function decodeBase64(str) {
   } catch { return ''; }
 }
 
-function extractBody(payload) {
-  // Try to get text/plain or text/html from message parts
+function extractBody(payload, depth = 0) {
+  if (depth > 5) return '';
   if (payload.body && payload.body.data) {
     return decodeBase64(payload.body.data);
   }
   if (payload.parts) {
-    // Prefer text/plain
     for (const part of payload.parts) {
       if (part.mimeType === 'text/plain' && part.body && part.body.data) {
         return decodeBase64(part.body.data);
       }
     }
-    // Fallback to text/html
     for (const part of payload.parts) {
       if (part.mimeType === 'text/html' && part.body && part.body.data) {
         const html = decodeBase64(part.body.data);
-        // Strip HTML tags for readability
-        return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 2000);
+        return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim().substring(0, 3000);
       }
     }
-    // Recursion for multipart
     for (const part of payload.parts) {
-      if (part.parts) {
-        const body = extractBody(part);
+      if (part.mimeType?.startsWith('multipart/') || part.parts) {
+        const body = extractBody(part, depth + 1);
         if (body) return body;
       }
     }
@@ -105,23 +101,23 @@ async function main() {
     const headers = detail.payload?.headers || [];
     const getHeader = (name) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
 
-    // Extract body text (truncate to 1500 chars to avoid huge output)
     let body = extractBody(detail.payload || {});
-    if (body.length > 1500) body = body.substring(0, 1500) + '... [truncated]';
+    if (body.length > 2500) body = body.substring(0, 2500) + '... [truncated]';
 
-    // Check for attachments
     const attachments = [];
-    if (detail.payload?.parts) {
-      for (const part of detail.payload.parts) {
+    function scanAttachments(parts) {
+      if (!parts) return;
+      for (const part of parts) {
         if (part.filename && part.filename.length > 0) {
-          attachments.push({
-            filename: part.filename,
-            mimeType: part.mimeType,
-            size: part.body?.size || 0
-          });
+          attachments.push({ filename: part.filename, mimeType: part.mimeType, size: part.body?.size || 0 });
         }
+        if (part.parts) scanAttachments(part.parts);
       }
     }
+    scanAttachments(detail.payload?.parts);
+
+    const threadMsgCount = detail.payload?.headers ? undefined : 1;
+    const isReplied = (detail.labelIds || []).includes('SENT') || false;
 
     messages.push({
       id: msg.id,
@@ -129,11 +125,13 @@ async function main() {
       from: getHeader('From'),
       to: getHeader('To'),
       cc: getHeader('Cc'),
+      replyTo: getHeader('Reply-To') || undefined,
       subject: getHeader('Subject'),
       date: getHeader('Date'),
       snippet: detail.snippet || '',
       body: body,
       labels: detail.labelIds || [],
+      isUnread: (detail.labelIds || []).includes('UNREAD'),
       attachments: attachments.length > 0 ? attachments : undefined
     });
   }

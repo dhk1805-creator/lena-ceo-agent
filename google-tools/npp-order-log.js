@@ -4,16 +4,13 @@
 //
 // Usage:
 //   node npp-order-log.js [hours=24]
-//
-// Chuc nang:
-//   1. Quet email tu 5 NPP (NTK, GALAXY, VNMEP, IMP, MEPCO)
-//   2. Dung Gemini Flash phan tich noi dung email → trich xuat don hang
-//   3. Ghi vao sheet "NPP Orders" trong Google Sheets
+//   node npp-order-log.js weekly-summary        — Tong hop tuan tu sheet NPP Orders
 //
 // Cot trong sheet NPP Orders:
 //   A: Ngay | B: NPP | C: Nguoi gui | D: San pham | E: So luong | F: Ghi chu | G: Email ID | H: Trang thai
 
-const hours = parseInt(process.argv[2] || '24');
+const mode = process.argv[2] === 'weekly-summary' ? 'weekly' : 'scan';
+const hours = mode === 'weekly' ? 168 : parseInt(process.argv[2] || '24');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -161,26 +158,71 @@ async function appendToSheet(token, rows) {
   return res.json();
 }
 
+async function getExistingEmailIds(token) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('NPP Orders!G:G')}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  const ids = new Set();
+  if (data.values) data.values.forEach(row => { if (row[0]) ids.add(row[0]); });
+  return ids;
+}
+
+async function getWeeklySummary(token) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('NPP Orders!A:H')}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  if (!data.values || data.values.length <= 1) return { summary: 'Khong co data NPP Orders trong sheet.' };
+
+  const rows = data.values.slice(1);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+  const weekRows = rows.filter(r => {
+    try { const parts = r[0].split('/'); return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`) >= sevenDaysAgo; } catch (e) { return false; }
+  });
+
+  const byNPP = {};
+  for (const row of weekRows) {
+    const npp = row[1] || 'Unknown';
+    if (!byNPP[npp]) byNPP[npp] = { count: 0, products: [] };
+    byNPP[npp].count++;
+    byNPP[npp].products.push({ product: row[3], qty: row[4], status: row[7] });
+  }
+
+  return {
+    success: true,
+    mode: 'weekly-summary',
+    period: '7 ngay',
+    totalOrders: weekRows.length,
+    byNPP,
+    nppRanking: Object.entries(byNPP).sort((a, b) => b[1].count - a[1].count).map(([name, data]) => `${name}: ${data.count} don`)
+  };
+}
+
 async function main() {
   const token = await getAccessToken();
 
-  // Search for emails from NPP-related senders
+  if (mode === 'weekly') {
+    const summary = await getWeeklySummary(token);
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+
+  const existingIds = await getExistingEmailIds(token);
+
   const query = 'subject:(don hang OR dat hang OR order OR PO OR bao gia OR quotation) OR from:(ntk OR galaxy OR vnmep OR imp OR mepco)';
   const messages = await searchEmails(token, query, 30);
 
   if (messages.length === 0) {
-    console.log(JSON.stringify({
-      success: true,
-      ordersFound: 0,
-      message: `Khong co email don hang tu NPP trong ${hours} gio qua`
-    }));
+    console.log(JSON.stringify({ success: true, ordersFound: 0, message: `Khong co email don hang tu NPP trong ${hours} gio qua` }));
     return;
   }
 
   const orders = [];
   const today = new Date().toLocaleDateString('vi-VN');
+  let skippedDupes = 0;
 
   for (const msg of messages) {
+    if (existingIds.has(msg.id)) { skippedDupes++; continue; }
+
     const message = await getMessage(token, msg.id);
     const headers = message.payload?.headers || [];
     const from = getHeader(headers, 'From');
@@ -190,21 +232,14 @@ async function main() {
     const npp = identifyNPP(from, subject, body);
     if (!npp) continue;
 
-    // Use Gemini to analyze email content
     const analysis = await analyzeWithGemini(body, from, subject);
     if (!analysis || !analysis.is_order) continue;
 
-    // Create rows for each product
     for (const product of (analysis.products || [])) {
       orders.push([
-        today,                              // A: Ngay
-        npp.name,                           // B: NPP
-        analysis.sender_name || from,       // C: Nguoi gui
-        product.name || '',                 // D: San pham
-        `${product.quantity || ''} ${product.unit || ''}`.trim(), // E: So luong
-        analysis.notes || '',               // F: Ghi chu
-        msg.id,                             // G: Email ID
-        'Moi'                               // H: Trang thai
+        today, npp.name, analysis.sender_name || from,
+        product.name || '', `${product.quantity || ''} ${product.unit || ''}`.trim(),
+        analysis.notes || '', msg.id, 'Moi'
       ]);
     }
   }
@@ -212,27 +247,15 @@ async function main() {
   if (orders.length > 0) {
     const result = await appendToSheet(token, orders);
     console.log(JSON.stringify({
-      success: true,
-      ordersFound: orders.length,
-      nppBreakdown: orders.reduce((acc, row) => {
-        acc[row[1]] = (acc[row[1]] || 0) + 1;
-        return acc;
-      }, {}),
-      sheetResult: result.updates ? {
-        updatedRange: result.updates.updatedRange,
-        updatedRows: result.updates.updatedRows
-      } : result,
-      orders: orders.map(o => ({
-        ngay: o[0], npp: o[1], nguoiGui: o[2],
-        sanPham: o[3], soLuong: o[4], ghiChu: o[5]
-      }))
+      success: true, ordersFound: orders.length, skippedDuplicates: skippedDupes,
+      nppBreakdown: orders.reduce((acc, row) => { acc[row[1]] = (acc[row[1]] || 0) + 1; return acc; }, {}),
+      sheetResult: result.updates ? { updatedRange: result.updates.updatedRange, updatedRows: result.updates.updatedRows } : result,
+      orders: orders.map(o => ({ ngay: o[0], npp: o[1], nguoiGui: o[2], sanPham: o[3], soLuong: o[4], ghiChu: o[5] }))
     }, null, 2));
   } else {
     console.log(JSON.stringify({
-      success: true,
-      ordersFound: 0,
-      emailsScanned: messages.length,
-      message: `Da quet ${messages.length} email, khong tim thay don hang tu NPP`
+      success: true, ordersFound: 0, skippedDuplicates: skippedDupes,
+      emailsScanned: messages.length, message: `Da quet ${messages.length} email, khong tim thay don hang moi tu NPP`
     }));
   }
 }

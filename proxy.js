@@ -189,6 +189,30 @@ const TOOLS = [
     }
   },
   {
+    name: 'task_add',
+    description: 'Tạo task/công việc mới vào Task Tracker. Dùng khi VIP giao việc cho ai đó.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task: { type: 'string', description: 'Mô tả công việc' },
+        assignee: { type: 'string', description: 'Email người nhận (vd: ducdd@nsca.vn)' },
+        deadline: { type: 'string', description: 'Hạn hoàn thành YYYY-MM-DD' },
+        source: { type: 'string', description: 'Nguồn giao (vd: "Sếp Khánh qua Zalo", "Họp giao ban")' }
+      },
+      required: ['task', 'assignee', 'deadline']
+    }
+  },
+  {
+    name: 'task_overdue',
+    description: 'Xem danh sách task quá hạn chưa hoàn thành.',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'task_status',
+    description: 'Tổng hợp trạng thái tất cả task (theo người, theo status).',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
     name: 'zalo_oa_send_to_vip',
     description: 'Gửi Zalo qua OA cho VIP khác (sep-khanh, chi-hong, anh-ngoc). Dùng khi anh Khánh yêu cầu báo cho người khác.',
     input_schema: {
@@ -228,6 +252,15 @@ function runTool(name, input) {
       break;
     case 'gdoc_create':
       cmd = 'node'; args = [`${GTOOL}/gdoc-create.js`, input.title, input.content];
+      break;
+    case 'task_add':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'add', input.task, input.assignee, input.deadline, input.source || ''];
+      break;
+    case 'task_overdue':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'overdue'];
+      break;
+    case 'task_status':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'status'];
       break;
     case 'zalo_oa_send_to_vip':
       cmd = 'node'; args = [`${GTOOL}/zalo-oa-send.js`, input.target, input.message];
@@ -270,14 +303,72 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
       JSON.stringify({ time: new Date().toISOString(), event }) + '\n');
   } catch (e) {}
 
-  console.log(`[zalo-webhook] ${event.event_name} from ${event.sender?.id}`);
+  console.log(`[zalo-webhook] ${event.event_name} from ${event.sender?.id || event.follower?.id || '?'}`);
 
   if (event.event_name === 'user_send_text') {
     handleUserMessage(event).catch(err => console.error('[lena] handler error:', err.message));
+  } else if (event.event_name === 'follow') {
+    handleFollow(event).catch(err => console.error('[follow] error:', err.message));
+  } else if (event.event_name === 'unfollow') {
+    handleUnfollow(event).catch(err => console.error('[unfollow] error:', err.message));
+  } else if (event.event_name === 'user_send_image') {
+    handleImageMessage(event).catch(err => console.error('[image] error:', err.message));
   }
 });
 
 app.get('/zalo-webhook', (req, res) => res.json({ status: 'active' }));
+
+// === FOLLOW / UNFOLLOW / IMAGE HANDLERS ===
+const FOLLOWERS_FILE = '/root/.openclaw/zalo-oa-followers.json';
+
+async function handleFollow(event) {
+  const userId = event.follower?.id;
+  if (!userId) return;
+
+  const token = getOAToken();
+  let displayName = 'Unknown';
+  try {
+    const res = await fetch(`https://openapi.zalo.me/v3.0/oa/user/detail?data=${encodeURIComponent(JSON.stringify({ user_id: userId }))}`, {
+      headers: { 'access_token': token }
+    });
+    const profile = await res.json();
+    displayName = profile.data?.display_name || 'Unknown';
+  } catch (e) {}
+
+  console.log(`[follow] New: ${displayName} (${userId})`);
+
+  let followers = [];
+  try { followers = JSON.parse(fs.readFileSync(FOLLOWERS_FILE, 'utf-8')); } catch (e) {}
+  followers.push({ user_id: userId, display_name: displayName, followed_at: new Date().toISOString() });
+  try { fs.writeFileSync(FOLLOWERS_FILE, JSON.stringify(followers, null, 2)); } catch (e) {}
+
+  await sendZaloMessage(userId, `Chào ${displayName}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Anh/chị nhắn tin cho em bất cứ lúc nào ạ.`);
+
+  const sepId = process.env.ZALO_OA_USER_SEP_KHANH;
+  if (sepId && userId !== sepId) {
+    await sendZaloMessage(sepId, `📢 Follower mới OA: ${displayName} (ID: ${userId}). Nếu là anh Ngọc, anh reply "set ngoc ${userId}" để em lưu.`);
+  }
+}
+
+async function handleUnfollow(event) {
+  const userId = event.follower?.id;
+  if (!userId) return;
+  const vip = VIP_USERS[userId];
+  console.log(`[unfollow] ${vip ? vip.name : userId}`);
+  if (vip) {
+    const sepId = process.env.ZALO_OA_USER_SEP_KHANH;
+    if (sepId && userId !== sepId) {
+      await sendZaloMessage(sepId, `⚠️ ${vip.name} đã unfollow OA Starasia JSC.`);
+    }
+  }
+}
+
+async function handleImageMessage(event) {
+  const senderId = event.sender?.id;
+  if (!senderId) return;
+  const vip = VIP_USERS[senderId];
+  await sendZaloMessage(senderId, `Dạ ${vip ? vip.name : 'anh/chị'}, em nhận được ảnh nhưng hiện chỉ xử lý được tin nhắn text. Anh/chị mô tả nội dung giúp em nhé!`);
+}
 
 // === LÊ NA AGENT — TOOL CALLING LOOP ===
 async function handleUserMessage(event) {
