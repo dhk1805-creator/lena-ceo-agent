@@ -51,11 +51,22 @@ function readEvents(filterUserId) {
       if (eventTime < cutoff) continue;
       const senderId = entry.event?.sender?.id;
       if (filterUserId && senderId !== filterUserId) continue;
-      if (entry.event?.event_name === 'user_send_text') {
+      const eventName = entry.event?.event_name;
+      if (eventName === 'user_send_text') {
         events.push({
           time: entry.time,
           from: VIP_NAMES[senderId] || senderId,
+          type: 'text',
           text: entry.event.message?.text || '',
+        });
+      } else if (eventName === 'user_send_image') {
+        const att = entry.event?.message?.attachments?.[0];
+        events.push({
+          time: entry.time,
+          from: VIP_NAMES[senderId] || senderId,
+          type: 'image',
+          text: '[Ảnh]',
+          image_url: att?.payload?.url || att?.payload?.thumbnail || '',
         });
       }
     } catch (e) {}

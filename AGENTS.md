@@ -224,6 +224,7 @@ KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 | NPP | `npp-order-log.js [hours]` / `npp-order-log.js weekly-summary` |
 | Task Tracker | `task-tracker.js add/overdue/status/update` (TU dong lay Sheet ID, KHONG can truyen) |
 | Zalo OA History | `zalo-oa-history.js [alias] [hours]` — doc tin nhan VIP da gui qua OA (all/sep-khanh/chi-hong/anh-ngoc) |
+| Zalo OA Article | `zalo-oa-article.js create "<title>" "<body>" "[cover_image]"` / `zalo-oa-article.js list` |
 | Image | `dalle-generate.js`, `image-overlay.js` |
 | Facebook | `facebook-post.js "msg" "[img]"` |
 

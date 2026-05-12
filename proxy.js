@@ -281,6 +281,20 @@ const TOOLS = [
     input_schema: { type: 'object', properties: {} }
   },
   {
+    name: 'zalo_oa_article',
+    description: 'Tạo và đăng bài viết lên Zalo OA Starasia JSC. Dùng Gemini soạn nội dung trước, rồi gọi tool này để publish.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'create hoặc list', default: 'create' },
+        title: { type: 'string', description: 'Tiêu đề bài viết' },
+        body: { type: 'string', description: 'Nội dung bài viết (plain text, tự convert HTML)' },
+        cover: { type: 'string', description: 'URL ảnh bìa hoặc local path (VD: ảnh VIP gửi qua Zalo)' }
+      },
+      required: ['title', 'body']
+    }
+  },
+  {
     name: 'task_update',
     description: 'Cập nhật trạng thái task (Done/Đang làm/Hủy). Dùng khi nhận xác nhận hoàn thành.',
     input_schema: {
@@ -347,6 +361,9 @@ async function runTool(name, input) {
       break;
     case 'kpi_update':
       cmd = 'node'; args = [`${GTOOL}/kpi-update.js`];
+      break;
+    case 'zalo_oa_article':
+      cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, input.action || 'create', input.title || '', input.body || '', input.cover || ''];
       break;
     case 'github_create_issue':
       cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
