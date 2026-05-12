@@ -18,7 +18,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
-const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';      // For complex VIP requests
+const CLAUDE_MODEL_VIP = 'claude-sonnet-4-6';             // For VIP requests (updated from deprecated 20250514)
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
@@ -742,6 +742,33 @@ app.get('/health', (req, res) => {
 app.get('/refresh-token', async (req, res) => {
   const ok = await refreshOAToken();
   res.json({ refreshed: ok, token_exists: !!getOAToken() });
+});
+
+// === DEBUG — check VIP mapping + Claude API ===
+app.get('/debug', async (req, res) => {
+  const vipList = {};
+  for (const [id, info] of Object.entries(VIP_USERS)) {
+    if (!id.startsWith('_none_')) vipList[id.substring(0, 8) + '...'] = info.name;
+  }
+  let claudeOk = false;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': CLAUDE_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: CLAUDE_MODEL_FAST, max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] })
+    });
+    claudeOk = r.ok;
+    if (!r.ok) vipList._claude_error = await r.text();
+  } catch (e) { vipList._claude_error = e.message; }
+  res.json({
+    vips_mapped: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length,
+    vips: vipList,
+    claude_api: claudeOk ? 'OK' : 'FAIL',
+    claude_key: CLAUDE_API_KEY ? CLAUDE_API_KEY.substring(0, 10) + '...' : 'MISSING',
+    model_fast: CLAUDE_MODEL_FAST,
+    model_vip: CLAUDE_MODEL_VIP,
+    zalo_token: getOAToken() ? 'OK' : 'MISSING'
+  });
 });
 
 // === PROXY TO OPENCLAW ===
