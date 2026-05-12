@@ -18,7 +18,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
-const CLAUDE_MODEL_VIP = 'claude-sonnet-4-6';             // For VIP requests (updated from deprecated 20250514)
+const CLAUDE_MODEL_VIP = 'claude-haiku-4-5-20251001';     // VIP cũng dùng Haiku (Sonnet 4-6 gây lỗi API, cần investigate)
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
