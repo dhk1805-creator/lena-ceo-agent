@@ -118,14 +118,14 @@
   },
   {
     "id": "daily-calendar-morning-briefing",
-    "name": "Daily Calendar Morning Briefing - 7h sang",
+    "name": "Daily Calendar Morning Briefing - 8h30 sang",
     "schedule": {
       "kind": "cron",
-      "expr": "0 7 * * 1-6"
+      "expr": "30 8 * * 1-6"
     },
     "payload": {
       "kind": "agentTurn",
-      "message": "BAO LICH HEN HOM NAY — 7H SANG (cho 3 VIP).\n\nMUC DICH: Sang som bao tat ca lich hen trong ngay cho moi VIP (Sep Khanh, Chi Hong, Anh Ngoc).\n\nBUOC 1: Doc lich HOM NAY cua 3 VIP:\n`exec: node /app/google-tools/calendar-read.js 1`\n\nBUOC 2: Phan loai theo calendar source:\n- dhk@nsca.vn → Sep Khanh\n- ndao@nsca.vn → Anh Ngoc\n- nsca@nsca.vn → Chi Hong\n\nBUOC 3: Voi MOI VIP co lich hen hom nay → gui 1 tin Zalo TONG HOP:\nFormat:\n   📅 LICH HOM NAY ([Thu, DD/MM])\n   ⏰ [HH:MM] - [nguoi gap] - [muc dich] - [dia diem]\n   ⏰ [HH:MM] - [...]\n   Tong: N cuoc hen.\n   (Em se nhac lai truoc moi cuoc 60 phut nhe.)\n\nBUOC 4: Neu VIP nao KHONG co lich hom nay → KHONG GUI gi (im lang, dung spam \"hom nay khong co lich\").\n\nLenh gui Zalo qua OA:\n- Sep Khanh: `exec: node /app/google-tools/zalo-oa-send.js sep-khanh \"<noi dung>\"`\n- Chi Hong: `exec: node /app/google-tools/zalo-oa-send.js chi-hong \"<noi dung>\"`\n- Anh Ngoc: `exec: node /app/google-tools/zalo-oa-send.js anh-ngoc \"<noi dung>\"`\n\nKHONG nhac chi tiet/khong them analysis."
+      "message": "BAO LICH HEN HOM NAY — 8H30 SANG (cho 3 VIP).\n\nMUC DICH: Sang som bao tat ca lich hen trong ngay cho moi VIP (Sep Khanh, Chi Hong, Anh Ngoc).\n\nBUOC 1: Doc lich HOM NAY cua 3 VIP:\n`exec: node /app/google-tools/calendar-read.js 1`\n\nBUOC 2: Phan loai theo calendar source:\n- dhk@nsca.vn → Sep Khanh\n- ndao@nsca.vn → Anh Ngoc\n- nsca@nsca.vn → Chi Hong\n\nBUOC 3: Voi MOI VIP co lich hen hom nay → gui 1 tin Zalo TONG HOP:\nFormat:\n   📅 LICH HOM NAY ([Thu, DD/MM])\n   ⏰ [HH:MM] - [nguoi gap] - [muc dich] - [dia diem]\n   ⏰ [HH:MM] - [...]\n   Tong: N cuoc hen.\n   (Em se nhac lai truoc moi cuoc 60 phut nhe.)\n\nBUOC 4: Neu VIP nao KHONG co lich hom nay → KHONG GUI gi (im lang, dung spam \"hom nay khong co lich\").\n\nLenh gui Zalo qua OA:\n- Sep Khanh: `exec: node /app/google-tools/zalo-oa-send.js sep-khanh \"<noi dung>\"`\n- Chi Hong: `exec: node /app/google-tools/zalo-oa-send.js chi-hong \"<noi dung>\"`\n- Anh Ngoc: `exec: node /app/google-tools/zalo-oa-send.js anh-ngoc \"<noi dung>\"`\n\nKHONG nhac chi tiet/khong them analysis."
     },
     "sessionTarget": "isolated"
   },
