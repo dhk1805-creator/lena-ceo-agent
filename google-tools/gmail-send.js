@@ -13,6 +13,34 @@
 const fs = require('fs');
 const path = require('path');
 
+const DEDUP_LOG = '/root/.openclaw/email-send-dedup.json';
+const DEDUP_WINDOW = 60 * 1000; // 60 seconds per recipient
+
+function checkEmailDedup(recipient) {
+  const key = recipient.toLowerCase().split(',')[0].trim();
+  let log = [];
+  try {
+    if (fs.existsSync(DEDUP_LOG)) log = JSON.parse(fs.readFileSync(DEDUP_LOG, 'utf-8'));
+  } catch (e) { log = []; }
+  const now = Date.now();
+  log = log.filter(e => now - e.ts < 3600000);
+  const recent = log.find(e => e.key === key && now - e.ts < DEDUP_WINDOW);
+  if (recent) return { isDup: true, secsAgo: Math.round((now - recent.ts) / 1000) };
+  return { isDup: false };
+}
+
+function recordEmailSend(recipient) {
+  const key = recipient.toLowerCase().split(',')[0].trim();
+  let log = [];
+  try {
+    if (fs.existsSync(DEDUP_LOG)) log = JSON.parse(fs.readFileSync(DEDUP_LOG, 'utf-8'));
+  } catch (e) { log = []; }
+  const now = Date.now();
+  log = log.filter(e => now - e.ts < 3600000);
+  log.push({ key, ts: now });
+  try { fs.writeFileSync(DEDUP_LOG, JSON.stringify(log)); } catch (e) {}
+}
+
 const to = process.argv[2];
 const subject = process.argv[3];
 const body = process.argv[4];
@@ -124,6 +152,16 @@ function buildMultipartEmail(headers, htmlBody, filePath) {
 }
 
 async function main() {
+  const dedup = checkEmailDedup(to);
+  if (dedup.isDup) {
+    console.log(JSON.stringify({
+      success: true, skipped: true,
+      reason: `DEDUP: Da gui email cho ${to} ${dedup.secsAgo}s truoc. Bo qua de tranh spam. KHONG can gui lai.`,
+      to
+    }));
+    return;
+  }
+
   const token = await getAccessToken();
 
   // Process body: preserve HTML tags, convert newlines to <br>
@@ -167,6 +205,7 @@ async function main() {
   const result = await res.json();
 
   if (result.id) {
+    recordEmailSend(to);
     console.log(JSON.stringify({
       success: true,
       messageId: result.id,

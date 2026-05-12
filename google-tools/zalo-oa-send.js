@@ -18,6 +18,8 @@
 
 const fs = require('fs');
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+const DEDUP_LOG = '/root/.openclaw/zalo-send-dedup.json';
+const DEDUP_WINDOW = 60 * 1000; // 60 seconds per target
 
 function getAccessToken() {
   try {
@@ -107,6 +109,29 @@ async function listFollowers() {
   }
 }
 
+function checkDedup(userId) {
+  let log = [];
+  try {
+    if (fs.existsSync(DEDUP_LOG)) log = JSON.parse(fs.readFileSync(DEDUP_LOG, 'utf-8'));
+  } catch (e) { log = []; }
+  const now = Date.now();
+  log = log.filter(e => now - e.ts < 3600000);
+  const recent = log.find(e => e.userId === userId && now - e.ts < DEDUP_WINDOW);
+  if (recent) return { isDup: true, secsAgo: Math.round((now - recent.ts) / 1000) };
+  return { isDup: false };
+}
+
+function recordSend(userId, target) {
+  let log = [];
+  try {
+    if (fs.existsSync(DEDUP_LOG)) log = JSON.parse(fs.readFileSync(DEDUP_LOG, 'utf-8'));
+  } catch (e) { log = []; }
+  const now = Date.now();
+  log = log.filter(e => now - e.ts < 3600000);
+  log.push({ userId, target, ts: now });
+  try { fs.writeFileSync(DEDUP_LOG, JSON.stringify(log)); } catch (e) {}
+}
+
 async function sendMessage(target, message) {
   let userId;
   try {
@@ -114,6 +139,16 @@ async function sendMessage(target, message) {
   } catch (e) {
     console.error(JSON.stringify({ success: false, error: e.message }));
     process.exit(1);
+  }
+
+  const dedup = checkDedup(userId);
+  if (dedup.isDup) {
+    console.log(JSON.stringify({
+      success: true, skipped: true,
+      reason: `DEDUP: Da gui cho ${target} ${dedup.secsAgo}s truoc. Bo qua de tranh spam. KHONG can gui lai.`,
+      target, user_id: userId
+    }));
+    return;
   }
 
   const formattedMessage = formatMessage(message);
@@ -133,6 +168,7 @@ async function sendMessage(target, message) {
   const data = await res.json();
 
   if (data.error === 0) {
+    recordSend(userId, target);
     console.log(JSON.stringify({
       success: true,
       message_id: data.data?.message_id,

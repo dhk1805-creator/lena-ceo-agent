@@ -500,7 +500,18 @@ LƯU Ý: 3 VIP độc lập, KHÔNG forward thông tin giữa họ trừ khi đ�
   }
 }
 
+const _zaloSendCache = new Map();
+const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
+
 async function sendZaloMessage(userId, message) {
+  const now = Date.now();
+  const lastSend = _zaloSendCache.get(userId);
+  if (lastSend && now - lastSend < ZALO_CHAT_COOLDOWN) {
+    console.log(`[zalo] dedup: skipped reply to ${userId} (${Math.round((now - lastSend) / 1000)}s ago)`);
+    return;
+  }
+  _zaloSendCache.set(userId, now);
+
   const formatted = `${message.trim()}\n\n— Lê Na`;
   const token = getOAToken();
   if (!token) throw new Error('No OA access token available');
