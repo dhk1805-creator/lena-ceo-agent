@@ -208,7 +208,7 @@
 - Van ngan chay tu dong dong khi nhiet do tang den muc dinh san (thuong 72°C fusible link)
 - Van ngan khoi kiem soat va ngan chan su lan toa khoi doc trong he thong thong gio
 - Vi tri lap dat va thoi gian chiu lua phu thuoc vao cap do nguy hiem chay cua cong trinh
-- STARDUCT fire damper dat EI 120 (cao nhat) theo AS1530.4 va BS EN 1366-2
+- STARDUCT fire damper dat **EI 180** (vuot tieu chuan cao nhat EI 120) theo AS1530.4 va BS EN 1366-2
 
 ### TCVN lien quan san pham STARDUCT:
 | TCVN | Noi dung |
