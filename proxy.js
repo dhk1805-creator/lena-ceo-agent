@@ -738,6 +738,12 @@ app.get('/health', (req, res) => {
   });
 });
 
+// === MANUAL TOKEN REFRESH ===
+app.get('/refresh-token', async (req, res) => {
+  const ok = await refreshOAToken();
+  res.json({ refreshed: ok, token_exists: !!getOAToken() });
+});
+
 // === PROXY TO OPENCLAW ===
 const ocProxy = createProxyMiddleware({
   target: `http://127.0.0.1:${OPENCLAW_PORT}`,
@@ -761,12 +767,12 @@ const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
   console.log(`[proxy] Static: ${PUBLIC_DIR}`);
   console.log(`[proxy] Zalo OA 2-way bridge: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
 
-  // Auto-refresh OA token every 20h (token expires 25h, 5h buffer)
+  // Refresh OA token IMMEDIATELY on startup, then every 20h
   const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20h
-  setTimeout(() => {
-    refreshOAToken();
-    setInterval(refreshOAToken, REFRESH_INTERVAL);
-  }, REFRESH_INTERVAL);
+  refreshOAToken().then(ok => {
+    console.log(`[token] Startup refresh: ${ok ? 'OK' : 'FAILED (using cached/env)'}`);
+  }).catch(() => {});
+  setInterval(() => refreshOAToken(), REFRESH_INTERVAL);
   console.log(`[token] Auto-refresh scheduled every 20h. Current token: ${getOAToken() ? 'OK' : 'MISSING'}`);
 });
 
