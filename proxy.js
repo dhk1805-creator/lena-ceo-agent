@@ -18,7 +18,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
-const CLAUDE_MODEL_VIP = 'claude-sonnet-4-6';              // Sonnet 4.6 for VIP (confirmed valid model ID)
+const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // Proven working — do NOT change without testing
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
@@ -315,7 +315,7 @@ const TOOLS = [
         input_image: { type: 'string', description: 'Đường dẫn ảnh đầu vào (VD: /tmp/photo.jpg)' },
         text: { type: 'string', description: 'Text hiển thị trên ảnh (VD: tiêu đề bài viết)' },
         output_path: { type: 'string', description: 'Đường dẫn ảnh đầu ra (VD: /tmp/cover.png)' },
-        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal', default: 'hero' }
+        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal (mặc định: hero)' }
       },
       required: ['input_image']
     }
@@ -327,7 +327,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'Yêu cầu viết (VD: "Viết bài 200 từ giới thiệu nhà máy STARDUCT")' },
-        max_tokens: { type: 'number', description: 'Số token tối đa (default 600)', default: 600 }
+        max_tokens: { type: 'number', description: 'Số token tối đa (mặc định 600)' }
       },
       required: ['prompt']
     }
