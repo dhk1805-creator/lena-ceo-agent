@@ -468,6 +468,14 @@ app.get('/zalo-webhook', (req, res) => res.json({ status: 'active' }));
 // === FOLLOW / UNFOLLOW / IMAGE HANDLERS ===
 const FOLLOWERS_FILE = '/root/.openclaw/zalo-oa-followers.json';
 
+function lookupFollower(userId) {
+  try {
+    const followers = JSON.parse(fs.readFileSync(FOLLOWERS_FILE, 'utf-8'));
+    return followers.find(f => f.user_id === userId);
+  } catch (e) {}
+  return null;
+}
+
 async function handleFollow(event) {
   const userId = event.follower?.id;
   if (!userId) return;
@@ -486,7 +494,13 @@ async function handleFollow(event) {
 
   let followers = [];
   try { followers = JSON.parse(fs.readFileSync(FOLLOWERS_FILE, 'utf-8')); } catch (e) {}
-  followers.push({ user_id: userId, display_name: displayName, followed_at: new Date().toISOString() });
+  const existing = followers.findIndex(f => f.user_id === userId);
+  if (existing >= 0) {
+    followers[existing].display_name = displayName;
+    followers[existing].last_follow = new Date().toISOString();
+  } else {
+    followers.push({ user_id: userId, display_name: displayName, followed_at: new Date().toISOString() });
+  }
   try { fs.writeFileSync(FOLLOWERS_FILE, JSON.stringify(followers, null, 2)); } catch (e) {}
 
   await sendZaloMessage(userId, `Chào ${displayName}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Anh/chị nhắn tin cho em bất cứ lúc nào ạ.`);
@@ -509,12 +523,12 @@ async function handleImageMessage(event) {
   const senderId = event.sender?.id;
   if (!senderId) return;
   const vip = VIP_USERS[senderId];
+  const follower = !vip ? lookupFollower(senderId) : null;
+  const name = vip ? vip.name : (follower?.display_name || 'anh/chị');
   const att = event.message?.attachments?.[0];
   const imageUrl = att?.payload?.url || att?.payload?.thumbnail || '';
-  console.log(`[zalo] image from ${vip ? vip.name : senderId}: ${imageUrl.substring(0, 80)}`);
-  if (vip) {
-    await sendZaloMessage(senderId, `Dạ ${vip.name}, em đã nhận ảnh. Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?`);
-  }
+  console.log(`[zalo] image from ${name} (${senderId}): ${imageUrl.substring(0, 80)}`);
+  await sendZaloMessage(senderId, `Dạ ${name}, em đã nhận ảnh.${vip ? ' Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?' : ''}`);
 }
 
 // === LÊ NA AGENT — TOOL CALLING LOOP ===
@@ -525,10 +539,12 @@ async function handleUserMessage(event) {
 
   const vip = VIP_USERS[senderId];
 
-  // Non-VIP: polite rejection, no tool access
+  // Non-VIP: look up follower name, polite response
   if (!vip) {
-    console.log(`[lena] non-VIP message from ${senderId}: ${messageText.substring(0, 60)}`);
-    await sendZaloMessage(senderId, `Xin chào! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Hiện em chỉ hỗ trợ nhân sự nội bộ. Anh/chị cần gì vui lòng liên hệ hotline hoặc email info@nsca.vn ạ.`);
+    const follower = lookupFollower(senderId);
+    const name = follower?.display_name || 'anh/chị';
+    console.log(`[lena] non-VIP message from ${name} (${senderId}): ${messageText.substring(0, 60)}`);
+    await sendZaloMessage(senderId, `Chào ${name}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Hiện em chỉ hỗ trợ nhân sự nội bộ. ${name !== 'anh/chị' ? 'Cảm ơn ' + name + ' đã quan tâm OA của STARDUCT. ' : ''}Anh/chị cần gì vui lòng liên hệ hotline hoặc email info@nsca.vn ạ.`);
     return;
   }
 
