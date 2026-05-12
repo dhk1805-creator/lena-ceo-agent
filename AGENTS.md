@@ -214,31 +214,38 @@ KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 - ❌ KHONG dung `zalouser` — dung `zalo-oa-article.js`
 - ❌ KHONG noi "can URL public" — `zalo-oa-article.js` NHAN LOCAL PATH, tu upload
 
-### ANH VIP GUI — CACH LAY:
-**Dashboard (OpenClaw):** VIP gui anh → luu tai `/root/.openclaw/media/inbound/<filename>.jpg`
-- Le Na THAY anh trong chat → dung NGAY path `/root/.openclaw/media/inbound/...`
-**Zalo OA:** VIP gui anh → `zalo-oa-history.js` → `image_url` (URL)
-- `image-overlay.js` va `zalo-oa-article.js` DEU nhan CA 2: local path HOAC URL
+### ANH VIP GUI — KENH MAC DINH: ZALO
+**VIP gui anh qua Zalo OA** → webhook luu event `user_send_image` → Le Na lay `image_url` bang:
+`exec: node /app/google-tools/zalo-oa-history.js sep-khanh 2`
+→ Tim `type: "image"` → lay truong `image_url` → dung NGAY (URL truc tiep)
 
-### TOOL KHA NANG (LE NA PHAI NHO):
-- `image-overlay.js` nhan: LOCAL PATH (`/root/.openclaw/media/inbound/xxx.jpg`) HOAC URL (`https://...`)
-- `zalo-oa-article.js` nhan: LOCAL PATH (`/tmp/cover.png`) HOAC URL — TU DONG upload len Zalo CDN
+**Fallback — Google Drive:** Neu VIP gui link Drive hoac ten file:
+`exec: node /app/google-tools/drive-download.js "<fileId>" "/tmp/photo.jpg"`
+
+**⚠️ Dashboard chat KHONG phai kenh anh.** Anh upload vao chat → Le Na NHIN thay nhung KHONG truy cap duoc file qua exec.
+Neu VIP muon dung anh → gui qua **Zalo** hoac **Drive**.
+
+### TOOL NHAN URL TRUC TIEP (KHONG CAN DOWNLOAD TRUOC):
+- `image-overlay.js` nhan URL (`https://...`) → tu download + overlay → output local file
+- `zalo-oa-article.js` nhan local path → tu upload len Zalo CDN
 - **KHONG CAN** upload truoc, KHONG CAN URL public, KHONG CAN chatId
 
 ### 4 BUOC — CHAY LIEN TUC TRONG 1 LUOT:
 
-1. **Xac dinh anh:** 
-   - Dashboard: dung path tu `/root/.openclaw/media/inbound/...` (da co san)
-   - Zalo: `exec: node /app/google-tools/zalo-oa-history.js sep-khanh 2` → lay `image_url`
-2. **Tao anh bia:** `exec: node /app/google-tools/image-overlay.js "<path_hoac_url_anh>" "[TIEU DE]" "/tmp/cover.png" "hero"`
+1. **Lay anh tu Zalo:** `exec: node /app/google-tools/zalo-oa-history.js sep-khanh 2` → lay `image_url` tu event gan nhat co `type: "image"`
+2. **Tao anh bia:** `exec: node /app/google-tools/image-overlay.js "<image_url>" "[TIEU DE]" "/tmp/cover.png" "hero"`
 3. **Soan noi dung:** `exec: node /app/google-tools/gemini-write.js "<yeu cau VIP>" 600`
 4. **Dang + bao:** `exec: node /app/google-tools/zalo-oa-article.js create "[tieu de]" "[noi dung]" "/tmp/cover.png"`
    → Bao VIP: "✅ Da dang bai len OA Starasia JSC."
 
-**VD DUNG:** Sep gui anh `/root/.openclaw/media/inbound/z7800...jpg` + noi "dang bai nha may"
+**VD DUNG:** Sep gui anh nha may qua Zalo + noi "dang bai nha may 200 tu"
 → Le Na CHAY:
 ```
-exec: node /app/google-tools/image-overlay.js "/root/.openclaw/media/inbound/z7800...jpg" "Nha May STARDUCT" "/tmp/cover.png" "hero"
+exec: node /app/google-tools/zalo-oa-history.js sep-khanh 2
+```
+→ Ket qua: `image_url: "https://zalo-api.zadn.vn/api/..."` 
+```
+exec: node /app/google-tools/image-overlay.js "https://zalo-api.zadn.vn/api/..." "Nha May STARDUCT" "/tmp/cover.png" "hero"
 exec: node /app/google-tools/gemini-write.js "Viet 200 tu gioi thieu nha may STARDUCT, thong tin tu starduct.vn" 600
 exec: node /app/google-tools/zalo-oa-article.js create "Nha May Co Khi STARDUCT" "[noi dung Gemini]" "/tmp/cover.png"
 ```
