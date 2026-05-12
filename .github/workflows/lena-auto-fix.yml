@@ -97,5 +97,5 @@ jobs:
 
           gh pr merge "$PR_URL" --squash --delete-branch
 
-          gh issue comment "$ISSUE_NUM" \
-            --body "✅ Da xu ly va merge thanh cong. Railway se auto-deploy trong 2-3 phut."
+          gh issue close "$ISSUE_NUM" \
+            --comment "✅ Da xu ly va merge thanh cong. Railway se auto-deploy trong 2-3 phut."
