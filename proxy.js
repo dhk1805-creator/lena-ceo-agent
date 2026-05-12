@@ -405,13 +405,15 @@ async function runTool(name, input) {
   }
 
   try {
-    const { stdout } = await execFileAsync(cmd, args, { encoding: 'utf-8', timeout: 60000 });
+    const { stdout, stderr } = await execFileAsync(cmd, args, { encoding: 'utf-8', timeout: 60000 });
+    if (stderr) console.log(`[tool:${name}] ${stderr.trim()}`);
     const raw = stdout || '';
     if (raw.length > 3000) {
       return { output: raw.substring(0, 3000) + '\n⚠️ [Cắt ngắn — vượt 3000 ký tự]' };
     }
     return { output: raw };
   } catch (e) {
+    if (e.stderr) console.log(`[tool:${name}] ${e.stderr.trim()}`);
     return { error: (e.stderr || e.stdout || e.message || 'unknown error').substring(0, 1000) };
   }
 }
