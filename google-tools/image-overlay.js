@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Image Overlay Pro — Le Na CEO Agent
 // Ghep logo STARDUCT + text tieng Viet len anh voi layout chuyen nghiep
 //
@@ -30,9 +31,16 @@ if (!inputPath) {
   process.exit(1);
 }
 
-if (!fs.existsSync(inputPath)) {
-  console.log(JSON.stringify({ error: `File khong ton tai: ${inputPath}` }));
-  process.exit(1);
+async function resolveInput(src) {
+  if (src.startsWith('http')) {
+    const res = await fetch(src);
+    if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+    const localPath = `/tmp/dl-${Date.now()}.jpg`;
+    fs.writeFileSync(localPath, Buffer.from(await res.arrayBuffer()));
+    return localPath;
+  }
+  if (!fs.existsSync(src)) throw new Error(`File khong ton tai: ${src}`);
+  return src;
 }
 
 const LOGO_PATH = '/app/assets/logo-color.png';
@@ -49,7 +57,8 @@ async function overlay() {
   }
 
   try {
-    const inputMeta = await sharp(inputPath).metadata();
+    const resolvedPath = await resolveInput(inputPath);
+    const inputMeta = await sharp(resolvedPath).metadata();
     const W = inputMeta.width;
     const H = inputMeta.height;
 
@@ -74,7 +83,7 @@ async function overlay() {
     const dir = path.dirname(outputPath);
     fs.mkdirSync(dir, { recursive: true });
 
-    await sharp(inputPath)
+    await sharp(resolvedPath)
       .composite(composites)
       .png()
       .toFile(outputPath);

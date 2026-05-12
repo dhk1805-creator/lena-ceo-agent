@@ -305,6 +305,32 @@ const TOOLS = [
       },
       required: ['row', 'status']
     }
+  },
+  {
+    name: 'image_overlay',
+    description: 'Ghép logo STARDUCT + text lên ảnh tạo banner/cover chuyên nghiệp. Layouts: hero (bài viết chính thức), banner-bottom (tin ngắn), banner-left (cột dọc), minimal (logo góc).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        input_image: { type: 'string', description: 'Đường dẫn ảnh đầu vào (VD: /tmp/photo.jpg)' },
+        text: { type: 'string', description: 'Text hiển thị trên ảnh (VD: tiêu đề bài viết)' },
+        output_path: { type: 'string', description: 'Đường dẫn ảnh đầu ra (VD: /tmp/cover.png)' },
+        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal', default: 'hero' }
+      },
+      required: ['input_image']
+    }
+  },
+  {
+    name: 'gemini_write',
+    description: 'Dùng Gemini Flash (FREE) để soạn nội dung dài: bài viết, email, báo cáo, content marketing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Yêu cầu viết (VD: "Viết bài 200 từ giới thiệu nhà máy STARDUCT")' },
+        max_tokens: { type: 'number', description: 'Số token tối đa (default 600)', default: 600 }
+      },
+      required: ['prompt']
+    }
   }
 ];
 
@@ -367,6 +393,12 @@ async function runTool(name, input) {
       break;
     case 'github_create_issue':
       cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
+      break;
+    case 'image_overlay':
+      cmd = 'node'; args = [`${GTOOL}/image-overlay.js`, input.input_image, input.text || '', input.output_path || `/tmp/cover-${Date.now()}.png`, input.layout || 'hero'];
+      break;
+    case 'gemini_write':
+      cmd = 'node'; args = [`${GTOOL}/gemini-write.js`, input.prompt, String(input.max_tokens || 600)];
       break;
     default:
       return { error: `Unknown tool: ${name}` };
@@ -553,6 +585,17 @@ TOOLS có sẵn:
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
 - zalo_oa_history (đọc tin nhắn Zalo OA từ VIP — dùng khi Sếp hỏi "ai nhắn gì?")
 - github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu. GITHUB_TOKEN ĐÃ CÓ, cứ gọi)
+- zalo_oa_article (tạo + đăng bài viết lên OA Starasia JSC)
+- image_overlay (ghép logo STARDUCT lên ảnh tạo cover chuyên nghiệp — layouts: hero, banner-bottom)
+- gemini_write (Gemini Flash soạn nội dung dài: bài viết, báo cáo — FREE)
+
+WORKFLOW ĐĂNG BÀI ZALO OA (khi VIP gửi ảnh + yêu cầu viết bài):
+1. zalo_oa_history → tìm image_url từ tin nhắn gần nhất
+2. Download ảnh về /tmp/
+3. image_overlay (layout "hero") → tạo ảnh bìa branded
+4. gemini_write → soạn nội dung theo yêu cầu VIP
+5. zalo_oa_article create → đăng bài lên OA
+6. Báo VIP: "✅ Đã đăng bài [tiêu đề] lên OA Starasia JSC"
 
 GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.
 Khi dùng sheets_read / sheets_write / sheets_append: CHỈ CẦN truyền range (vd: "'KPI Tracker'!A:Z"). Hệ thống TỰ ĐỘNG điền Sheet ID.
