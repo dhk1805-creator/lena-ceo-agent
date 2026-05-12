@@ -18,7 +18,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
-const CLAUDE_MODEL_VIP = 'claude-haiku-4-5-20251001';     // VIP cũng dùng Haiku (Sonnet 4-6 gây lỗi API, cần investigate)
+const CLAUDE_MODEL_VIP = 'claude-sonnet-4-6';              // Sonnet 4.6 for VIP (confirmed valid model ID)
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
@@ -553,8 +553,17 @@ async function handleUserMessage(event) {
 
   console.log(`[lena] tin từ ${senderInfo}: ${messageText.substring(0, 60)}...`);
 
-  // Load session
-  const session = loadSession(senderId);
+  // Load session — validate it's usable, reset if corrupt
+  let session = loadSession(senderId);
+  if (!Array.isArray(session)) session = [];
+  // Ensure session doesn't have orphaned tool_result without matching tool_use
+  if (session.length > 0) {
+    const last = session[session.length - 1];
+    if (last.role === 'user' && Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
+      console.log(`[lena] session has orphaned tool_result — resetting`);
+      session = [];
+    }
+  }
   session.push({ role: 'user', content: messageText });
 
   // System prompt
@@ -645,67 +654,76 @@ Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check e
   let iterations = 0;
   const MAX_ITER = 5;
 
-  while (iterations++ < MAX_ITER) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2000,
-        system: systemPrompt,
-        tools: TOOLS,
-        messages: session
-      })
-    });
+  try {
+    while (iterations++ < MAX_ITER) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 2000,
+          system: systemPrompt,
+          tools: TOOLS,
+          messages: session
+        })
+      });
 
-    if (!res.ok) {
-      throw new Error(`Claude API ${res.status}: ${await res.text()}`);
-    }
-
-    const data = await res.json();
-
-    if (data.stop_reason === 'tool_use') {
-      // Add assistant turn (including tool_use blocks)
-      session.push({ role: 'assistant', content: data.content });
-
-      // Execute each tool
-      const toolResults = [];
-      for (const block of data.content) {
-        if (block.type === 'tool_use') {
-          console.log(`[lena] tool: ${block.name}(${JSON.stringify(block.input).substring(0, 100)})`);
-          const result = await runTool(block.name, block.input);
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: JSON.stringify(result)
-          });
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[lena] Claude API ${res.status}: ${errBody.substring(0, 300)}`);
+        // If session is causing the error, try once with fresh session
+        if (res.status === 400 && session.length > 1) {
+          console.log(`[lena] retrying with fresh session`);
+          session = [{ role: 'user', content: messageText }];
+          continue;
         }
+        throw new Error(`Claude API ${res.status}`);
       }
 
-      session.push({ role: 'user', content: toolResults });
-    } else {
-      // Final reply
-      reply = data.content.find(c => c.type === 'text')?.text || '(em không có gì để nói)';
-      session.push({ role: 'assistant', content: data.content });
-      break;
+      const data = await res.json();
+
+      if (data.stop_reason === 'tool_use') {
+        session.push({ role: 'assistant', content: data.content });
+
+        const toolResults = [];
+        for (const block of data.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[lena] tool: ${block.name}(${JSON.stringify(block.input).substring(0, 100)})`);
+            const result = await runTool(block.name, block.input);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+        }
+
+        session.push({ role: 'user', content: toolResults });
+      } else {
+        reply = data.content.find(c => c.type === 'text')?.text || '(em không có gì để nói)';
+        session.push({ role: 'assistant', content: data.content });
+        break;
+      }
     }
+  } catch (e) {
+    console.error(`[lena] CRITICAL: ${e.message}`);
+    reply = `Dạ ${vip.name}, em đang gặp trục trặc kỹ thuật, anh/chị thử lại sau 1 phút nhé.`;
+    session = [{ role: 'user', content: messageText }];
   }
 
   if (!reply) reply = 'Em xin lỗi, em đang gặp khó khăn xử lý yêu cầu này. Anh/chị thử lại sau nhé.';
 
-  // Save session
   saveSession(senderId, session);
 
-  // Send via Zalo OA
   try {
     await sendZaloMessage(senderId, reply);
-    console.log(`[lena] replied: ${reply.substring(0, 60)}...`);
+    console.log(`[lena] replied to ${vip.name}: ${reply.substring(0, 60)}...`);
   } catch (e) {
-    console.error('[lena] send error:', e.message);
+    console.error(`[lena] send FAILED to ${vip.name}: ${e.message}`);
   }
 }
 
