@@ -42,6 +42,7 @@ COPY google-tools/gemini-write.js /app/google-tools/gemini-write.js
 COPY google-tools/image-overlay.js /app/google-tools/image-overlay.js
 COPY google-tools/zalo-oa-send.js /app/google-tools/zalo-oa-send.js
 COPY google-tools/zalo-oa-refresh-token.js /app/google-tools/zalo-oa-refresh-token.js
+COPY google-tools/github-issue.js /app/google-tools/github-issue.js
 
 # Copy brand assets (logos)
 COPY assets/ /app/assets/

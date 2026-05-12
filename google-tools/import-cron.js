@@ -9,37 +9,88 @@ function run(args, timeout = 30000) {
   return spawnSync('openclaw', args, { encoding: 'utf8', timeout });
 }
 
+function extractJobIds(output) {
+  const ids = new Set();
+
+  // Try JSON parse first
+  try {
+    const data = JSON.parse(output);
+    const arr = Array.isArray(data) ? data : (data.jobs || data.crons || data.data || []);
+    for (const j of arr) {
+      if (j.id) ids.add(j.id);
+    }
+    if (ids.size > 0) {
+      console.log(`[parse] JSON: found ${ids.size} jobs`);
+      return [...ids];
+    }
+  } catch (e) {}
+
+  // Text parsing — multiple patterns
+  const lines = output.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || /^[-─═┌┐└┘│┤├┬┴┼]+$/.test(trimmed)) continue;
+
+    // Skip header lines
+    const lower = trimmed.toLowerCase();
+    if (/^(id|name|no|total|running|status|schedule|cron|next)\b/.test(lower)) continue;
+
+    // Pattern: UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+    const uuid = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    if (uuid) { ids.add(uuid[1]); continue; }
+
+    // Pattern: slug ID at start of line (e.g. "weekly-email-scan ...")
+    const slug = trimmed.match(/^([a-z0-9][a-z0-9\-_]{2,80})\s/i);
+    if (slug) { ids.add(slug[1]); continue; }
+
+    // Pattern: "id: xxx" or "- id: xxx"
+    const kv = trimmed.match(/^-?\s*id:\s*(.+)/i);
+    if (kv) ids.add(kv[1].trim());
+  }
+
+  if (ids.size > 0) console.log(`[parse] Text: found ${ids.size} jobs`);
+  return [...ids];
+}
+
 function main() {
-  // STEP 1: List all existing cron jobs
+  // STEP 1: List existing cron jobs — try JSON first, fall back to text
   console.log('=== Listing existing cron jobs ===');
-  const list1 = run(['cron', 'list']);
-  const listOutput = list1.stdout || '';
-  console.log(listOutput);
+  let listOutput = '';
+
+  const listJson = run(['cron', 'list', '--json']);
+  if (listJson.status === 0 && (listJson.stdout || '').trim()) {
+    listOutput = listJson.stdout;
+    console.log('[list] JSON output OK');
+  } else {
+    const listText = run(['cron', 'list']);
+    listOutput = listText.stdout || '';
+    console.log('[list] Text output');
+  }
+  console.log(listOutput.substring(0, 2000));
 
   // STEP 2: Delete ALL existing cron jobs
-  // Parse job IDs/names from list output (format varies, try common patterns)
-  const lines = listOutput.split('\n');
-  const jobIds = [];
-  for (const line of lines) {
-    // Match typical cron id/name patterns (alphanumeric-with-dashes)
-    const m = line.match(/^([a-z0-9][a-z0-9\-_]{2,50})\s/i);
-    if (m && !['id', 'name', 'no', 'total', 'running', 'status'].includes(m[1].toLowerCase())) {
-      jobIds.push(m[1]);
-    }
-  }
+  const jobIds = extractJobIds(listOutput);
 
   if (jobIds.length > 0) {
     console.log(`\n=== Deleting ${jobIds.length} old cron jobs ===`);
     for (const id of jobIds) {
       const del = run(['cron', 'rm', id]);
-      if (del.status === 0) {
-        console.log(`[DEL OK] ${id}`);
-      } else {
-        console.log(`[DEL SKIP] ${id}: ${(del.stderr || '').substring(0, 100)}`);
+      console.log(del.status === 0 ? `[DEL OK] ${id}` : `[DEL SKIP] ${id}: ${(del.stderr || '').substring(0, 100)}`);
+    }
+
+    // Verify deletion — if any remain, retry with different ID format
+    const recheck = run(['cron', 'list']);
+    const remaining = extractJobIds(recheck.stdout || '');
+    if (remaining.length > 0) {
+      console.log(`\n=== ${remaining.length} crons still remain, retrying delete ===`);
+      for (const id of remaining) {
+        run(['cron', 'rm', id]);
+        console.log(`[DEL RETRY] ${id}`);
       }
     }
   } else {
-    console.log('\n=== No old cron jobs to delete ===');
+    console.log('\n=== No old cron jobs detected ===');
+    console.log('Raw output for debug:', JSON.stringify(listOutput.substring(0, 500)));
   }
 
   // STEP 3: Import new cron jobs
@@ -68,11 +119,16 @@ function main() {
     }
   }
 
-  console.log(`\nImport done: ${ok} OK, ${fail} failed`);
+  console.log(`\nImport done: ${ok} OK, ${fail} failed (expected: ${jobs.length})`);
 
-  // STEP 4: Final list
+  // STEP 4: Final verification
   const list2 = run(['cron', 'list']);
-  console.log(`\n=== Cron jobs after import ===\n${list2.stdout || list2.stderr || '(empty)'}`);
+  const finalCount = extractJobIds(list2.stdout || '').length;
+  console.log(`\n=== Final: ${finalCount} cron jobs active (expected: ${jobs.length}) ===`);
+  if (finalCount > jobs.length) {
+    console.error(`WARNING: ${finalCount - jobs.length} extra crons detected! Deletion may have failed.`);
+  }
+  console.log(list2.stdout || list2.stderr || '(empty)');
 }
 
 main();
