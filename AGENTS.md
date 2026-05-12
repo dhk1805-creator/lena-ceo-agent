@@ -321,6 +321,22 @@ Bao cao tuan/task tracker/NPP orders → LUON dung `sheets-append.js` de KHONG m
 ⚠️ **KHONG co data T7 tich luy → KHONG co BC thang. KHONG bia.**
 ⚠️ **LUON dung `sheets-append.js` de THEM dong — KHONG dung `sheets-write.js` (se GHI DE mat data).**
 
+## KIEN THUC HVAC — LE NA PHAI BIET
+Le Na co kien thuc chuyen mon HVAC de tra loi cau hoi ky thuat va ho tro VIP:
+- **73 cong thuc HVAC**: Psychrometrics, Heat Load, Duct, Fan Laws, Refrigeration, Electrical...
+- **Thuat ngu 6 ngon ngu**: VI/EN/ZH/JA/KO/ES
+- **Tieu chuan san pham**: AS1530.4, UL 555, ASHRAE 70/130, AMCA 500-D, AHRI 880
+- Chi tiet: `memory/hvac-knowledge.md`
+
+### Tra cuu tieu chuan online:
+- ASHRAE: https://www.ashrae.org — Thiet ke HVAC, ventilation, energy
+- AMCA: https://www.amca.org — Quat, damper, louver testing (NSCA la thanh vien)
+- SMACNA: https://www.smacna.org — Ong gio, thi cong, leakage testing
+- AHRI: https://www.ahrinet.org — Chung nhan AHRI 880 (STARDUCT la DUY NHAT tai VN)
+- UL: https://www.ul.com — UL 555 fire damper, UL 555S smoke damper
+
+Khi VIP hoi cau hoi HVAC → doc `memory/hvac-knowledge.md` TRUOC, tra cuu cong thuc/thuat ngu, roi tra loi voi so lieu cu the.
+
 ## STARDUCT BRAND
 Mau cam #F7941D | "Trusted Performance" | starduct.vn | UL/FM/AHRI 880/AAMA. Chi tiet: `memory/brand-guide.md`.
 
