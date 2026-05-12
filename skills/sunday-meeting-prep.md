@@ -10,7 +10,7 @@ Tong hop tinh hinh tuan tu bao cao 14 bo phan (DINH TINH) va danh gia ket qua vs
 ## NGUYEN TAC PHAN BO TARGET
 
 ### Target nam (KHKD 2026): 251.76 ty VND
-Doc tu sheet '9. KHKD 2026 Baseline' — 10 nganh hang, target theo thang.
+Doc tu sheet 'KHKD 2026 Baseline' — 10 nganh hang, target theo thang.
 
 ### Cach phan bo:
 - **Nam → Thang**: Da co san trong KHKD Baseline (T1-T12)
@@ -110,11 +110,11 @@ node /app/google-tools/gmail-read.js 168 30 "to:dhk@nsca.vn from:nsca.vn"
 - Ghi nhan bo phan CHUA NOP bao cao
 
 ### Buoc 4: Doc du lieu so lieu (DINH LUONG)
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'9. KHKD 2026 Baseline'!A1:O15"` — Target phan bo
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'2. KPI Tracker'!A1:Z100"` — KPI thuc te
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'10. NPP Tracker'!A1:S50"` — Doanh so NPP
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'19. Weekly Performance'!A1:Z100"` — Ket qua tuan truoc
-- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'6. Report Tracker'!A1:S50"` — Tinh hinh nop BC
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'KHKD 2026 Baseline'!A1:O15"` — Target phan bo
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'KPI Tracker'!A1:Z100"` — KPI thuc te
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'NPP Tracker'!A1:S50"` — Doanh so NPP
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'Weekly Performance'!A1:Z100"` — Ket qua tuan truoc
+- `node /app/google-tools/sheets-read.js $GOOGLE_SHEET_ID "'Report Tracker'!A1:S50"` — Tinh hinh nop BC
 
 ### Buoc 5: Tinh toan & danh gia
 
@@ -213,8 +213,8 @@ PHAN C: TONG HOP & DE XUAT
 ```
 
 ### Buoc 7: Luu ket qua tuan vao Google Sheets
-- Ghi ket qua tuan vao sheet '19. Weekly Performance':
-  `node /app/google-tools/sheets-write.js $GOOGLE_SHEET_ID "'19. Weekly Performance'!A[row]" '<data>'`
+- APPEND ket qua tuan vao sheet 'Weekly Performance' (KHONG ghi de):
+  `node /app/google-tools/sheets-append.js $GOOGLE_SHEET_ID "'Weekly Performance'!A:E" '<data>'`
 - Du lieu: [Tuan, Thang, Tong DT, Tong KH, %, tung nganh hang, tung NPP]
 
 ### Buoc 8: Tao Google Doc

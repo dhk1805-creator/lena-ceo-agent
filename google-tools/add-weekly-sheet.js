@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Add "19. Weekly Performance" sheet to existing Le Na CEO Dashboard
+// Add "Weekly Performance" sheet to existing Le Na CEO Dashboard
 // Run once: node add-weekly-sheet.js
 // Requires: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GOOGLE_SHEET_ID
 
@@ -40,7 +40,7 @@ async function main() {
         requests: [{
           addSheet: {
             properties: {
-              title: '19. Weekly Performance',
+              title: 'Weekly Performance',
               tabColor: { red: 0.2, green: 0.5, blue: 0.9 },
               gridProperties: { frozenRowCount: 1 }
             }
@@ -56,7 +56,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('Sheet "19. Weekly Performance" created');
+  console.log('Sheet "Weekly Performance" created');
 
   // Step 2: Write headers
   const headers = [
@@ -80,11 +80,11 @@ async function main() {
   ];
 
   const writeRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent("'19. Weekly Performance'!A1")}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent("'Weekly Performance'!A1")}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ range: "'19. Weekly Performance'!A1", values: [headers] })
+      body: JSON.stringify({ range: "'Weekly Performance'!A1", values: [headers] })
     }
   );
 
@@ -116,7 +116,7 @@ async function main() {
   );
 
   console.log('========================================');
-  console.log('THANH CONG! Sheet "19. Weekly Performance" da tao');
+  console.log('THANH CONG! Sheet "Weekly Performance" da tao');
   console.log(`Spreadsheet: ${SHEET_ID}`);
   console.log(`Headers: ${headers.length} cot`);
   console.log('========================================');

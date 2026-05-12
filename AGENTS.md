@@ -175,7 +175,8 @@ KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 | Facebook | `facebook-post.js "msg" "[img]"` |
 
 ## SHEETS (21 tabs, ID: `$GOOGLE_SHEET_ID`)
-1.CEO Daily Dashboard 2.KPI Tracker 3.Meeting Notes 4.Market Research 5.Email Action Log 6.Report Tracker 7.Attachment Analysis 8.Activity Log 9.KHKD 2026 Baseline 10.NPP Tracker 11.Variance Log 12.ClimaNexus KPI 13.ClimaNexus Milestones 14.ClimaNexus Pipeline 15.Export Revenue 16.Intl Pipeline 17.Santiago KPI 18.Intl Market Log 19.Weekly Performance 20.NPP Orders 21.Task Tracker
+CEO Daily Dashboard | KPI Tracker | Meeting Notes | Market Research | Email Action Log | Report Tracker | Attachment Analysis | Activity Log | KHKD 2026 Baseline | NPP Tracker | Variance Log | ClimaNexus KPI | ClimaNexus Milestones | ClimaNexus Pipeline | Export Revenue | International Pipeline | Santiago KPI | Intl Market Log | Weekly Performance | NPP Orders | Task Tracker
+⚠️ Tab name KHONG co so prefix. Dung dung ten nhu tren khi goi sheets-read/write/append.
 
 ### CAU TRUC SHEET QUAN TRONG (LE NA PHAI NHO):
 **Report Tracker** (tab 6) — Luu TOM TAT moi bao cao tuan tu 11 BP:

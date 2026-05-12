@@ -27,47 +27,47 @@ async function getAccessToken() {
 
 const SHEETS_CONFIG = [
   {
-    name: '1. CEO Daily Dashboard',
+    name: 'CEO Daily Dashboard',
     headers: ['Ngay', 'Doanh thu ngay (ty)', 'Don hang moi', 'Email can xu ly', 'Hop hom nay', 'Van de noi bat', 'Action items', 'Trang thai'],
     color: { red: 0.2, green: 0.4, blue: 0.8 }
   },
   {
-    name: '2. KPI Tracker',
+    name: 'KPI Tracker',
     headers: ['Thang', 'DT Thuc te (ty)', 'DT KH (ty)', '% Dat', 'Don hang moi', 'Gia tri don moi (ty)', 'Cong no phai thu (ty)', 'DSO (ngay)', 'SL Nhom', 'SL Thep', 'Ty le loi %', 'Giao hang dung han %', 'Trang thai'],
     color: { red: 0.1, green: 0.6, blue: 0.3 }
   },
   {
-    name: '3. Meeting Notes',
+    name: 'Meeting Notes',
     headers: ['Ngay', 'Loai hop', 'Chu tri', 'Thanh phan', 'Noi dung chinh', 'Quyet dinh', 'Action items', 'Deadline', 'Phu trach', 'Trang thai'],
     color: { red: 0.5, green: 0.3, blue: 0.7 }
   },
   {
-    name: '4. Market Research',
+    name: 'Market Research',
     headers: ['Ngay', 'Chu de', 'Nguon', 'Tom tat', 'Insight chinh', 'Anh huong NSCA', 'De xuat', 'Trang thai'],
     color: { red: 0.8, green: 0.5, blue: 0.2 }
   },
   {
-    name: '5. Email Action Log',
+    name: 'Email Action Log',
     headers: ['Ngay', 'Tu', 'Den', 'Chu de', 'Phan loai', 'Tom tat', 'Action can lam', 'Deadline', 'Trang thai', 'Ghi chu'],
     color: { red: 0.9, green: 0.3, blue: 0.3 }
   },
   {
-    name: '6. Report Tracker',
+    name: 'Report Tracker',
     headers: ['Tuan', 'Ngay bat dau', 'Ngay ket thuc', 'R&D', 'HCNS', 'PKD', 'BD Noi dia', 'BD Intl', 'Back Office', 'TCKT', 'GD NM', 'SX Thep', 'Co Dien', 'QAQC', 'Kho', 'Giao Hang', 'Cung Ung', 'Tong nop', 'Ghi chu'],
     color: { red: 0.3, green: 0.7, blue: 0.5 }
   },
   {
-    name: '7. Attachment Analysis',
+    name: 'Attachment Analysis',
     headers: ['Ngay', 'Email', 'Ten file', 'Loai file', 'Kich thuoc', 'Tom tat noi dung', 'Phan loai', 'Action', 'Trang thai'],
     color: { red: 0.6, green: 0.4, blue: 0.4 }
   },
   {
-    name: '8. Activity Log',
+    name: 'Activity Log',
     headers: ['Timestamp', 'Agent', 'Hanh dong', 'Kenh', 'Doi tuong', 'Chi tiet', 'Ket qua', 'Ghi chu'],
     color: { red: 0.4, green: 0.4, blue: 0.6 }
   },
   {
-    name: '9. KHKD 2026 Baseline',
+    name: 'KHKD 2026 Baseline',
     headers: ['Nganh hang', 'KH Nam (ty)', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'],
     color: { red: 0.2, green: 0.6, blue: 0.8 },
     data: [
@@ -85,47 +85,47 @@ const SHEETS_CONFIG = [
     ]
   },
   {
-    name: '10. NPP Tracker',
+    name: 'NPP Tracker',
     headers: ['Thang', 'NTK DT (ty)', 'NTK KH', 'NTK %', 'GALAXY DT', 'GALAXY KH', 'GALAXY %', 'VNMEP DT', 'VNMEP KH', 'VNMEP %', 'IMP DT', 'IMP KH', 'IMP %', 'MEPCO DT', 'MEPCO KH', 'MEPCO %', 'Tong DT', 'Tong KH', 'Tong %'],
     color: { red: 0.7, green: 0.5, blue: 0.1 }
   },
   {
-    name: '11. Variance Log',
+    name: 'Variance Log',
     headers: ['Ngay', 'Thang', 'Nganh hang', 'KH (ty)', 'Thuc te (ty)', 'Variance (ty)', 'Variance %', 'Nguyen nhan', 'De xuat', 'Trang thai'],
     color: { red: 0.8, green: 0.2, blue: 0.2 }
   },
   {
-    name: '12. ClimaNexus KPI',
+    name: 'ClimaNexus KPI',
     headers: ['Thang', 'Revenue ($K)', 'Users', 'MRR ($)', 'Burn rate ($K)', 'Runway (thang)', 'Dev velocity', 'Bugs', 'Uptime %', 'Ghi chu'],
     color: { red: 0.1, green: 0.8, blue: 0.8 }
   },
   {
-    name: '13. ClimaNexus Milestones',
+    name: 'ClimaNexus Milestones',
     headers: ['Milestone', 'Mo ta', 'Owner', 'Start date', 'ETA', 'Actual', 'Trang thai', 'Blockers', 'Ghi chu'],
     color: { red: 0.2, green: 0.7, blue: 0.7 }
   },
   {
-    name: '14. ClimaNexus Pipeline',
+    name: 'ClimaNexus Pipeline',
     headers: ['VC/Investor', 'Contact', 'Stage', 'Amount ($K)', 'Win %', 'First meeting', 'Last contact', 'Next step', 'Deadline', 'Trang thai', 'Ghi chu'],
     color: { red: 0.3, green: 0.6, blue: 0.7 }
   },
   {
-    name: '15. Export Revenue',
+    name: 'Export Revenue',
     headers: ['Thang', 'EAL ($K)', 'Quiet Cool ($K)', 'Indonesia ($K)', 'Malaysia ($K)', 'Cambodia ($K)', 'Philippines ($K)', 'Uruguay ($K)', 'Khac ($K)', 'Tong ($K)', 'Target ($K)', '% Dat'],
     color: { red: 0.6, green: 0.2, blue: 0.6 }
   },
   {
-    name: '16. International Pipeline',
+    name: 'International Pipeline',
     headers: ['Lead', 'Thi truong', 'Khu vuc', 'San pham', 'Gia tri ($K)', 'Stage', 'Win %', 'Weighted ($K)', 'Contact', 'Next step', 'ETA', 'Owner', 'Ghi chu'],
     color: { red: 0.5, green: 0.2, blue: 0.7 }
   },
   {
-    name: '17. Santiago KPI',
+    name: 'Santiago KPI',
     headers: ['Tuan', 'Meetings', 'New leads', 'Proposals sent', 'Proposals value ($K)', 'Closed deals', 'Closed value ($K)', 'Pipeline ($K)', 'Conversion %', 'Ghi chu'],
     color: { red: 0.7, green: 0.3, blue: 0.5 }
   },
   {
-    name: '18. Intl Market Log',
+    name: 'Intl Market Log',
     headers: ['Ngay', 'Thi truong', 'Loai', 'Chi tiet', 'Nguon', 'Impact', 'Action', 'Owner', 'Deadline', 'Trang thai'],
     color: { red: 0.4, green: 0.3, blue: 0.8 }
   }
