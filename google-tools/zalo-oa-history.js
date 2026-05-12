@@ -52,9 +52,18 @@ function readEvents(filterUserId) {
       const senderId = entry.event?.sender?.id;
       if (filterUserId && senderId !== filterUserId) continue;
       const eventName = entry.event?.event_name;
+      // [2026-05-13] entry.time là UTC ISO. Convert sang Asia/Ho_Chi_Minh (+7)
+      // để Lê Na không báo nhầm giờ cho VIP (trước: 00:01 VN bị in thành 17:01 UTC).
+      const timeVN = new Date(entry.time).toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
       if (eventName === 'user_send_text') {
         events.push({
-          time: entry.time,
+          time: timeVN,
+          time_iso_utc: entry.time,
           from: VIP_NAMES[senderId] || senderId,
           type: 'text',
           text: entry.event.message?.text || '',
@@ -62,7 +71,8 @@ function readEvents(filterUserId) {
       } else if (eventName === 'user_send_image') {
         const att = entry.event?.message?.attachments?.[0];
         events.push({
-          time: entry.time,
+          time: timeVN,
+          time_iso_utc: entry.time,
           from: VIP_NAMES[senderId] || senderId,
           type: 'image',
           text: '[Ảnh]',
