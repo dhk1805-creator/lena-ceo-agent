@@ -56,7 +56,9 @@ async function uploadImage(imageSource) {
   const formData = new FormData();
   formData.append('file', new Blob([imageBuffer], { type: mime[ext] || 'image/jpeg' }), filename);
 
-  const res = await fetch('https://openapi.zalo.me/v2.0/oa/upload/image', {
+  // Article cover MUST be uploaded via article/upload_image endpoint —
+  // URLs from /oa/upload/image are not accepted by /article/create ("cover value is invalid").
+  const res = await fetch('https://openapi.zalo.me/v2.0/article/upload_image', {
     method: 'POST',
     headers: { 'access_token': ACCESS_TOKEN },
     body: formData
@@ -64,7 +66,12 @@ async function uploadImage(imageSource) {
 
   const data = await res.json();
   if (data.error !== 0) throw new Error(`Upload image failed: ${data.message || JSON.stringify(data)}`);
-  return typeof data.data === 'string' ? data.data : data.data?.url || data.data;
+
+  // Response shape varies: data.data may be a URL string, an object {url}, or {photo_url}
+  const d = data.data;
+  const url = typeof d === 'string' ? d : (d?.url || d?.photo_url || d?.image_url);
+  if (!url || typeof url !== 'string') throw new Error(`Upload OK nhưng không tìm thấy URL trong response: ${JSON.stringify(data)}`);
+  return url;
 }
 
 function textToArticleBody(text) {
@@ -77,9 +84,15 @@ function textToArticleBody(text) {
 
 async function createArticle(title, bodyText, coverSource) {
   let coverUrl = null;
+  let coverError = null;
 
   if (coverSource) {
-    coverUrl = await uploadImage(coverSource);
+    try {
+      coverUrl = await uploadImage(coverSource);
+    } catch (e) {
+      // Fallback: post article without cover instead of failing entirely
+      coverError = e.message;
+    }
   }
 
   const description = bodyText.substring(0, 150).replace(/\n/g, ' ').trim();
@@ -129,6 +142,7 @@ async function createArticle(title, bodyText, coverSource) {
     article_id: verifyData.data?.article_id,
     title: title,
     cover: coverUrl || 'none',
+    cover_error: coverError || undefined,
     description: description,
     status: 'published'
   };
