@@ -35,7 +35,7 @@ if (!ACCESS_TOKEN) {
   process.exit(1);
 }
 
-async function uploadImage(imageSource) {
+async function uploadCoverImage(imageSource) {
   let imageBuffer, filename = 'cover.jpg';
 
   if (imageSource.startsWith('http')) {
@@ -50,27 +50,53 @@ async function uploadImage(imageSource) {
     filename = path.basename(imageSource);
   }
 
+  // Convert PNG to JPEG (Zalo prefers JPEG, smaller size)
+  let finalBuffer = imageBuffer;
   const ext = filename.split('.').pop().toLowerCase();
+  if (ext === 'png') {
+    try {
+      const sharp = require('sharp');
+      finalBuffer = await sharp(imageBuffer).jpeg({ quality: 85 }).toBuffer();
+      filename = filename.replace(/\.png$/i, '.jpg');
+    } catch (e) {
+      // sharp not available, use original
+    }
+  }
+
   const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+  const finalExt = filename.split('.').pop().toLowerCase();
 
   const formData = new FormData();
-  formData.append('file', new Blob([imageBuffer], { type: mime[ext] || 'image/jpeg' }), filename);
+  formData.append('file', new Blob([finalBuffer], { type: mime[finalExt] || 'image/jpeg' }), filename);
 
-  // Article cover MUST be uploaded via article/upload_image endpoint —
-  // URLs from /oa/upload/image are not accepted by /article/create ("cover value is invalid").
-  const res = await fetch('https://openapi.zalo.me/v2.0/article/upload_image', {
-    method: 'POST',
-    headers: { 'access_token': ACCESS_TOKEN },
-    body: formData
-  });
+  // Article cover MUST use article-specific upload endpoint —
+  // URLs from /oa/upload/image are NOT accepted by /article/create ("cover value is invalid").
+  const endpoints = [
+    'https://openapi.zalo.me/v2.0/article/upload_image',
+    'https://openapi.zalo.me/v2.0/article/upload_video_or_cover'
+  ];
 
-  const data = await res.json();
-  if (data.error !== 0) throw new Error(`Upload image failed: ${data.message || JSON.stringify(data)}`);
+  let data;
+  for (const endpoint of endpoints) {
+    const formCopy = new FormData();
+    formCopy.append('file', new Blob([finalBuffer], { type: mime[finalExt] || 'image/jpeg' }), filename);
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'access_token': ACCESS_TOKEN },
+      body: formCopy
+    });
+    data = await res.json();
+    console.error(`[upload] ${endpoint} -> ${JSON.stringify(data)}`);
+    if (data.error === 0) break;
+  }
 
-  // Response shape varies: data.data may be a URL string, an object {url}, or {photo_url}
+  if (!data || data.error !== 0) {
+    throw new Error(`Upload cover failed: ${data?.message || JSON.stringify(data)}`);
+  }
+
   const d = data.data;
-  const url = typeof d === 'string' ? d : (d?.url || d?.photo_url || d?.image_url);
-  if (!url || typeof url !== 'string') throw new Error(`Upload OK nhưng không tìm thấy URL trong response: ${JSON.stringify(data)}`);
+  const url = typeof d === 'string' ? d : (d?.url || d?.photo_url || d?.image_url || d?.cover_url);
+  if (!url || typeof url !== 'string') throw new Error(`Upload OK nhưng không tìm thấy URL: ${JSON.stringify(data)}`);
   return url;
 }
 
@@ -84,14 +110,15 @@ function textToArticleBody(text) {
 
 async function createArticle(title, bodyText, coverSource) {
   let coverUrl = null;
-  let coverError = null;
+  let coverWarning = null;
 
   if (coverSource) {
     try {
-      coverUrl = await uploadImage(coverSource);
+      coverUrl = await uploadCoverImage(coverSource);
+      console.error(`[article] cover uploaded: ${coverUrl}`);
     } catch (e) {
-      // Fallback: post article without cover instead of failing entirely
-      coverError = e.message;
+      coverWarning = `Cover upload failed: ${e.message}. Posting without cover.`;
+      console.error(`[article] ${coverWarning}`);
     }
   }
 
@@ -110,13 +137,17 @@ async function createArticle(title, bodyText, coverSource) {
     article.cover = { cover_type: 1, photo_url: coverUrl, status: 'show' };
   }
 
-  const createRes = await fetch('https://openapi.zalo.me/v2.0/article/create', {
-    method: 'POST',
-    headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
-    body: JSON.stringify(article)
-  });
+  console.error(`[article] creating with cover=${coverUrl ? 'yes' : 'no'}`);
+  let createData = await postArticle(article);
 
-  const createData = await createRes.json();
+  // Fallback: if cover caused error, retry without cover
+  if (createData.error !== 0 && coverUrl) {
+    console.error(`[article] create failed with cover (${createData.message}), retrying without cover...`);
+    coverWarning = `Cover rejected by Zalo (${createData.message}). Posted without cover.`;
+    delete article.cover;
+    createData = await postArticle(article);
+  }
+
   if (createData.error !== 0) {
     return { success: false, step: 'create', error: createData.message, detail: createData };
   }
@@ -133,6 +164,8 @@ async function createArticle(title, bodyText, coverSource) {
   });
 
   const verifyData = await verifyRes.json();
+  console.error(`[article] verify response: ${JSON.stringify(verifyData)}`);
+
   if (verifyData.error !== 0) {
     return { success: false, step: 'verify', error: verifyData.message, article_token: articleToken, detail: verifyData };
   }
@@ -142,10 +175,21 @@ async function createArticle(title, bodyText, coverSource) {
     article_id: verifyData.data?.article_id,
     title: title,
     cover: coverUrl || 'none',
-    cover_error: coverError || undefined,
     description: description,
-    status: 'published'
+    status: 'published',
+    warning: coverWarning || undefined
   };
+}
+
+async function postArticle(article) {
+  const res = await fetch('https://openapi.zalo.me/v2.0/article/create', {
+    method: 'POST',
+    headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify(article)
+  });
+  const data = await res.json();
+  console.error(`[article] create response: ${JSON.stringify(data)}`);
+  return data;
 }
 
 async function listArticles() {
