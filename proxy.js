@@ -228,7 +228,7 @@ const TOOLS = [
   },
   {
     name: 'zalo_oa_send_to_vip',
-    description: 'Gửi Zalo qua OA cho VIP khác (sep-khanh, chi-hong, anh-ngoc). Dùng khi anh Khánh yêu cầu báo cho người khác.',
+    description: 'Gửi TIN NHẮN cá nhân cho VIP (sep-khanh, chi-hong, anh-ngoc). CHỈ dùng để nhắn tin riêng. KHÔNG dùng để đăng bài — dùng zalo_oa_article thay thế.',
     input_schema: {
       type: 'object',
       properties: {
@@ -282,7 +282,7 @@ const TOOLS = [
   },
   {
     name: 'zalo_oa_article',
-    description: 'Tạo và đăng bài viết lên Zalo OA Starasia JSC. Dùng Gemini soạn nội dung trước, rồi gọi tool này để publish.',
+    description: 'ĐĂNG BÀI VIẾT lên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → dùng tool NÀY. KHÔNG dùng zalo_oa_send_to_vip.',
     input_schema: {
       type: 'object',
       properties: {
@@ -586,9 +586,14 @@ TOOLS có sẵn:
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
 - zalo_oa_history (đọc tin nhắn Zalo OA từ VIP — dùng khi Sếp hỏi "ai nhắn gì?")
 - github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu. GITHUB_TOKEN ĐÃ CÓ, cứ gọi)
-- zalo_oa_article (tạo + đăng bài viết lên OA Starasia JSC)
+- zalo_oa_article (ĐĂNG BÀI lên TRANG OA Starasia JSC — public, mọi follower thấy)
 - image_overlay (ghép logo STARDUCT lên ảnh tạo cover chuyên nghiệp — layouts: hero, banner-bottom)
 - gemini_write (Gemini Flash soạn nội dung dài: bài viết, báo cáo — FREE)
+
+⚠️ PHÂN BIỆT 2 TOOL ZALO:
+- "đăng bài OA" / "đăng lên trang" → zalo_oa_article (bài viết PUBLIC trên trang Starasia JSC)
+- "nhắn tin cho ai" / "báo cho chị Hồng" → zalo_oa_send_to_vip (tin nhắn RIÊNG cho 1 người)
+TUYỆT ĐỐI KHÔNG dùng zalo_oa_send_to_vip để đăng bài. Đó là GỬI TIN NHẮN, không phải đăng bài.
 
 WORKFLOW ĐĂNG BÀI ZALO OA (khi VIP gửi ảnh + yêu cầu viết bài):
 ⛔ KHÔNG dùng DALL-E tạo ảnh mới — PHẢI dùng ẢNH THẬT VIP đã gửi
