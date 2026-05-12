@@ -55,15 +55,18 @@
 | 16 | He so nhiet hien (SHF) | SHF = Qs / Qt | Qs=sensible, Qt=total | — |
 
 ### 3. LUU LUONG KHI & ONG GIO (Airflow & Duct)
-| # | Ten | Cong thuc | Bien | Don vi |
-|---|-----|-----------|------|--------|
-| 19 | Van toc khi | V = Q / A | Q=airflow, A=area | m/s |
-| 20 | Luu luong tu van toc | Q = V × A | V=velocity, A=area | CFM |
-| 22 | Duong kinh tuong duong | D = √(4A/π) | A=cross-section area | mm |
-| 23 | So Reynolds | Re = ρVD / μ | ρ=density, V=vel, D=dia, μ=viscosity | — |
-| 25 | Ton that ma sat ong | ΔP = f × (L/D) × (ρV²/2) | f=friction, L=length, D=dia | Pa |
-| 27 | Ap suat toc do | VP = ρV²/2 | ρ=density, V=velocity | Pa |
-| 28 | So lan thay khi/gio | ACH = CFM × 60 / Room Vol | CFM=airflow, Vol=room(ft³) | ACH |
+| # | Ten VI | Ten EN | Cong thuc | Bien | Don vi |
+|---|--------|--------|-----------|------|--------|
+| 19 | Van toc khong khi | Air Velocity | V = Q / A | Q=airflow, A=area | m/s |
+| 20 | Luu luong tu van toc | Flow from Velocity | Q = V × A | V=velocity, A=area | CFM |
+| 21 | Dien tich ong gio | Duct Area | A = Q / V | Q=airflow, V=velocity | m² |
+| 22 | Duong kinh tuong duong (tron) | Equivalent Diameter (Round) | D = √(4A/π) | A=cross-section area | mm |
+| 23 | So Reynolds | Reynolds Number | Re = ρVD / μ | ρ=density, V=vel, D=dia, μ=viscosity | — |
+| 24 | He so ma sat (Haaland) | Friction Factor | 1/√f = -1.8 log[6.9/Re + (ε/D/3.7)^1.11] | Re=Reynolds, ε=roughness | — |
+| 25 | Ton that ma sat ong | Duct Friction Loss | ΔP = f × (L/D) × (ρV²/2) | f=friction, L=length, D=dia | Pa |
+| 26 | Ap suat dong | Velocity Pressure | VP = ρV²/2 × (1/g) | ρ=density, V=velocity | in.wg |
+| 27 | Ap suat toc do | Velocity Pressure (Pa) | VP = ρV²/2 | ρ=density, V=velocity | Pa |
+| 28 | So lan thay doi khong khi/gio | Air Changes per Hour | ACH = CFM × 60 / Room Vol | CFM=airflow, Vol=room(ft³) | ACH |
 
 ### 4. TRUYEN NHIET (Heat Transfer)
 | # | Ten | Cong thuc | Bien | Don vi |
@@ -156,6 +159,19 @@
 | ΔP | Hieu ap suat | Pa | in.wg |
 | ṁ | Luu luong khoi | kg/s | lb/hr |
 | Cp | Nhiet dung rieng | kJ/kg·K | Btu/lb·°F |
+
+## THUAT NGU SAI — TUYET DOI KHONG DUNG
+Khi tra loi cau hoi HVAC, KHONG tu dich hoac dung cac cum tu SAI sau:
+| ❌ SAI | ✅ DUNG | EN |
+|--------|--------|-----|
+| Khang cu ong | Ton that ma sat ong | Duct Friction Loss |
+| He so khang cu | He so ma sat | Friction Factor |
+| Ap luc dong | Ap suat dong / Ap suat toc do | Velocity Pressure |
+| Luu luong khong khi | Luu luong khi / Van toc khong khi | Airflow / Air Velocity |
+| Nhiet do diem nuoc | Nhiet do diem suong | Dew Point Temperature |
+| Do nong | Nhiet do | Temperature |
+
+**NGUYEN TAC:** Khi khong chac thuat ngu VI → dung TEN TIENG ANH goc. Tot hon la dung EN chinh xac con hon dich sai sang VI.
 
 ## THUAT NGU HVAC - 6 NGON NGU
 | VI | EN | ZH | JA | KO | ES |
