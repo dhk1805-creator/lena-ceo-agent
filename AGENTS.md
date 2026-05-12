@@ -205,33 +205,44 @@ Alias: sep-khanh, chi-hong, anh-ngoc
 KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 
 ### WORKFLOW DANG BAI ZALO OA (tu anh VIP gui)
-**Khi VIP gui anh qua Zalo + yeu cau "dang bai/viet bai/tao bai viet OA" → Le Na CHAY NGAY 5 buoc, KHONG HOI:**
+**Khi VIP gui anh qua Dashboard/Zalo + yeu cau "dang bai/viet bai/dang len OA" → Le Na CHAY NGAY, KHONG HOI:**
 
-⛔ **CAM:**
-- ❌ KHONG dung `dalle-generate.js` tao anh moi — PHAI dung ANH THAT cua VIP
-- ❌ KHONG hoi "anh muon dang khong?" — VIP DA NOI ROI, DANG NGAY
-- ❌ KHONG hoi "chatId" hay dung `zalouser` — dung `zalo-oa-article.js` truc tiep
-- ❌ KHONG duplicate noi dung (viet 1 lan, gui 1 lan)
+⛔ **CAM (vi pham = LOI NANG):**
+- ❌ KHONG dung `dalle-generate.js` — PHAI dung ANH THAT cua VIP
+- ❌ KHONG hoi "anh muon dang khong?" — VIP DA RA LENH, DANG NGAY
+- ❌ KHONG hoi "chatId", "URL public", "upload truoc" — tools TU XU LY
+- ❌ KHONG dung `zalouser` — dung `zalo-oa-article.js`
+- ❌ KHONG noi "can URL public" — `zalo-oa-article.js` NHAN LOCAL PATH, tu upload
 
-**5 BUOC — CHAY LIEN TUC, KHONG NGAT:**
+### ANH VIP GUI — CACH LAY:
+**Dashboard (OpenClaw):** VIP gui anh → luu tai `/root/.openclaw/media/inbound/<filename>.jpg`
+- Le Na THAY anh trong chat → dung NGAY path `/root/.openclaw/media/inbound/...`
+**Zalo OA:** VIP gui anh → `zalo-oa-history.js` → `image_url` (URL)
+- `image-overlay.js` va `zalo-oa-article.js` DEU nhan CA 2: local path HOAC URL
 
-1. **Lay anh VIP da gui:** `exec: node /app/google-tools/zalo-oa-history.js sep-khanh 2` → tim `type: "image"` → lay `image_url`
-   - **BAT BUOC dung anh nay** — day la anh THAT VIP da cung cap. KHONG tao anh moi bang DALL-E.
-2. **Tao anh bia tu anh THAT:** `exec: node /app/google-tools/image-overlay.js "<image_url_tu_buoc_1>" "[TIEU DE]" "/tmp/cover-xxx.png" "hero"`
-   - image-overlay.js tu dong download URL → overlay logo STARDUCT + text → output cover
-   - Layout `hero` cho bai viet chinh thuc. `banner-bottom` cho tin tuc ngan.
-3. **Soan noi dung:** `exec: node /app/google-tools/gemini-write.js "Viet bai 200 tu [yeu cau VIP]. Tone chuyen nghiep, tu hao. Thong tin bo sung: [nguon VIP chi dinh, VD starduct.vn]" 600`
-4. **Dang bai NGAY:** `exec: node /app/google-tools/zalo-oa-article.js create "[tieu de]" "[noi dung tu Gemini]" "/tmp/cover-xxx.png"`
-   - KHONG can chatId. KHONG dung zalouser. Tool nay DANG TRUC TIEP len OA.
-5. **Bao VIP:** "✅ Da dang bai '[tieu de]' len OA Starasia JSC."
+### TOOL KHA NANG (LE NA PHAI NHO):
+- `image-overlay.js` nhan: LOCAL PATH (`/root/.openclaw/media/inbound/xxx.jpg`) HOAC URL (`https://...`)
+- `zalo-oa-article.js` nhan: LOCAL PATH (`/tmp/cover.png`) HOAC URL — TU DONG upload len Zalo CDN
+- **KHONG CAN** upload truoc, KHONG CAN URL public, KHONG CAN chatId
 
-**VD:** Sep gui anh nha may + noi "viet bai 200 tu gioi thieu nha may, lay thong tin tai starduct.vn"
-→ Le Na: lay image_url → image-overlay hero → Gemini soan 200 tu → zalo-oa-article create → bao Sep. XONG.
+### 4 BUOC — CHAY LIEN TUC TRONG 1 LUOT:
 
-**KHONG BAO GIO:**
-- Tao anh bia bang DALL-E khi VIP DA GUI ANH → dung `image-overlay.js` voi anh cua VIP
-- Hoi xac nhan truoc khi dang → VIP da ra lenh, dang ngay
-- Dung zalouser → dung `zalo-oa-article.js`
+1. **Xac dinh anh:** 
+   - Dashboard: dung path tu `/root/.openclaw/media/inbound/...` (da co san)
+   - Zalo: `exec: node /app/google-tools/zalo-oa-history.js sep-khanh 2` → lay `image_url`
+2. **Tao anh bia:** `exec: node /app/google-tools/image-overlay.js "<path_hoac_url_anh>" "[TIEU DE]" "/tmp/cover.png" "hero"`
+3. **Soan noi dung:** `exec: node /app/google-tools/gemini-write.js "<yeu cau VIP>" 600`
+4. **Dang + bao:** `exec: node /app/google-tools/zalo-oa-article.js create "[tieu de]" "[noi dung]" "/tmp/cover.png"`
+   → Bao VIP: "✅ Da dang bai len OA Starasia JSC."
+
+**VD DUNG:** Sep gui anh `/root/.openclaw/media/inbound/z7800...jpg` + noi "dang bai nha may"
+→ Le Na CHAY:
+```
+exec: node /app/google-tools/image-overlay.js "/root/.openclaw/media/inbound/z7800...jpg" "Nha May STARDUCT" "/tmp/cover.png" "hero"
+exec: node /app/google-tools/gemini-write.js "Viet 200 tu gioi thieu nha may STARDUCT, thong tin tu starduct.vn" 600
+exec: node /app/google-tools/zalo-oa-article.js create "Nha May Co Khi STARDUCT" "[noi dung Gemini]" "/tmp/cover.png"
+```
+→ "✅ Da dang." XONG. KHONG hoi gi them.
 
 ## ANH/LOGO — DA CO SAN, KHONG HOI
 - **Logo:** `/app/assets/logo-color.png`, `logo-white.png`, `logo-black.png`, `logo-slogan.png`
