@@ -187,6 +187,39 @@
 | Luu luong gio | Airflow Rate | 风量 | 風量 | 풍량 | Caudal de aire |
 | Ap suat tinh | Static Pressure | 静压 | 静圧 | 정압 | Presión estática |
 
+## TIEU CHUAN & QUY CHUAN VIET NAM (PCCC & Xay dung)
+
+### Quy chuan bat buoc:
+| Van ban | Link | Noi dung |
+|---------|------|----------|
+| QCVN 06:2022/BXD | https://moc.gov.vn/Images/editor/files/Quy%20Chu%E1%BA%A9n/QCVN%2006-2022.pdf | Quy chuan ky thuat quoc gia ve An toan chay cho nha va cong trinh. Ban hanh theo Thong tu 06/2022/TT-BXD, co hieu luc 16/01/2023 |
+| Thong tu 06/2022/TT-BXD | https://chinhphu.vn/?pageid=27160&docid=207059&classid=1 | Thong tu ban hanh QCVN 06:2022/BXD — van ban phap ly chinh thuc |
+| TCVN Portal | https://tcvn.gov.vn | Tong cuc Tieu chuan Do luong Chat luong — tra cuu tat ca tieu chuan TCVN |
+| VFRA (Hiep hoi PCCC VN) | https://vfra.org/uploads/up/root/file/2022/12/17/00/39/65_1671190762_9743.pdf | Tai lieu tham khao PCCC tu Hiep hoi Phong chay Chua chay Viet Nam |
+
+### QCVN 06:2022/BXD — Diem chinh lien quan STARDUCT:
+**Phan loai chiu lua van ngan chay (Fire Damper EI rating):**
+- **EI 30**: Chiu lua 30 phut — cong trinh nguy hiem chay thap
+- **EI 60**: Chiu lua 60 phut — cong trinh nguy hiem chay trung binh
+- **EI 90**: Chiu lua 90 phut — cong trinh nguy hiem chay cao
+- **EI 120**: Chiu lua 120 phut — cong trinh dac biet
+
+**Yeu cau:**
+- Van ngan chay tu dong dong khi nhiet do tang den muc dinh san (thuong 72°C fusible link)
+- Van ngan khoi kiem soat va ngan chan su lan toa khoi doc trong he thong thong gio
+- Vi tri lap dat va thoi gian chiu lua phu thuoc vao cap do nguy hiem chay cua cong trinh
+- STARDUCT fire damper dat EI 120 (cao nhat) theo AS1530.4 va BS EN 1366-2
+
+### TCVN lien quan san pham STARDUCT:
+| TCVN | Noi dung |
+|------|----------|
+| TCVN 5738 | He thong bao chay tu dong — Yeu cau ky thuat |
+| TCVN 2622 | Phong chay cho nha va cong trinh — Yeu cau thiet ke |
+| TCVN 6160 | Phong chay — Nha cao tang — Yeu cau thiet ke |
+| TCVN 9311 | Thu nghiem chiu lua — Cac bo phan cua toa nha |
+| QCVN 06:2022/BXD | An toan chay cho nha va cong trinh (thay the QCVN 06:2010) |
+
 ## NGUON DATA SOURCE
 - Cong thuc: Google Sheet `15GLw7PyJ9DTmfQfIzM9nhEsbJVpsywYDaPuj-WB7UP0` (gid=1435957101)
+- Tieu chuan VN: QCVN 06:2022/BXD, TCVN Portal, VFRA
 - Cap nhat: 05/2026

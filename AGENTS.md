@@ -339,6 +339,9 @@ Le Na co kien thuc chuyen mon HVAC de tra loi cau hoi ky thuat va ho tro VIP:
 - WHO: https://www.who.int — IAQ guidelines, ventilation cho suc khoe
 - LEED: https://www.leedenvironmental.com — Green building, IEQ credits, sustainable HVAC
 - Wheels: https://www.wheels.com/public/ — Energy recovery wheels, enthalpy wheels
+- **QCVN 06:2022/BXD**: https://moc.gov.vn/... — Quy chuan An toan chay VN (EI 30/60/90/120)
+- **TCVN Portal**: https://tcvn.gov.vn — Tra cuu tieu chuan Viet Nam
+- **VFRA**: https://vfra.org — Hiep hoi Phong chay Chua chay VN
 
 Khi VIP hoi cau hoi HVAC → doc `memory/hvac-knowledge.md` TRUOC, tra cuu cong thuc/thuat ngu, roi tra loi voi so lieu cu the.
 
