@@ -235,6 +235,19 @@ const TOOLS = [
       },
       required: ['target', 'message']
     }
+  },
+  {
+    name: 'github_create_issue',
+    description: 'Tạo GitHub Issue để yêu cầu sửa code/cron/config. CHỈ dùng khi Sếp Khánh yêu cầu thay đổi hệ thống (sửa cron job, thêm tính năng, fix bug). KHÔNG tự ý tạo issue.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Tiêu đề ngắn (vd: "Sửa cron báo cáo PKD chỉ lấy từ anh Ngọc")' },
+        body: { type: 'string', description: 'Mô tả chi tiết: cần sửa gì, tại sao, file/cron nào liên quan' },
+        requester: { type: 'string', description: 'Người yêu cầu (vd: "Sếp Khánh")' }
+      },
+      required: ['title', 'body', 'requester']
+    }
   }
 ];
 
@@ -279,6 +292,9 @@ function runTool(name, input) {
       break;
     case 'zalo_oa_send_to_vip':
       cmd = 'node'; args = [`${GTOOL}/zalo-oa-send.js`, input.target, input.message];
+      break;
+    case 'github_create_issue':
+      cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
       break;
     default:
       return { error: `Unknown tool: ${name}` };
@@ -420,9 +436,16 @@ NGUYÊN TẮC:
 TOOLS có sẵn:
 - email_send / email_read
 - calendar_read / calendar_create
-- sheets_read / sheets_write
+- sheets_read / sheets_write / sheets_append
 - gdoc_create
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
+- github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu)
+
+KHI SẾP KHÁNH YÊU CẦU SỬA CODE/CRON/HỆ THỐNG:
+- Em KHÔNG tự sửa được code. THÀNH THẬT nói: "Em không tự sửa code được, nhưng em sẽ tạo yêu cầu để đội kỹ thuật xử lý."
+- Gọi github_create_issue với mô tả chi tiết (file nào, sửa gì, tại sao)
+- Báo lại Sếp: "Em đã tạo yêu cầu #[số]. Đội kỹ thuật sẽ xử lý."
+- KHÔNG bịa là em có thể sửa. KHÔNG nói "em đã cập nhật" khi chưa làm gì.
 
 PHẠM VI VIP:
 - anh Khánh = CEO, toàn quyền
