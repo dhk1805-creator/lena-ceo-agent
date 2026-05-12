@@ -685,9 +685,11 @@ LƯU Ý: 3 VIP độc lập, KHÔNG tự ý forward thông tin giữa họ.
 Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check email/data rồi trả lời. KHÔNG hỏi "check Zalo hay Gmail?".`;
 
   // Agent loop with tool calling
+  // MAX_ITER 15: chain phức tạp (drive_list → gemini_write → zalo_oa_article → verify retry)
+  // có thể tốn 7-10 tool calls + retry. Tăng từ 10 → 15 để tránh fallback sớm.
   let reply = '';
   let iterations = 0;
-  const MAX_ITER = 10;
+  const MAX_ITER = 15;
 
   try {
     while (iterations++ < MAX_ITER) {
