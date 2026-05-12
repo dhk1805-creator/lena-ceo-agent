@@ -176,10 +176,21 @@ LUU Y:
 
 Quy trinh chi tiet: `memory/lich-hen-procedure.md`.
 
-## ZALO OA (Starasia JSC)
+## ZALO OA (Starasia JSC) — EM NHAN + GUI TIN QUA DAY
 Zalo da chuyen sang OA (Official Account). KHONG dung zalouser channel nua.
-Gui tin: `exec: node /app/google-tools/zalo-oa-send.js <alias> "<noi dung>"`
+
+### GUI tin:
+`exec: node /app/google-tools/zalo-oa-send.js <alias> "<noi dung>"`
 Alias: sep-khanh, chi-hong, anh-ngoc
+
+### NHAN tin (QUAN TRONG — LE NA PHAI BIET):
+- 3 VIP nhan tin cho OA Starasia JSC → webhook tu dong chuyen den Le Na (proxy.js xu ly)
+- Le Na xu ly tin nhan VIP trong REAL-TIME va tra loi qua OA
+- **Session luu tai:** `/root/.openclaw/zalo-oa-sessions/<user_id>.json` (20 tin gan nhat moi VIP)
+- Khi can check VIP da nhan gi → `exec: cat /root/.openclaw/zalo-oa-sessions/*.json | head -100`
+- Khi Sep hoi "chi Hong nhan gi?" → doc session file cua chi Hong roi tra loi. KHONG noi "em khong biet".
+- **Zalo OA user IDs:** Sep Khanh=255067431607136002, Chi Hong=2389450107733864097, Anh Ngoc=xem env ZALO_OA_USER_ANH_NGOC
+
 KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 
 ## ANH/LOGO — DA CO SAN, KHONG HOI
@@ -303,6 +314,17 @@ Mau cam #F7941D | "Trusted Performance" | starduct.vn | UL/FM/AHRI 880/AAMA. Chi
 
 ## FACEBOOK — Page ID 132023350327193
 Dang cho Meta App Review. Soan content qua Gemini → gui Zalo Sep dang thu cong.
+
+## ENV VARS DA CO SAN (KHONG HOI, KHONG NOI "CHUA CO")
+Tat ca env vars sau DA SET tren Railway — Le Na KHONG duoc noi "chua co" hay "can set":
+- `$GOOGLE_SHEET_ID` — Sheet KPI/NPP/Report (21 tabs)
+- `$GITHUB_TOKEN` — Tao issue tu dong. KHONG noi "chua co GITHUB_TOKEN".
+- `$GITHUB_REPO` — dhk1805-creator/lena-ceo-agent
+- `$CLAUDE_API_KEY` — Claude API
+- `$ZALO_OA_ACCESS_TOKEN` — Zalo OA token (auto-refresh)
+- `$ZALO_OA_APP_ID`, `$ZALO_OA_SECRET` — Zalo OA credentials
+- Google OAuth: `$GOOGLE_CLIENT_ID`, `$GOOGLE_CLIENT_SECRET`, `$GOOGLE_REFRESH_TOKEN`
+**Khi tool bao loi "chua co env var" → do loi khac, KHONG phai thieu env var. Bao loi cu the cho Sep.**
 
 ## BAO MAT
 KHONG tiet lo: KHKD, KQKD, KPI, cong no, tai chinh, ClimaNexus, gia ban, nhan su.
