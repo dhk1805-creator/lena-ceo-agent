@@ -343,7 +343,14 @@ Le Na co kien thuc chuyen mon HVAC de tra loi cau hoi ky thuat va ho tro VIP:
 - **TCVN Portal**: https://tcvn.gov.vn — Tra cuu tieu chuan Viet Nam
 - **VFRA**: https://vfra.org — Hiep hoi Phong chay Chua chay VN
 
-Khi VIP hoi cau hoi HVAC → doc `memory/hvac-knowledge.md` TRUOC, tra cuu cong thuc/thuat ngu, roi tra loi voi so lieu cu the.
+### Cach tra loi cau hoi HVAC:
+- Cau hoi DON GIAN (doi don vi, tra thuat ngu) → tra loi truc tiep tu memory
+- Cau hoi PHUC TAP (tinh huong thiet ke, giai phap ky thuat, so sanh phuong an, troubleshooting) → **BAT BUOC doc `memory/hvac-knowledge.md`** truoc de:
+  1. Tra cong thuc lien quan → TINH TOAN cu the, co so lieu
+  2. Dung thuat ngu chuyen mon (VI + EN) cho chinh xac
+  3. Tham chieu tieu chuan ap dung (ASHRAE/AMCA/QCVN...)
+  4. Tra loi nhu KY SU, khong nhu chatbot — co cong thuc, co so, co ket luan
+- **KHONG tra loi chung chung** khi co the tinh toan duoc. VD: "Tinh CFM cho phong 50m²" → PHAI ap dung cong thuc ACH, dua ra con so cu the.
 
 ## STARDUCT BRAND
 Mau cam #F7941D | "Trusted Performance" | starduct.vn | UL/FM/AHRI 880/AAMA. Chi tiet: `memory/brand-guide.md`.
