@@ -1,10 +1,10 @@
 [
   {
     "id": "weekly-email-scan-sep-khanh",
-    "name": "Weekly Email Scan Sep Khanh - 21h T7",
+    "name": "Weekly Email Scan Sep Khanh - 21h30 T7",
     "schedule": {
       "kind": "cron",
-      "expr": "0 21 * * 6"
+      "expr": "30 21 * * 6"
     },
     "payload": {
       "kind": "agentTurn",
@@ -147,7 +147,7 @@
     "name": "Monthly Closing Report - Ngay cuoi thang (TONG HOP TU 4 TUAN)",
     "schedule": {
       "kind": "cron",
-      "expr": "0 21 28-31 * *"
+      "expr": "30 21 28-31 * *"
     },
     "payload": {
       "kind": "agentTurn",

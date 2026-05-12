@@ -20,6 +20,9 @@ mkdir -p /root/.openclaw/workspace/skills /root/.openclaw/workspace/memory
 mkdir -p /root/.openclaw/agents/main/sessions
 mkdir -p /root/.openclaw/credentials/zalouser
 
+# Remove old date injection (prevents duplicates on restart)
+sed -i -e '/^## NGAY GIO HIEN TAI:/d' -e '/^Moi thong tin ve ngay.*thang.*thu/d' -e '/^TUYET DOI KHONG tu doan ngay/d' /app/workspace/AGENTS.md
+
 # Inject current date/time into AGENTS.md before copying
 CURRENT_DATE=$(date '+%Y-%m-%d %H:%M %Z (%A)')
 sed -i "1i\\

@@ -139,7 +139,7 @@ LUU Y:
 - Khong viet dai dong, KHONG quang cao NSCA, KHONG noi qua nhieu
 
 ### NHAC NHO (chung cho ca 4 luong)
-- Sang 7h cron `daily-calendar-morning-briefing` bao tong hop lich ngay
+- Sang 8h30 cron `daily-calendar-morning-briefing` bao tong hop lich ngay
 - Truoc 60 phut Google tu nhac (email + popup, native)
 - KHONG can cron nhac rieng
 
@@ -222,7 +222,7 @@ Bao cao tuan/task tracker/NPP orders → LUON dung `sheets-append.js` de KHONG m
 ### LICH TRINH CRON — LE NA TU DONG CHAY (13 jobs):
 | Thoi gian | Job | Cho ai | Viec chinh |
 |-----------|-----|--------|------------|
-| 7h T2-T7 | Calendar Briefing | 3 VIP | Bao lich hen hom nay |
+| 8h30 T2-T7 | Calendar Briefing | 3 VIP | Bao lich hen hom nay |
 | 9h T2-T7 | NPP Scan | Anh Ngoc | Quet don hang NPP 24h |
 | 9h T2 | PKD Team Report | Anh Ngoc | Tong hop 3 cap duoi + 5 NPP |
 | 9h30 T2 | Weekly Business Report | Sep + 11 BP | Email CA NHAN HOA 11 BP + tai lieu hop giao ban |
@@ -230,11 +230,11 @@ Bao cao tuan/task tracker/NPP orders → LUON dung `sheets-append.js` de KHONG m
 | 17h T2-T7 | TCKT Email Triage | Chi Hong | Phan loai email tai chinh/phap ly |
 | 17h T2-T7 | Email Triage Anh Ngoc | Anh Ngoc | Phan loai email PKD |
 | 8h T3 | Meeting Minutes Check | Sep | Kiem tra bien ban hop T2 tu anh Son |
-| 21h T7 | Weekly Email Scan | Sep | Tom tat email quan trong ca tuan |
+| 21h30 T7 | Weekly Email Scan | Sep | Tom tat email quan trong ca tuan |
 | 21h T7 | **Weekly Report Scan** | Sep | **QUET + LUU BC TUAN 11 BP vao Sheet** |
 | 21h CN | Report Reminder | 11 BP | Nhac BP chua nop BC tuan |
 | 21h cuoi thang | Monthly PKD | Anh Ngoc | BC thang PKD |
-| 21h cuoi thang | **Monthly Report** | Sep + Chi Hong | **BC THANG tu data da LUU** |
+| 21h30 cuoi thang | **Monthly Report** | Sep + Chi Hong | **BC THANG tu data da LUU** |
 
 ### LUONG TUAN-THANG (QUAN TRONG NHAT — DU LIEU TICH LUY):
 

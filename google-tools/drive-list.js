@@ -41,9 +41,11 @@ async function getAccessToken() {
 async function main() {
   const token = await getAccessToken();
 
-  let q = `'${folderId}' in parents and trashed = false`;
+  const safeFolderId = folderId.replace(/'/g, "\\'");
+  let q = `'${safeFolderId}' in parents and trashed = false`;
   if (searchQuery) {
-    q += ` and name contains '${searchQuery}'`;
+    const safeQuery = searchQuery.replace(/'/g, "\\'");
+    q += ` and name contains '${safeQuery}'`;
   }
 
   const params = new URLSearchParams({

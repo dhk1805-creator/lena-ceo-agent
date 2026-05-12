@@ -6,7 +6,9 @@
 
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const { spawnSync } = require('child_process');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 const path = require('path');
 const fs = require('fs');
 
@@ -248,10 +250,35 @@ const TOOLS = [
       },
       required: ['title', 'body', 'requester']
     }
+  },
+  {
+    name: 'email_reply',
+    description: 'Reply vào thread email đang có. Dùng khi cần trả lời email cụ thể.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        message_id: { type: 'string', description: 'Message ID của email cần reply (lấy từ email_read)' },
+        body: { type: 'string', description: 'Nội dung reply (HTML hoặc plain text)' },
+        cc: { type: 'string', description: 'CC thêm (optional)' }
+      },
+      required: ['message_id', 'body']
+    }
+  },
+  {
+    name: 'task_update',
+    description: 'Cập nhật trạng thái task (Done/Đang làm/Hủy). Dùng khi nhận xác nhận hoàn thành.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        row: { type: 'number', description: 'Số dòng trong Sheet Task Tracker (lấy từ task_overdue hoặc task_status)' },
+        status: { type: 'string', description: 'Trạng thái mới: Done, Đang làm, Hủy' }
+      },
+      required: ['row', 'status']
+    }
   }
 ];
 
-function runTool(name, input) {
+async function runTool(name, input) {
   const GTOOL = '/app/google-tools';
   const sheetId = process.env.GOOGLE_SHEET_ID || '';
 
@@ -262,6 +289,9 @@ function runTool(name, input) {
       break;
     case 'email_read':
       cmd = 'node'; args = [`${GTOOL}/gmail-read.js`, String(input.hours), String(input.max || 20), input.query || ''];
+      break;
+    case 'email_reply':
+      cmd = 'node'; args = [`${GTOOL}/gmail-reply.js`, input.message_id, input.body, input.cc || ''];
       break;
     case 'calendar_read':
       cmd = 'node'; args = [`${GTOOL}/calendar-read.js`, String(input.days || 7)];
@@ -290,6 +320,9 @@ function runTool(name, input) {
     case 'task_status':
       cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'status'];
       break;
+    case 'task_update':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'update', String(input.row), input.status];
+      break;
     case 'zalo_oa_send_to_vip':
       cmd = 'node'; args = [`${GTOOL}/zalo-oa-send.js`, input.target, input.message];
       break;
@@ -301,14 +334,14 @@ function runTool(name, input) {
   }
 
   try {
-    const result = spawnSync(cmd, args, { encoding: 'utf-8', timeout: 60000 });
-    if (result.status === 0) {
-      return { output: (result.stdout || '').substring(0, 3000) };
-    } else {
-      return { error: (result.stderr || result.stdout || 'unknown error').substring(0, 1000) };
+    const { stdout } = await execFileAsync(cmd, args, { encoding: 'utf-8', timeout: 60000 });
+    const raw = stdout || '';
+    if (raw.length > 3000) {
+      return { output: raw.substring(0, 3000) + '\n⚠️ [Cắt ngắn — vượt 3000 ký tự]' };
     }
+    return { output: raw };
   } catch (e) {
-    return { error: e.message };
+    return { error: (e.stderr || e.stdout || e.message || 'unknown error').substring(0, 1000) };
   }
 }
 
@@ -329,6 +362,18 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
   res.json({ status: 'ok' });
 
   const event = req.body;
+
+  // Dedup by message ID (Zalo can send duplicate webhooks)
+  const msgId = event.message?.msg_id;
+  if (msgId) {
+    if (_webhookDedup.has(msgId)) {
+      console.log(`[zalo-webhook] dedup: skipped ${msgId}`);
+      return;
+    }
+    _webhookDedup.add(msgId);
+    setTimeout(() => _webhookDedup.delete(msgId), 60000);
+  }
+
   try {
     fs.appendFileSync('/root/.openclaw/zalo-events.jsonl',
       JSON.stringify({ time: new Date().toISOString(), event }) + '\n');
@@ -408,8 +453,16 @@ async function handleUserMessage(event) {
   if (!senderId || !messageText) return;
 
   const vip = VIP_USERS[senderId];
-  const senderInfo = vip ? `${vip.name} (${vip.role})` : `user ${senderId} (chưa identify)`;
-  const model = vip ? vip.model : CLAUDE_MODEL_FAST;
+
+  // Non-VIP: polite rejection, no tool access
+  if (!vip) {
+    console.log(`[lena] non-VIP message from ${senderId}: ${messageText.substring(0, 60)}`);
+    await sendZaloMessage(senderId, `Xin chào! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Hiện em chỉ hỗ trợ nhân sự nội bộ. Anh/chị cần gì vui lòng liên hệ hotline hoặc email info@nsca.vn ạ.`);
+    return;
+  }
+
+  const senderInfo = `${vip.name} (${vip.role})`;
+  const model = vip.model;
 
   console.log(`[lena] tin từ ${senderInfo}: ${messageText.substring(0, 60)}...`);
 
@@ -434,12 +487,16 @@ NGUYÊN TẮC:
 - Nếu cần phân tích dài → tạo gdoc rồi gửi link
 
 TOOLS có sẵn:
-- email_send / email_read
+- email_send / email_read / email_reply
 - calendar_read / calendar_create
 - sheets_read / sheets_write / sheets_append
 - gdoc_create
+- task_add / task_overdue / task_status / task_update
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
 - github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu)
+
+SHEET: Google Sheet ID = ${process.env.GOOGLE_SHEET_ID ? 'đã set, 21 tabs sẵn sàng' : 'chưa set'}
+Tabs: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performance | Task Tracker | NPP Tracker | NPP Orders | KHKD 2026 Baseline | Activity Log | Export Revenue | International Pipeline
 
 KHI SẾP KHÁNH YÊU CẦU SỬA CODE/CRON/HỆ THỐNG:
 - Em KHÔNG tự sửa được code. THÀNH THẬT nói: "Em không tự sửa code được, nhưng em sẽ tạo yêu cầu để đội kỹ thuật xử lý."
@@ -491,7 +548,7 @@ LƯU Ý: 3 VIP độc lập, KHÔNG forward thông tin giữa họ trừ khi đ�
       for (const block of data.content) {
         if (block.type === 'tool_use') {
           console.log(`[lena] tool: ${block.name}(${JSON.stringify(block.input).substring(0, 100)})`);
-          const result = runTool(block.name, block.input);
+          const result = await runTool(block.name, block.input);
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,
@@ -525,6 +582,7 @@ LƯU Ý: 3 VIP độc lập, KHÔNG forward thông tin giữa họ trừ khi đ�
 
 const _zaloSendCache = new Map();
 const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
+const _webhookDedup = new Set();
 
 async function sendZaloMessage(userId, message) {
   const now = Date.now();
@@ -553,6 +611,24 @@ async function sendZaloMessage(userId, message) {
   if (data.error !== 0) throw new Error(`Zalo: ${data.message} (${data.error})`);
   return data.data;
 }
+
+// Cleanup stale cache entries every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ts] of _zaloSendCache) {
+    if (now - ts > 60000) _zaloSendCache.delete(key);
+  }
+}, 3600000);
+
+// === HEALTH CHECK ===
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    tools: TOOLS.length,
+    vips: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length
+  });
+});
 
 // === PROXY TO OPENCLAW ===
 const ocProxy = createProxyMiddleware({
