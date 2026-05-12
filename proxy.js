@@ -652,7 +652,7 @@ Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check e
   // Agent loop with tool calling
   let reply = '';
   let iterations = 0;
-  const MAX_ITER = 5;
+  const MAX_ITER = 10;
 
   try {
     while (iterations++ < MAX_ITER) {
@@ -715,7 +715,10 @@ Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check e
     session = [{ role: 'user', content: messageText }];
   }
 
-  if (!reply) reply = 'Em xin lỗi, em đang gặp khó khăn xử lý yêu cầu này. Anh/chị thử lại sau nhé.';
+  if (!reply) {
+    console.error(`[lena] NO REPLY after ${iterations - 1} iterations for ${vip.name}`);
+    reply = 'Em xin lỗi, yêu cầu này cần nhiều bước xử lý quá. Anh/chị thử yêu cầu đơn giản hơn nhé.';
+  }
 
   saveSession(senderId, session);
 
