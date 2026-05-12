@@ -1,0 +1,101 @@
+name: "Le Na Auto-Fix"
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-fix:
+    if: startsWith(github.event.issue.title, '[Le Na]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code
+        run: npm i -g @anthropic-ai/claude-code
+
+      - name: Prepare prompt
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issue = context.payload.issue;
+            const prompt = [
+              `ISSUE #${issue.number}: ${issue.title}`,
+              ``,
+              issue.body,
+              ``,
+              `NGUYEN TAC:`,
+              `1. Doc file lien quan truoc khi sua (dung Read tool)`,
+              `2. CHI sua dung nhung gi yeu cau, KHONG refactor them`,
+              `3. TUYET DOI KHONG sua AGENTS.md (se wipe tat ca sessions tren Railway)`,
+              `4. KHONG sua/tao file .env, secrets, tokens, credentials`,
+              `5. Neu khong hieu ro yeu cau -> KHONG SUA gi ca`,
+              `6. File thuong can sua: cron-jobs.json, proxy.js, google-tools/*.js, skills/*.md`,
+              `7. Sau khi sua xong, KHONG commit - workflow se tu commit`
+            ].join('\n');
+            fs.writeFileSync('/tmp/lena-prompt.txt', prompt);
+
+      - name: Run Claude Code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: claude -p "$(cat /tmp/lena-prompt.txt)" --yes --max-turns 20
+        timeout-minutes: 10
+
+      - name: Check for changes
+        id: check
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "### Changed files:" >> "$GITHUB_STEP_SUMMARY"
+            git status --short >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: No changes — comment
+        if: steps.check.outputs.changed == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --body "⚠️ Claude Code da doc yeu cau nhung khong tim thay thay doi can thiet. Can review thu cong."
+
+      - name: Create PR and merge
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          BRANCH="lena-fix-${ISSUE_NUM}"
+
+          git config user.name "claude[bot]"
+          git config user.email "noreply@anthropic.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "fix: Le Na issue #${ISSUE_NUM}
+
+          Co-Authored-By: Claude Code <noreply@anthropic.com>"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "[Auto] ${{ github.event.issue.title }}" \
+            --body "Closes #${ISSUE_NUM}
+
+          Thay doi tu dong boi Claude Code theo yeu cau cua Le Na AI." \
+            --base main)
+
+          gh pr merge "$PR_URL" --squash --delete-branch
+
+          gh issue comment "$ISSUE_NUM" \
+            --body "✅ Da xu ly va merge thanh cong. Railway se auto-deploy trong 2-3 phut."
