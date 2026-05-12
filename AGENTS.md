@@ -284,6 +284,7 @@ Bao cao tuan/task tracker/NPP orders → LUON dung `sheets-append.js` de KHONG m
 | 21h30 T7 | Weekly Email Scan | Sep | Tom tat email quan trong ca tuan |
 | 21h T7 | **Weekly Report Scan** | Sep | **QUET + LUU BC TUAN 11 BP vao Sheet** |
 | 21h CN | Report Reminder | 11 BP | Nhac BP chua nop BC tuan |
+| 22h T7 | **KPI Tracker Update** | (backend) | **Auto-aggregate KPI tu Report/NPP/Task vao KPI Tracker** |
 | 21h cuoi thang | Monthly PKD | Anh Ngoc | BC thang PKD |
 | 21h30 cuoi thang | **Monthly Report** | Sep + Chi Hong | **BC THANG tu data da LUU** |
 

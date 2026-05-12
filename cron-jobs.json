@@ -167,5 +167,18 @@
       "message": "KIEM TRA TASK QUA HAN — 9H30 HANG NGAY.\n\nBUOC 1: Lay danh sach task qua han:\n`exec: node /app/google-tools/task-tracker.js overdue`\n\nBUOC 2: Neu CO task qua han:\n- Gui EMAIL NHAC cho tung nguoi co task qua han (gop nhieu task 1 email):\n  `exec: node /app/google-tools/gmail-send.js \"<assignee_email>\" \"[Le Na] Nhac: cong viec qua han\" \"<HTML: danh sach task + deadline + so ngay qua han>\" \"dhk@nsca.vn\"`\n- 1 TIN ZALO cho Sep:\n  `exec: node /app/google-tools/zalo-oa-send.js sep-khanh \"⏰ TASK QUA HAN: N task. [ten nguoi]: [task 1 dong]. Da gui email nhac.\"`\n\nBUOC 3: Neu KHONG co task qua han → KHONG GUI gi (im lang).\n\nKHONG tu y update status. CHI nhac nguoi duoc giao."
     },
     "sessionTarget": "isolated"
+  },
+  {
+    "id": "weekly-kpi-update",
+    "name": "Weekly KPI Tracker Update - 22h T7 (sau Report Scan 21h)",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 22 * * 6"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "CAP NHAT KPI TRACKER TU DONG — 22H T7 (sau khi Report Scan 21h da luu data).\n\nMUC DICH: Aggregate data tu nhieu sheet vao KPI Tracker de Sep co so lieu khi hoi.\n\nBUOC 1: Chay script tu dong:\n`exec: node /app/google-tools/kpi-update.js`\n\nBUOC 2: Doc ket qua JSON. Neu success → im lang (KHONG bao Sep, day la backend update).\nNeu error → bao Sep qua Zalo: \"⚠️ KPI Tracker update that bai: [error]. Em se thu lai.\"\n\nKHONG gui email, KHONG gui Zalo khi thanh cong. Day la cap nhat data NEN, khong can thong bao."
+    },
+    "sessionTarget": "isolated"
   }
 ]

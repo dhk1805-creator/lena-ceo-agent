@@ -276,6 +276,11 @@ const TOOLS = [
     }
   },
   {
+    name: 'kpi_update',
+    description: 'Cập nhật KPI Tracker tự động từ data các sheet khác. Chạy khi Sếp yêu cầu hoặc tự động T7 22h.',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
     name: 'task_update',
     description: 'Cập nhật trạng thái task (Done/Đang làm/Hủy). Dùng khi nhận xác nhận hoàn thành.',
     input_schema: {
@@ -339,6 +344,9 @@ async function runTool(name, input) {
       break;
     case 'zalo_oa_history':
       cmd = 'node'; args = [`${GTOOL}/zalo-oa-history.js`, input.target || 'all', String(input.hours || 24)];
+      break;
+    case 'kpi_update':
+      cmd = 'node'; args = [`${GTOOL}/kpi-update.js`];
       break;
     case 'github_create_issue':
       cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
