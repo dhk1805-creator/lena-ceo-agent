@@ -490,11 +490,6 @@ async function handleFollow(event) {
   try { fs.writeFileSync(FOLLOWERS_FILE, JSON.stringify(followers, null, 2)); } catch (e) {}
 
   await sendZaloMessage(userId, `Chào ${displayName}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Anh/chị nhắn tin cho em bất cứ lúc nào ạ.`);
-
-  const sepId = process.env.ZALO_OA_USER_SEP_KHANH;
-  if (sepId && userId !== sepId) {
-    await sendZaloMessage(sepId, `📢 Follower mới OA: ${displayName} (ID: ${userId}). Nếu là anh Ngọc, anh reply "set ngoc ${userId}" để em lưu.`);
-  }
 }
 
 async function handleUnfollow(event) {
@@ -514,7 +509,12 @@ async function handleImageMessage(event) {
   const senderId = event.sender?.id;
   if (!senderId) return;
   const vip = VIP_USERS[senderId];
-  await sendZaloMessage(senderId, `Dạ ${vip ? vip.name : 'anh/chị'}, em nhận được ảnh nhưng hiện chỉ xử lý được tin nhắn text. Anh/chị mô tả nội dung giúp em nhé!`);
+  const att = event.message?.attachments?.[0];
+  const imageUrl = att?.payload?.url || att?.payload?.thumbnail || '';
+  console.log(`[zalo] image from ${vip ? vip.name : senderId}: ${imageUrl.substring(0, 80)}`);
+  if (vip) {
+    await sendZaloMessage(senderId, `Dạ ${vip.name}, em đã nhận ảnh. Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?`);
+  }
 }
 
 // === LÊ NA AGENT — TOOL CALLING LOOP ===
