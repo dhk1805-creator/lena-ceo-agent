@@ -331,6 +331,30 @@ const TOOLS = [
       },
       required: ['prompt']
     }
+  },
+  {
+    name: 'drive_list',
+    description: 'Liệt kê file/ảnh trong Google Drive folder. MẶC ĐỊNH folder STARDUCT (394 ảnh sản phẩm) — KHÔNG cần truyền folder_id trừ khi VIP nói folder khác. Trả về `public_url` cho mỗi file — dùng URL này làm cover cho zalo_oa_article.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        folder_id: { type: 'string', description: 'Drive folder ID (optional, default = folder STARDUCT 394 ảnh)' },
+        query: { type: 'string', description: 'Tìm theo tên file (optional, vd: "van ngan chay", "exhibition", "nha may")' },
+        max: { type: 'number', description: 'Số file tối đa trả về (default 30)' }
+      }
+    }
+  },
+  {
+    name: 'drive_download',
+    description: 'Tải file Google Drive về local path (/tmp/...). Dùng khi cần ảnh local cho image_overlay. KHÔNG dùng cho zalo_oa_article cover — dùng public_url từ drive_list trực tiếp.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_id: { type: 'string', description: 'Google Drive file ID (lấy từ drive_list)' },
+        output_path: { type: 'string', description: 'Đường dẫn output (default /tmp/drive-<fileId>.bin)' }
+      },
+      required: ['file_id']
+    }
   }
 ];
 
@@ -399,6 +423,15 @@ async function runTool(name, input) {
       break;
     case 'gemini_write':
       cmd = 'node'; args = [`${GTOOL}/gemini-write.js`, input.prompt, String(input.max_tokens || 600)];
+      break;
+    case 'drive_list':
+      cmd = 'node'; args = [`${GTOOL}/drive-list.js`,
+        input.folder_id || '1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR',
+        input.query || '',
+        String(input.max || 30)];
+      break;
+    case 'drive_download':
+      cmd = 'node'; args = [`${GTOOL}/drive-download.js`, input.file_id, input.output_path || ''];
       break;
     default:
       return { error: `Unknown tool: ${name}` };

@@ -73,6 +73,9 @@ async function main() {
     type: f.mimeType,
     size: f.size ? (parseInt(f.size) / 1024 / 1024).toFixed(1) + ' MB' : 'N/A',
     url: f.webViewLink,
+    // public_url để dùng làm cover cho zalo_oa_article — Zalo CDN fetch URL này.
+    // YÊU CẦU: folder/file phải share "Anyone with link can view" trên Drive.
+    public_url: `https://drive.google.com/uc?export=view&id=${f.id}`,
     thumbnail: f.thumbnailLink,
     created: f.createdTime
   }));
