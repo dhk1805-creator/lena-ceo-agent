@@ -3,19 +3,23 @@ require('./_env');
 // Zalo OA Article — Tạo và đăng bài viết lên Official Account "Starasia JSC"
 //
 // Usage:
-//   node zalo-oa-article.js create "<title>" "<body>" "[cover_image]"
+//   node zalo-oa-article.js create "<title>" "<body>" "<cover_url>"
 //   node zalo-oa-article.js list
 //
-// cover_image: local path (/tmp/xxx.jpg) hoặc URL (https://...)
+// cover_url: BẮT BUỘC, phải là URL public (https://...). Local file path KHÔNG hỗ trợ.
+//   Lý do: /v2.0/oa/upload/image (endpoint upload duy nhất còn sống của Zalo OA)
+//   chỉ trả về attachment_id, không trả URL — mà article/create lại yêu cầu photo_url.
+//   Để dùng ảnh local, upload trước lên CDN public (Imgur/ImgBB/Cloudinary).
+//
 // body: plain text — tự động wrap thành HTML paragraphs
 //
-// Flow: Upload ảnh bìa → Create article → Verify (publish) → Done
+// Schema cover đã xác minh runtime [2026-05-12]:
+//   cover: { cover_type: 'photo', photo_url: <URL>, status: 'show' }
 //
-// VD: Anh Khánh gửi ảnh qua Zalo → Lê Na lấy URL ảnh từ event log
-//     → Gemini soạn nội dung → zalo-oa-article.js create + publish
+// VD: Anh Khánh gửi ảnh qua Zalo → URL ảnh có trong event log
+//     → Gemini soạn nội dung → zalo-oa-article.js create <title> <body> <url_anh>
 
 const fs = require('fs');
-const path = require('path');
 
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
 
@@ -35,70 +39,14 @@ if (!ACCESS_TOKEN) {
   process.exit(1);
 }
 
-async function uploadCoverImage(imageSource) {
-  let imageBuffer, filename = 'cover.jpg';
-
-  if (imageSource.startsWith('http')) {
-    const res = await fetch(imageSource);
-    if (!res.ok) throw new Error(`Download failed: ${res.status} ${imageSource}`);
-    imageBuffer = Buffer.from(await res.arrayBuffer());
-    const urlPath = new URL(imageSource).pathname;
-    filename = path.basename(urlPath) || 'cover.jpg';
-  } else {
-    if (!fs.existsSync(imageSource)) throw new Error(`File not found: ${imageSource}`);
-    imageBuffer = fs.readFileSync(imageSource);
-    filename = path.basename(imageSource);
-  }
-
-  // Convert PNG to JPEG (Zalo prefers JPEG, smaller size)
-  let finalBuffer = imageBuffer;
-  const ext = filename.split('.').pop().toLowerCase();
-  if (ext === 'png') {
-    try {
-      const sharp = require('sharp');
-      finalBuffer = await sharp(imageBuffer).jpeg({ quality: 85 }).toBuffer();
-      filename = filename.replace(/\.png$/i, '.jpg');
-    } catch (e) {
-      // sharp not available, use original
-    }
-  }
-
-  const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
-  const finalExt = filename.split('.').pop().toLowerCase();
-
-  const formData = new FormData();
-  formData.append('file', new Blob([finalBuffer], { type: mime[finalExt] || 'image/jpeg' }), filename);
-
-  // Article cover MUST use article-specific upload endpoint —
-  // URLs from /oa/upload/image are NOT accepted by /article/create ("cover value is invalid").
-  const endpoints = [
-    'https://openapi.zalo.me/v2.0/article/upload_image',
-    'https://openapi.zalo.me/v2.0/article/upload_video_or_cover'
-  ];
-
-  let data;
-  for (const endpoint of endpoints) {
-    const formCopy = new FormData();
-    formCopy.append('file', new Blob([finalBuffer], { type: mime[finalExt] || 'image/jpeg' }), filename);
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'access_token': ACCESS_TOKEN },
-      body: formCopy
-    });
-    data = await res.json();
-    console.error(`[upload] ${endpoint} -> ${JSON.stringify(data)}`);
-    if (data.error === 0) break;
-  }
-
-  if (!data || data.error !== 0) {
-    throw new Error(`Upload cover failed: ${data?.message || JSON.stringify(data)}`);
-  }
-
-  const d = data.data;
-  const url = typeof d === 'string' ? d : (d?.url || d?.photo_url || d?.image_url || d?.cover_url);
-  if (!url || typeof url !== 'string') throw new Error(`Upload OK nhưng không tìm thấy URL: ${JSON.stringify(data)}`);
-  return url;
-}
+// [2026-05-12 — đã xác minh runtime sau 30+ test]
+// Schema cover chuẩn cho `/v2.0/article/create`:
+//   cover: { cover_type: 'photo', photo_url: <URL>, status: 'show' }
+// - cover_type là enum string ("photo" hợp lệ; "image", "normal", "1", 0, 3 đều invalid)
+// - photo_url phải là URL công khai để Zalo CDN fetch về
+// - status: 'show' BẮT BUỘC (thiếu → fail "create media fail")
+// - attachment_id từ /oa/upload/image KHÔNG dùng được — đó là token để gửi message,
+//   không phải URL ảnh. Article cần URL thật.
 
 function textToArticleBody(text) {
   const paragraphs = text.split(/\n{2,}/);
@@ -109,17 +57,28 @@ function textToArticleBody(text) {
 }
 
 async function createArticle(title, bodyText, coverSource) {
-  let coverUrl = null;
-  let coverWarning = null;
+  // [2026-05-12] SCHEMA CHUẨN đã xác minh runtime cho /v2.0/article/create:
+  //   cover: { cover_type: 'photo', photo_url: <URL>, status: 'show' }
+  // Field `status: 'show'` BẮT BUỘC — thiếu sẽ fail "create media fail".
+  // photo_url phải là URL công khai (Zalo fetch về). attachment_id từ /oa/upload/image
+  // KHÔNG work với article. Local file path KHÔNG dùng được trực tiếp — cần upload
+  // lên public CDN/host khác trước rồi pass URL.
 
-  if (coverSource) {
-    try {
-      coverUrl = await uploadCoverImage(coverSource);
-      console.error(`[article] cover uploaded: ${coverUrl}`);
-    } catch (e) {
-      coverWarning = `Cover upload failed: ${e.message}. Posting without cover.`;
-      console.error(`[article] ${coverWarning}`);
-    }
+  if (!coverSource) {
+    return {
+      success: false,
+      step: 'cover',
+      error: 'Cover bắt buộc cho article/create. Truyền URL ảnh public.'
+    };
+  }
+
+  if (!coverSource.startsWith('http')) {
+    return {
+      success: false,
+      step: 'cover',
+      error: 'Cover phải là URL public (http/https). Local file chưa hỗ trợ vì /oa/upload/image trả attachment_id, không trả URL — cần upload lên CDN public khác (Imgur/ImgBB/v.v.) rồi pass URL.',
+      detail: { received_cover: coverSource }
+    };
   }
 
   const description = bodyText.substring(0, 150).replace(/\n/g, ' ').trim();
@@ -130,26 +89,24 @@ async function createArticle(title, bodyText, coverSource) {
     author: 'STARDUCT — Lê Na AI',
     description: description,
     body: textToArticleBody(bodyText),
-    status: 'show'
+    status: 'show',
+    cover: {
+      cover_type: 'photo',
+      photo_url: coverSource,
+      status: 'show'
+    }
   };
 
-  if (coverUrl) {
-    article.cover = { cover_type: 1, photo_url: coverUrl, status: 'show' };
-  }
-
-  console.error(`[article] creating with cover=${coverUrl ? 'yes' : 'no'}`);
-  let createData = await postArticle(article);
-
-  // Fallback: if cover caused error, retry without cover
-  if (createData.error !== 0 && coverUrl) {
-    console.error(`[article] create failed with cover (${createData.message}), retrying without cover...`);
-    coverWarning = `Cover rejected by Zalo (${createData.message}). Posted without cover.`;
-    delete article.cover;
-    createData = await postArticle(article);
-  }
+  console.error(`[article] creating with cover URL: ${coverSource}`);
+  const createData = await postArticle(article);
 
   if (createData.error !== 0) {
-    return { success: false, step: 'create', error: createData.message, detail: createData };
+    return {
+      success: false,
+      step: 'create',
+      error: createData.message,
+      detail: createData
+    };
   }
 
   const articleToken = createData.data?.token;
@@ -157,14 +114,28 @@ async function createArticle(title, bodyText, coverSource) {
     return { success: false, step: 'create', error: 'No article token', detail: createData };
   }
 
-  const verifyRes = await fetch('https://openapi.zalo.me/v2.0/article/verify', {
-    method: 'POST',
-    headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: articleToken })
-  });
+  // [2026-05-12] Verify thường fail lần đầu với -214 "Media is being processed".
+  // Zalo cần vài giây để download ảnh từ photo_url về CDN của họ.
+  // Retry với backoff: 2s → 4s → 6s → 8s → 12s (tổng ~32s tối đa).
+  const verifyDelays = [2000, 4000, 6000, 8000, 12000];
+  let verifyData = null;
 
-  const verifyData = await verifyRes.json();
-  console.error(`[article] verify response: ${JSON.stringify(verifyData)}`);
+  for (let i = 0; i < verifyDelays.length; i++) {
+    if (i > 0) {
+      console.error(`[article] verify wait ${verifyDelays[i - 1]}ms (Zalo đang xử lý media)...`);
+      await new Promise(r => setTimeout(r, verifyDelays[i - 1]));
+    }
+    const verifyRes = await fetch('https://openapi.zalo.me/v2.0/article/verify', {
+      method: 'POST',
+      headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: articleToken })
+    });
+    verifyData = await verifyRes.json();
+    console.error(`[article] verify attempt ${i + 1}: ${JSON.stringify(verifyData)}`);
+    if (verifyData.error === 0) break;
+    // -214 = đang process, retry. Lỗi khác (rate limit, invalid token) → bỏ retry, fail luôn.
+    if (verifyData.error !== -214) break;
+  }
 
   if (verifyData.error !== 0) {
     return { success: false, step: 'verify', error: verifyData.message, article_token: articleToken, detail: verifyData };
@@ -172,12 +143,11 @@ async function createArticle(title, bodyText, coverSource) {
 
   return {
     success: true,
-    article_id: verifyData.data?.article_id,
+    article_id: verifyData.data?.id || verifyData.data?.article_id,
     title: title,
-    cover: coverUrl || 'none',
+    cover_url: coverSource,
     description: description,
-    status: 'published',
-    warning: coverWarning || undefined
+    status: 'published'
   };
 }
 
