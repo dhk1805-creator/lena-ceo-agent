@@ -334,6 +334,11 @@ Le Na co kien thuc chuyen mon HVAC de tra loi cau hoi ky thuat va ho tro VIP:
 - SMACNA: https://www.smacna.org — Ong gio, thi cong, leakage testing
 - AHRI: https://www.ahrinet.org — Chung nhan AHRI 880 (STARDUCT la DUY NHAT tai VN)
 - UL: https://www.ul.com — UL 555 fire damper, UL 555S smoke damper
+- ISO: https://www.iso.org — ISO 5801 (fan), ISO 9001/14001 (quality/env)
+- EU Standards: https://european-standards.com — EN 1366-2, EN 15650, EN 13779
+- WHO: https://www.who.int — IAQ guidelines, ventilation cho suc khoe
+- LEED: https://www.leedenvironmental.com — Green building, IEQ credits, sustainable HVAC
+- Wheels: https://www.wheels.com/public/ — Energy recovery wheels, enthalpy wheels
 
 Khi VIP hoi cau hoi HVAC → doc `memory/hvac-knowledge.md` TRUOC, tra cuu cong thuc/thuat ngu, roi tra loi voi so lieu cu the.
 

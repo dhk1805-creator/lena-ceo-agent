@@ -11,8 +11,13 @@
 | AHRI | https://www.ahrinet.org | Chứng nhận sản phẩm: AHRI 880 (air terminal noise) — STARDUCT là nhà sản xuất DUY NHẤT tại VN có AHRI 880 |
 | UL | https://www.ul.com | An toàn phòng cháy: UL 555 (fire damper), UL 555S (smoke damper) |
 | FM Global | https://www.fmglobal.com | Bảo hiểm & an toàn: FM Approved fire dampers |
+| ISO | https://www.iso.org/home.html | Tiêu chuẩn quốc tế: ISO 5801 (fan testing), ISO 14001 (env management), ISO 9001 (quality) |
+| European Standards | https://european-standards.com | Tiêu chuẩn châu Âu (EN): EN 1366-2, EN 15650, EN 13779 (ventilation), EN 12237 (ductwork) |
 | Standards Australia | https://www.standards.org.au | AS1530.4 (fire resistance test), AS1682.1 (fire damper) |
 | BSI | https://www.bsigroup.com | BS EN 1366-2 (fire damper test), BS EN 15650 (damper classification) |
+| WHO | https://www.who.int | Hướng dẫn IAQ (Indoor Air Quality), tiêu chuẩn không khí sạch, ventilation guidelines cho phòng dịch |
+| LEED / Green Building | https://www.leedenvironmental.com | LEED certification, green building, sustainable HVAC design — liên quan IEQ credits, ventilation, energy efficiency |
+| Wheels (Energy Recovery) | https://www.wheels.com/public/ | Enthalpy wheels, energy recovery wheels — công nghệ thu hồi năng lượng cho hệ thống HVAC, total energy recovery |
 
 ### San pham STARDUCT & tieu chuan ap dung:
 | San pham | Tieu chuan chinh | Tieu chuan test |
