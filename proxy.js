@@ -252,6 +252,17 @@ const TOOLS = [
     }
   },
   {
+    name: 'zalo_oa_history',
+    description: 'Đọc lịch sử tin nhắn Zalo OA từ VIP. Dùng khi Sếp hỏi "chị Hồng/anh Ngọc nhắn gì?"',
+    input_schema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', description: 'VIP alias: sep-khanh, chi-hong, anh-ngoc, hoặc "all"', enum: ['all', 'sep-khanh', 'chi-hong', 'anh-ngoc'] },
+        hours: { type: 'number', description: 'Số giờ ngược lại (default 24)' }
+      }
+    }
+  },
+  {
     name: 'email_reply',
     description: 'Reply vào thread email đang có. Dùng khi cần trả lời email cụ thể.',
     input_schema: {
@@ -325,6 +336,9 @@ async function runTool(name, input) {
       break;
     case 'zalo_oa_send_to_vip':
       cmd = 'node'; args = [`${GTOOL}/zalo-oa-send.js`, input.target, input.message];
+      break;
+    case 'zalo_oa_history':
+      cmd = 'node'; args = [`${GTOOL}/zalo-oa-history.js`, input.target || 'all', String(input.hours || 24)];
       break;
     case 'github_create_issue':
       cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
@@ -512,6 +526,7 @@ TOOLS có sẵn:
 - gdoc_create
 - task_add / task_overdue / task_status / task_update
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
+- zalo_oa_history (đọc tin nhắn Zalo OA từ VIP — dùng khi Sếp hỏi "ai nhắn gì?")
 - github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu. GITHUB_TOKEN ĐÃ CÓ, cứ gọi)
 
 GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.

@@ -193,8 +193,8 @@ Alias: sep-khanh, chi-hong, anh-ngoc
 - 3 VIP nhan tin cho OA Starasia JSC → webhook tu dong chuyen den Le Na (proxy.js xu ly)
 - Le Na xu ly tin nhan VIP trong REAL-TIME va tra loi qua OA
 - **Session luu tai:** `/root/.openclaw/zalo-oa-sessions/<user_id>.json` (20 tin gan nhat moi VIP)
-- Khi can check VIP da nhan gi → `exec: cat /root/.openclaw/zalo-oa-sessions/*.json | head -100`
-- Khi Sep hoi "chi Hong nhan gi?" → doc session file cua chi Hong roi tra loi. KHONG noi "em khong biet".
+- Khi can check VIP da nhan gi → `exec: node /app/google-tools/zalo-oa-history.js chi-hong 24`
+- Khi Sep hoi "chi Hong nhan gi?" → goi zalo-oa-history.js NGAY roi tra loi. KHONG noi "em khong doc duoc".
 - **Zalo OA user IDs:** Sep Khanh=255067431607136002, Chi Hong=2389450107733864097, Anh Ngoc=xem env ZALO_OA_USER_ANH_NGOC
 
 KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
@@ -219,6 +219,7 @@ KHONG tu dong pair/login zalouser. KHONG chay openclaw channels login.
 | Drive | `drive-list.js "folderId"` / `drive-download.js "fileId" "[path]"` |
 | NPP | `npp-order-log.js [hours]` / `npp-order-log.js weekly-summary` |
 | Task Tracker | `task-tracker.js add/overdue/status/update` (TU dong lay Sheet ID, KHONG can truyen) |
+| Zalo OA History | `zalo-oa-history.js [alias] [hours]` — doc tin nhan VIP da gui qua OA (all/sep-khanh/chi-hong/anh-ngoc) |
 | Image | `dalle-generate.js`, `image-overlay.js` |
 | Facebook | `facebook-post.js "msg" "[img]"` |
 
