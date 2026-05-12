@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Zalo OA — đọc lịch sử tin nhắn VIP từ session files
 // Usage:
 //   node zalo-oa-history.js                    → tất cả VIP, 24h gần nhất

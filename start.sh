@@ -64,6 +64,24 @@ fi
 
 echo "Workspace sync complete"
 
+# === WRITE ENV VARS TO /app/.env.json (OpenClaw exec fallback) ===
+# OpenClaw exec may not inherit Railway env vars — scripts read this file as fallback
+echo "Writing env vars to /app/.env.json for OpenClaw exec..."
+node -e "
+const keys = [
+  'GITHUB_TOKEN','GITHUB_REPO','GOOGLE_SHEET_ID',
+  'GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','GOOGLE_REFRESH_TOKEN','GOOGLE_REFRESH_TOKEN_LENA',
+  'CLAUDE_API_KEY','GEMINI_API_KEY','OPENAI_API_KEY',
+  'ZALO_OA_ACCESS_TOKEN','ZALO_OA_APP_ID','ZALO_OA_SECRET','ZALO_OA_REFRESH_TOKEN',
+  'ZALO_OA_USER_SEP_KHANH','ZALO_OA_USER_CHI_HONG','ZALO_OA_USER_ANH_NGOC',
+  'FACEBOOK_PAGE_TOKEN','FACEBOOK_PAGE_ID'
+];
+const env = {};
+keys.forEach(k => { if (process.env[k]) env[k] = process.env[k]; });
+require('fs').writeFileSync('/app/.env.json', JSON.stringify(env));
+console.log('Wrote ' + Object.keys(env).length + ' env vars to /app/.env.json');
+"
+
 # === CLEAN CORRUPTED PLUGIN CACHE ===
 # Plugin runtime deps occasionally corrupt during install (missing files).
 # Force reinstall every deploy by removing cache. OpenClaw will redownload cleanly.

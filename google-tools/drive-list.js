@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Drive List — Le Na CEO Agent
 // Liet ke file trong folder Google Drive
 //

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Calendar Read — Le Na CEO Agent
 // Usage: node calendar-read.js [days=2]
 // Returns events for today and next N days

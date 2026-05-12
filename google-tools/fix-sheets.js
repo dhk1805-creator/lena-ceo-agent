@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Fix sheets: 1) Create Task Tracker tab  2) Reset Report Tracker headers
 // Run once: node fix-sheets.js
 

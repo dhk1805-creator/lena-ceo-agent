@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // NPP Order Log — Le Na CEO Agent
 // Tu dong quet email don hang tu 5 NPP va ghi vao Google Sheets
 //

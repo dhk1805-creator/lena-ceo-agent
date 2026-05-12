@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Sheets APPEND — Le Na CEO Agent
 // THEM DONG MOI vao cuoi sheet (KHONG ghi de data cu)
 //

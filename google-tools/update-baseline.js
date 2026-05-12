@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Update KHKD 2026 Baseline with ACTUAL monthly targets from PKD
 // Source: "Target tháng 2026 final.xlsx" — sheet "Điều chỉnh hợp lý tiến độ Target"
 // Run once: railway run node google-tools/update-baseline.js

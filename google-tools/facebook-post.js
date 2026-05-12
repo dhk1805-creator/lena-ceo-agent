@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Facebook Page Post — Le Na CEO Agent
 // Usage: node facebook-post.js <message> [imageUrl] [link]
 //

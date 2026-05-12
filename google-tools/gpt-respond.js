@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // GPT Respond — Le Na CEO Agent
 // Tra loi tin nhan Zalo tu nguoi NGOAI (khong phai Sep Khanh / Chi Hong)
 // Su dung GPT-4o Mini (re 30x so voi Claude Sonnet 4)

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Create Le Na CEO Dashboard — 18 Google Sheets
 // Run once: GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... GOOGLE_REFRESH_TOKEN=... node create-sheets.js
 

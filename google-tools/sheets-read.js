@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Sheets Read — Le Na CEO Agent
 // Usage: node sheets-read.js <spreadsheetId> <range>
 // Example: node sheets-read.js 1abc...xyz "KPI Tracker!A1:Z100"

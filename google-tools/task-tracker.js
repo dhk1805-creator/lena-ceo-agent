@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Task Tracker — Le Na CEO Agent
 // Quan ly task/cong viec duoc giao qua Google Sheet "Task Tracker"
 //

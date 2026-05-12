@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // KPI Tracker Auto-Update — aggregate data from multiple sheets
 // Runs weekly (sau weekly-report-scan T7) hoac khi VIP yeu cau
 // Usage: node kpi-update.js

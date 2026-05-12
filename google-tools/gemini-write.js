@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Gemini Write — Le Na CEO Agent
 // Dung Gemini 2.0 Flash (MIEN PHI) de viet noi dung dai
 // Email, bao cao, content marketing, blog, quang cao...

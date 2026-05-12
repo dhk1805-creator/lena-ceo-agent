@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Zalo OA — Refresh Access Token (expire 25h, refresh trước khi hết hạn)
 // Usage: node zalo-oa-refresh-token.js
 //

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Add "Weekly Performance" sheet to existing Le Na CEO Dashboard
 // Run once: node add-weekly-sheet.js
 // Requires: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GOOGLE_SHEET_ID

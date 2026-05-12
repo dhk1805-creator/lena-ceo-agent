@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Doc Export — Le Na CEO Agent
 // Usage: node gdoc-export.js <docId> [format] [outputPath]
 // format: pdf (default), docx

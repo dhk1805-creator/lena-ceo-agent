@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // GitHub Issue Creator — Lê Na gửi yêu cầu sửa code/cron
 // Usage: node github-issue.js "<title>" "<body>" "<requester>"
 // Env: GITHUB_TOKEN, GITHUB_REPO (default: dhk1805-creator/lena-ceo-agent)

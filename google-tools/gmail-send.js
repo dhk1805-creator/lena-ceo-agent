@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Gmail Send — Le Na CEO Agent
 // Usage: node gmail-send.js <to> <subject> <body> [cc] [attachmentPath]
 // cc: optional, comma-separated CC addresses (use "" to skip)

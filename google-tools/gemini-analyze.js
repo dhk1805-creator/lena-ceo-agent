@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Gemini Analyze — Le Na CEO Agent
 // Phan tich file PDF, hinh anh, tai lieu bang Gemini 2.0 Flash
 // Context window 1M tokens — doc duoc file rat dai

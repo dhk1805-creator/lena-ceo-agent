@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Drive Download — Le Na CEO Agent
 // Tai file tu Google Drive ve local
 //

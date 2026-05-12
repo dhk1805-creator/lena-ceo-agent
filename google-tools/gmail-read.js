@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Gmail Read — Le Na CEO Agent
 // Usage: node gmail-read.js [hours=24] [maxResults=20] [query=optional]
 // Examples:

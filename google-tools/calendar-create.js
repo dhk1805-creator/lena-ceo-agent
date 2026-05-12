@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Calendar Create Event — Le Na CEO Agent
 // Usage: node calendar-create.js <summary> <start_datetime> <end_datetime> [description] [location]
 //

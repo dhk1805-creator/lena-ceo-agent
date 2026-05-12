@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // DALL-E Image Generate — Le Na CEO Agent
 // Tao hinh anh bang OpenAI DALL-E 3
 // Dung cho: banner fanpage, thiep chuc mung, poster san pham, infographic

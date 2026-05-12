@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Sheets Write — Le Na CEO Agent
 // Usage: node sheets-write.js <spreadsheetId> <range> <jsonData>
 // Example: node sheets-write.js 1abc...xyz "Sheet1!A1" '[["Name","Value"],["KPI",100]]'

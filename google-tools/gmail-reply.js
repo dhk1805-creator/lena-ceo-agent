@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Gmail Reply — Le Na CEO Agent
 // Reply to an existing email thread
 //

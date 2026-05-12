@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Gmail Attachment Download — Le Na CEO Agent
 // Usage: node gmail-attachment.js <messageId> [outputDir]
 // Downloads ALL attachments from a Gmail message

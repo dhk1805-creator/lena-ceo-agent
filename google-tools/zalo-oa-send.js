@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Last updated: 2026-05-12 — tested via GitHub Actions pipeline
 // Zalo OA — gửi tin nhắn qua Official Account "Starasia JSC"
 // Usage:

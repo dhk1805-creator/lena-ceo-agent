@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Share Google Sheets with department heads for data input
 // Run once: railway run node google-tools/share-sheets.js
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./_env');
 // Google Docs Create — Le Na CEO Agent
 // Usage: node gdoc-create.js <title> <content>
 // Creates a Google Doc with title and markdown-like content
