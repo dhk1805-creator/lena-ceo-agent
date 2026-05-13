@@ -114,6 +114,27 @@ function getSessionAgeMin(userId) {
   return Infinity;
 }
 
+// Non-VIP greeting throttle — only send canned "Em là Lê Na..." once per 6h.
+// File mtime tracks last greet; subsequent messages within window → silent.
+const NONVIP_GREET_DIR = '/root/.openclaw/zalo-oa-nonvip-greet';
+try { fs.mkdirSync(NONVIP_GREET_DIR, { recursive: true }); } catch (e) {}
+
+function getNonVipGreetAgeMin(userId) {
+  const file = path.join(NONVIP_GREET_DIR, `${userId}.touch`);
+  try {
+    if (fs.existsSync(file)) {
+      const ageMs = Date.now() - fs.statSync(file).mtime.getTime();
+      return Math.floor(ageMs / 60000);
+    }
+  } catch (e) {}
+  return Infinity;
+}
+
+function markNonVipGreeted(userId) {
+  const file = path.join(NONVIP_GREET_DIR, `${userId}.touch`);
+  try { fs.writeFileSync(file, ''); } catch (e) {}
+}
+
 // === TOOLS — Lê Na có thể gọi qua OA ===
 const TOOLS = [
   {
@@ -654,7 +675,15 @@ async function handleUserMessage(event) {
     const follower = lookupFollower(senderId);
     const name = follower?.display_name || 'anh/chị';
     console.log(`[lena] non-VIP message from ${name} (${senderId}): ${messageText.substring(0, 60)}`);
-    await sendZaloMessage(senderId, `Chào ${name}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Hiện em chỉ hỗ trợ nhân sự nội bộ. ${name !== 'anh/chị' ? 'Cảm ơn ' + name + ' đã quan tâm OA của STARDUCT. ' : ''}Anh/chị cần gì vui lòng liên hệ hotline hoặc email info@nsca.vn ạ.`);
+
+    // Only send full greeting once per 6h session — avoid spamming same canned reply
+    const greetAgeMin = getNonVipGreetAgeMin(senderId);
+    if (greetAgeMin >= 360) {
+      await sendZaloMessage(senderId, `Chào ${name}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Hiện em chỉ hỗ trợ nhân sự nội bộ. ${name !== 'anh/chị' ? 'Cảm ơn ' + name + ' đã quan tâm OA của STARDUCT. ' : ''}Anh/chị cần gì vui lòng liên hệ hotline hoặc email info@nsca.vn ạ.`);
+      markNonVipGreeted(senderId);
+    } else {
+      console.log(`[lena] non-VIP ${name} already greeted ${greetAgeMin}min ago (<6h), silent`);
+    }
     return;
   }
 
