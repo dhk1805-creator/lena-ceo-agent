@@ -101,6 +101,19 @@ function saveSession(userId, messages) {
   try { fs.writeFileSync(file, JSON.stringify(trimmed, null, 2)); } catch (e) {}
 }
 
+// Minutes since last message in this user's session (Infinity if no prior session).
+// Reads mtime of the session file — saveSession updates it on every turn.
+function getSessionAgeMin(userId) {
+  const file = path.join(SESSION_DIR, `${userId}.json`);
+  try {
+    if (fs.existsSync(file)) {
+      const ageMs = Date.now() - fs.statSync(file).mtime.getTime();
+      return Math.floor(ageMs / 60000);
+    }
+  } catch (e) {}
+  return Infinity;
+}
+
 // === TOOLS — Lê Na có thể gọi qua OA ===
 const TOOLS = [
   {
@@ -648,6 +661,9 @@ async function handleUserMessage(event) {
 
   console.log(`[lena] tin từ ${senderInfo}: ${messageText.substring(0, 60)}...`);
 
+  // Session age BEFORE load — used to decide whether to greet
+  const sessionAgeMin = getSessionAgeMin(senderId);
+
   // Load session — validate it's usable, reset if corrupt
   let session = loadSession(senderId);
   if (!Array.isArray(session)) session = [];
@@ -659,6 +675,11 @@ async function handleUserMessage(event) {
       session = [];
     }
   }
+
+  // Fresh conversation = no prior turns, or >6h gap since last reply
+  const isFreshSession = session.length === 0 || sessionAgeMin >= 360;
+  console.log(`[lena] session: ${session.length} msgs, last ${sessionAgeMin === Infinity ? '∞' : sessionAgeMin}min ago, fresh=${isFreshSession}`);
+
   session.push({ role: 'user', content: messageText });
 
   // System prompt
@@ -667,6 +688,17 @@ async function handleUserMessage(event) {
 
 Đang chat với: **${senderInfo}**
 Thời gian: ${today}
+
+TRẠNG THÁI HỘI THOẠI:
+${isFreshSession
+  ? `- Đây là TIN ĐẦU TIÊN của session mới (${sessionAgeMin === Infinity ? 'chưa từng chat' : `lần cuối ${sessionAgeMin} phút trước, >6h`}). Em CÓ THỂ mở đầu ngắn 1 lần (vd: "Dạ ${vip.name}, ...") rồi vào nội dung.`
+  : `- Đang trong session ACTIVE (tin trước cách đây ${sessionAgeMin} phút). KHÔNG chào, KHÔNG mở đầu bằng "Dạ ${vip.name}" / "Chào anh/chị" / "Xin chào". Trả lời THẲNG vào nội dung như đang nói chuyện liên tục.`}
+
+⛔ CHỐNG SPAM CHÀO HỎI (LUẬT QUAN TRỌNG):
+❌ KHÔNG bắt đầu reply bằng "Chào anh/chị", "Xin chào", "Dạ chào ${vip.name}" — TRỪ khi TRẠNG THÁI ở trên nói "TIN ĐẦU TIÊN".
+❌ KHÔNG mở đầu bằng "Dạ ${vip.name}," nếu đang trong session ACTIVE — vào thẳng câu trả lời.
+❌ KHÔNG lặp lại lời chào trong cùng 1 session dù VIP gửi nhiều tin liên tục.
+✅ Session active → reply bắt đầu trực tiếp bằng nội dung (vd: "Báo cáo PKD tuần này...", "Đã gửi mail cho anh Đức.", "Em check rồi: ...").
 
 NGUYÊN TẮC:
 - Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc / anh/chị)
