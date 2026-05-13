@@ -180,5 +180,18 @@
       "message": "CAP NHAT KPI TRACKER TU DONG — 22H T7 (sau khi Report Scan 21h da luu data).\n\nMUC DICH: Aggregate data tu nhieu sheet vao KPI Tracker de Sep co so lieu khi hoi.\n\nBUOC 1: Chay script tu dong:\n`exec: node /app/google-tools/kpi-update.js`\n\nBUOC 2: Doc ket qua JSON. Neu success → im lang (KHONG bao Sep, day la backend update).\nNeu error → bao Sep qua Zalo: \"⚠️ KPI Tracker update that bai: [error]. Em se thu lai.\"\n\nKHONG gui email, KHONG gui Zalo khi thanh cong. Day la cap nhat data NEN, khong can thong bao."
     },
     "sessionTarget": "isolated"
+  },
+  {
+    "id": "daily-content-auto-post",
+    "name": "Daily Content Auto-Post Zalo OA - 9h moi ngay",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 9 * * *"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "DANG BAI TU DONG LEN ZALO OA — 9H MOI NGAY.\n\nMUC DICH: Moi sang Le Na tu dong dang 1 bai len trang OA Starasia JSC voi anh san pham STARDUCT random + content theo template ngay trong tuan (T2 tinh nang, T3 case study, T4 tips, T5 so sanh, T6 tin nganh, T7 review, CN highlight tuan).\n\nBUOC 1: XAC DINH NGAY:\n`exec: date \"+%A %d/%m/%Y %H:%M %Z\"`\n\nBUOC 2: LAY 1 ANH RANDOM tu folder STARDUCT (394 anh san pham, da co branding):\n`exec: node /app/google-tools/drive-random.js \"1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR\" 1`\n→ Parse JSON output. Luu lai `picked[0].id`, `picked[0].name`, `picked[0].public_url`.\n→ Neu success=false hoac khong co anh nao → DI THANG XUONG BUOC 6 (alert fail).\n\nBUOC 3: TAO CONTENT theo template thu hom nay:\n`exec: node /app/google-tools/content-generator.js`\n→ Parse JSON output. Luu lai `title`, `body`, `topic`, `weekday_label`.\n→ Neu success=false → DI THANG XUONG BUOC 6 (alert fail).\n\nBUOC 4: DANG BAI len Zalo OA voi cover la anh random tu BUOC 2:\n`exec: node /app/google-tools/zalo-oa-article.js create \"<title>\" \"<body>\" \"<public_url>\"`\n→ Parse JSON output. Luu lai `article_id` neu success.\n→ Neu success=false → DI THANG XUONG BUOC 6 (alert fail) kem theo `step` va `error` tu output.\n\nBUOC 5: LOG THANH CONG vao Activity Log (1 row), roi EXIT:\n`exec: node /app/google-tools/sheets-append.js \"$GOOGLE_SHEET_ID\" \"'Activity Log'!A:H\" '[[\"<ISO timestamp>\", \"Le Na\", \"Auto Post Zalo OA\", \"Zalo OA\", \"OA Starasia JSC\", \"<topic> | <title>\", \"success | article_id=<article_id> | image=<picked.name>\", \"daily-content-auto-post\"]]'`\nKHONG gui Zalo cho VIP khi thanh cong (tranh spam). EXIT.\n\nBUOC 6 (CHI KHI FAIL O BUOC 2, 3 HOAC 4):\na) Gui 1 tin Zalo alert cho Sep Khanh:\n`exec: node /app/google-tools/zalo-oa-send.js sep-khanh \"⚠️ Auto-post Zalo OA THAT BAI sang nay. Buoc fail: <2|3|4>. Loi: <error message ngan, toi da 200 ky tu>. Anh kiem tra giup em.\"`\nb) Log fail vao Activity Log:\n`exec: node /app/google-tools/sheets-append.js \"$GOOGLE_SHEET_ID\" \"'Activity Log'!A:H\" '[[\"<ISO timestamp>\", \"Le Na\", \"Auto Post Zalo OA\", \"Zalo OA\", \"OA Starasia JSC\", \"<topic neu co | -> | <title neu co | ->\", \"fail | step=<2|3|4> | <error ngan>\", \"daily-content-auto-post\"]]'`\nKHONG retry trong cung lan chay. Cron se thu lai sang mai.\n\nQUY TAC TUYET DOI:\n- CHI 1 bai/ngay. KHONG dang trung lap, KHONG dang lai khi success.\n- CHI gui Zalo cho Sep KHI FAIL. Khi success → log Sheet, KHONG spam VIP.\n- TUYET DOI khong bia content — phai dung output cua content-generator.js.\n- TUYET DOI khong dung anh ngoai folder STARDUCT (anh san pham chinh thuc).\n- KHONG sua title/body Gemini tao ra (chinh tri tac vu cua content-generator)."
+    },
+    "sessionTarget": "isolated"
   }
 ]
