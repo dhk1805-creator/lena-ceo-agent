@@ -355,6 +355,21 @@ const TOOLS = [
       },
       required: ['file_id']
     }
+  },
+  {
+    name: 'zalo_oa_comment',
+    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét tất cả article gần đây + auto reply theo template + filter spam).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'reply', 'scan'], description: 'list | reply | scan' },
+        article_id: { type: 'string', description: 'ID bài viết (cho list, hoặc reply)' },
+        comment_id: { type: 'string', description: 'ID comment cần reply' },
+        message: { type: 'string', description: 'Nội dung reply' },
+        hours: { type: 'number', description: 'Quét comment trong N giờ qua (cho scan, default 24)' }
+      },
+      required: ['action']
+    }
   }
 ];
 
@@ -433,6 +448,17 @@ async function runTool(name, input) {
     case 'drive_download':
       cmd = 'node'; args = [`${GTOOL}/drive-download.js`, input.file_id, input.output_path || ''];
       break;
+    case 'zalo_oa_comment': {
+      const action = input.action || 'scan';
+      if (action === 'list') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'list', input.article_id || '', '0', '20'];
+      } else if (action === 'reply') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'reply', input.comment_id || '', input.message || '', input.article_id || ''];
+      } else {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan', String(input.hours || 24)];
+      }
+      break;
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -495,6 +521,12 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
     handleUnfollow(event).catch(err => console.error('[unfollow] error:', err.message));
   } else if (event.event_name === 'user_send_image') {
     handleImageMessage(event).catch(err => console.error('[image] error:', err.message));
+  } else if (
+    event.event_name === 'user_send_comment' ||
+    event.event_name === 'oa_comment' ||
+    event.event_name === 'user_comment_article'
+  ) {
+    handleArticleComment(event).catch(err => console.error('[comment] error:', err.message));
   }
 });
 
@@ -564,6 +596,34 @@ async function handleImageMessage(event) {
   const imageUrl = att?.payload?.url || att?.payload?.thumbnail || '';
   console.log(`[zalo] image from ${name} (${senderId}): ${imageUrl.substring(0, 80)}`);
   await sendZaloMessage(senderId, `Dạ ${name}, em đã nhận ảnh.${vip ? ' Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?' : ''}`);
+}
+
+// Auto-reply tu dong cho comment cua follower tren bai viet OA.
+// Co che: chay zalo-oa-comment.js voi action=reply (template) hoac log de Le Na xu ly sau.
+async function handleArticleComment(event) {
+  const commentId = event.comment?.id || event.comment_id || event.message?.comment_id;
+  const articleId = event.article?.id || event.article_id || event.comment?.article_id;
+  const text = event.comment?.message || event.comment?.text || event.message?.text || '';
+  const senderId = event.sender?.id || event.user?.id;
+
+  if (!commentId || !text) {
+    console.log('[comment] missing comment_id or text, skip');
+    return;
+  }
+  console.log(`[comment] new on article=${articleId} from=${senderId}: ${text.substring(0, 80)}`);
+
+  // Goi tool de unify logic spam-filter + template-match + reply
+  try {
+    const { stdout, stderr } = await execFileAsync('node', [
+      '/app/google-tools/zalo-oa-comment.js',
+      'scan',
+      '1'
+    ], { encoding: 'utf-8', timeout: 30000 });
+    if (stderr) console.log(`[comment:scan] ${stderr.trim()}`);
+    console.log(`[comment:scan] ${stdout.trim().substring(0, 300)}`);
+  } catch (e) {
+    console.error(`[comment] scan failed: ${e.message}`);
+  }
 }
 
 // === LÊ NA AGENT — TOOL CALLING LOOP ===
