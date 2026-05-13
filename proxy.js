@@ -225,6 +225,17 @@ const TOOLS = [
     }
   },
   {
+    name: 'hvac_lookup',
+    description: 'Tra cứu tài liệu HVAC (tiêu chuẩn, thuật ngữ, kiến thức kỹ thuật) từ knowledge base do Sếp Khánh cung cấp. Dùng khi VIP hỏi về HVAC, điều hòa, thông gió, chiller, EER/COP, lưu lượng gió, áp suất, v.v.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        keyword: { type: 'string', description: 'Từ khóa tra cứu, vd: "EER", "chiller", "Btu/h". Để trống = đọc 50 dòng đầu.' },
+        range: { type: 'string', description: 'Range A1, vd: "A:Z" hoặc "Tieu Chuan!A:F". Default "A:Z" (tab đầu tiên).' }
+      }
+    }
+  },
+  {
     name: 'gdoc_create',
     description: 'Tạo Google Doc (cho báo cáo dài). Trả về link Doc.',
     input_schema: {
@@ -436,6 +447,9 @@ async function runTool(name, input) {
       break;
     case 'sheets_append':
       cmd = 'node'; args = [`${GTOOL}/sheets-append.js`, sheetId, input.range, input.values];
+      break;
+    case 'hvac_lookup':
+      cmd = 'node'; args = [`${GTOOL}/hvac-lookup.js`, input.keyword || '', input.range || 'A:Z'];
       break;
     case 'gdoc_create':
       cmd = 'node'; args = [`${GTOOL}/gdoc-create.js`, input.title, input.content];
@@ -764,6 +778,7 @@ TOOLS có sẵn:
 - email_send / email_read / email_reply
 - calendar_read / calendar_create
 - sheets_read / sheets_write / sheets_append
+- hvac_lookup (tra cứu tiêu chuẩn / thuật ngữ / kiến thức HVAC — dùng khi VIP hỏi về điều hòa, chiller, EER/COP, lưu lượng gió, áp suất, v.v.)
 - gdoc_create
 - task_add / task_overdue / task_status / task_update
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)

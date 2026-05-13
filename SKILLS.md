@@ -1,12 +1,13 @@
 # SKILLS.md — Le Na lam gi
 
-## Runtime tools (22 — `proxy.js` TOOLS)
+## Runtime tools (23 — `proxy.js` TOOLS)
 
 | Nhom | Tool |
 |---|---|
 | Email | `email_send`, `email_read`, `email_reply` |
 | Calendar | `calendar_read`, `calendar_create` |
 | Sheets (21 tab, ID env) | `sheets_read`, `sheets_write`, `sheets_append` |
+| Knowledge | `hvac_lookup` (tra cuu HVAC: tieu chuan, thuat ngu, EER/COP, chiller, lưu lượng gió...) |
 | Docs/Drive | `gdoc_create`, `drive_list` (default folder STARDUCT), `drive_download` |
 | Task | `task_add`, `task_overdue`, `task_status`, `task_update` |
 | Zalo OA | `zalo_oa_send_to_vip` (tin rieng), `zalo_oa_history`, `zalo_oa_article` (dang bai public) |
