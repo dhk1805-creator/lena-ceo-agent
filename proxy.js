@@ -236,6 +236,31 @@ const TOOLS = [
     }
   },
   {
+    name: 'memory_search',
+    description: 'Tra cứu kiến thức trong long-term memory (cả baked-in /app/workspace/memory + learned overlay /root/.openclaw/lena-learned). BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật (bài OA, post FB, email khách) — đặc biệt khi nhắc tới tiêu chuẩn (UL, EN, AHRI, AMCA, ASHRAE, ISO, QCVN). File "hvac-standards" chứa spec sản phẩm; "hvac-knowledge" chứa công thức + thuật ngữ.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        keyword: { type: 'string', description: 'Từ khóa tra cứu (vd: "fire damper", "VAV", "ASHRAE 62.1", "EI 180")' },
+        file: { type: 'string', description: 'Tên file giới hạn (optional, vd: "hvac-standards", "hvac-knowledge", "brand-guide"). Để trống = quét tất cả.' }
+      },
+      required: ['keyword']
+    }
+  },
+  {
+    name: 'memory_update',
+    description: 'Lưu kiến thức mới Lê Na học được vào persistent volume (ghi vào /root/.openclaw/lena-learned/<topic>.md — overlay không ghi đè memory baked-in). Dùng khi: VIP dạy thêm 1 fact mới, Lê Na phát hiện info cần nhớ cho lần sau (vd: tiêu chuẩn mới, đối thủ mới, brand fact). KHÔNG dùng để log task/báo cáo — dùng sheets_append.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'Tên topic (kebab-case, vd: "hvac-standards", "competitor-intel", "customer-feedback"). Cùng topic = append vào cùng file.' },
+        content: { type: 'string', description: 'Nội dung markdown muốn lưu (vd: "EN 16798-3:2017 — ventilation in non-residential buildings, thay thế EN 13779")' },
+        section: { type: 'string', description: 'Heading phụ để gom (optional, vd: "Cập nhật từ Sếp Khánh 13/5/2026"). Để trống = auto timestamp.' }
+      },
+      required: ['topic', 'content']
+    }
+  },
+  {
     name: 'gdoc_create',
     description: 'Tạo Google Doc (cho báo cáo dài). Trả về link Doc.',
     input_schema: {
@@ -450,6 +475,12 @@ async function runTool(name, input) {
       break;
     case 'hvac_lookup':
       cmd = 'node'; args = [`${GTOOL}/hvac-lookup.js`, input.keyword || '', input.range || 'A:Z'];
+      break;
+    case 'memory_search':
+      cmd = 'node'; args = [`${GTOOL}/memory-search.js`, input.keyword || '', input.file || ''];
+      break;
+    case 'memory_update':
+      cmd = 'node'; args = [`${GTOOL}/memory-update.js`, input.topic || '', input.content || '', input.section || ''];
       break;
     case 'gdoc_create':
       cmd = 'node'; args = [`${GTOOL}/gdoc-create.js`, input.title, input.content];
@@ -778,7 +809,9 @@ TOOLS có sẵn:
 - email_send / email_read / email_reply
 - calendar_read / calendar_create
 - sheets_read / sheets_write / sheets_append
-- hvac_lookup (tra cứu tiêu chuẩn / thuật ngữ / kiến thức HVAC — dùng khi VIP hỏi về điều hòa, chiller, EER/COP, lưu lượng gió, áp suất, v.v.)
+- hvac_lookup (tra cứu tiêu chuẩn / thuật ngữ / kiến thức HVAC từ Google Sheet — dùng khi VIP hỏi về điều hòa, chiller, EER/COP, lưu lượng gió, áp suất, v.v.)
+- memory_search (tra cứu long-term memory: hvac-standards, hvac-knowledge, brand-guide, contacts... — BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật có tiêu chuẩn)
+- memory_update (lưu kiến thức mới vào lena-learned overlay — dùng khi VIP dạy fact mới hoặc cần nhớ cho lần sau)
 - gdoc_create
 - task_add / task_overdue / task_status / task_update
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
@@ -797,11 +830,18 @@ WORKFLOW ĐĂNG BÀI ZALO OA (khi VIP gửi ảnh + yêu cầu viết bài):
 ⛔ KHÔNG dùng DALL-E tạo ảnh mới — PHẢI dùng ẢNH THẬT VIP đã gửi
 ⛔ KHÔNG hỏi xác nhận — VIP đã ra lệnh, ĐĂNG NGAY
 ⛔ KHÔNG dùng zalouser — dùng zalo_oa_article trực tiếp
+0. NẾU bài có nhắc tiêu chuẩn (UL/EN/AHRI/AMCA/ASHRAE/ISO/QCVN) hoặc sản phẩm STARDUCT (van ngăn cháy, VAV, VCD, louver, cửa gió) → memory_search keyword="<tên SP>" file="hvac-standards" TRƯỚC khi viết. Trích đúng mã chuẩn, KHÔNG bịa.
 1. zalo_oa_history → tìm type:"image" → lấy image_url (ẢNH VIP GỬI)
 2. image_overlay (input=image_url, layout="hero") → tạo ảnh bìa từ ẢNH THẬT
-3. gemini_write → soạn nội dung theo yêu cầu VIP
+3. gemini_write → soạn nội dung theo yêu cầu VIP (đã có spec đúng từ bước 0)
 4. zalo_oa_article create → đăng bài lên OA (KHÔNG cần chatId)
 5. Báo VIP: "✅ Đã đăng bài [tiêu đề] lên OA Starasia JSC"
+
+LONG-TERM MEMORY (memory_search + memory_update):
+✅ TRƯỚC khi viết content kỹ thuật (bài OA/FB, email khách, slide) có tiêu chuẩn → memory_search file="hvac-standards" để verify mã chuẩn.
+✅ Khi VIP nói "ghi nhớ X" / "lần sau Y" / "đừng quên Z" → memory_update topic="<chủ đề>" content="<X>". KHÔNG hỏi lại.
+✅ Khi phát hiện fact mới đáng nhớ (đối thủ ra SP, khách phản hồi, tiêu chuẩn cập nhật) → memory_update để lần sau Lê Na tự biết.
+❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
 
 GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.
 Khi dùng sheets_read / sheets_write / sheets_append: CHỈ CẦN truyền range (vd: "'KPI Tracker'!A:Z"). Hệ thống TỰ ĐỘNG điền Sheet ID.
