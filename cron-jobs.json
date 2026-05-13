@@ -183,10 +183,10 @@
   },
   {
     "id": "daily-content-auto-post",
-    "name": "Daily Content Auto-Post Zalo OA - 9h moi ngay",
+    "name": "Auto-Post Zalo OA - 9h T2/T4/T6 (3 bai/tuan ~12/thang, under quota 15)",
     "schedule": {
       "kind": "cron",
-      "expr": "0 9 * * *"
+      "expr": "0 9 * * 1,3,5"
     },
     "payload": {
       "kind": "agentTurn",
