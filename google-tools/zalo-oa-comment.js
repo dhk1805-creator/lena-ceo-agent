@@ -160,68 +160,128 @@ async function cmdReply(commentId, message, articleId) {
   if (data.error !== 0) process.exit(1);
 }
 
+// [2026-05-13 — Issue #17] Zalo /v2.0/article/getslice with `type: 'normal'`
+// trả về -201 "type accept only 2 value normal and video." dù `normal` ĐÚNG là
+// 1 trong 2 giá trị hợp lệ theo docs. Bypass bằng cách thử nhiều biến thể URL/
+// param và trả về FULL diagnostic — không nuốt lỗi như trước (return [] im lặng
+// khiến scan luôn báo "0 articles" mà không biết tại sao).
 async function listArticles(limit = 10) {
-  const params = JSON.stringify({ offset: 0, limit, type: 'normal' });
-  const url = `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(params)}`;
-  const res = await fetch(url, { headers: { 'access_token': ACCESS_TOKEN } });
-  const data = await res.json();
-  if (data.error === 0 && data.data?.articles) return data.data.articles;
-  return [];
+  const cap = Math.min(limit, 10); // Zalo docs: max limit = 10
+  const variants = [
+    { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'normal' }))}` },
+    { name: 'v2_data_no_type', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap }))}` },
+    { name: 'v2_flat_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=${cap}&type=normal` },
+    { name: 'v2_data_video', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'video' }))}` },
+    { name: 'v3_data_normal', url: `https://openapi.zalo.me/v3.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'normal' }))}` },
+  ];
+
+  const attempts = [];
+  for (const v of variants) {
+    try {
+      const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
+      const data = await res.json();
+      const articles = data.data?.articles || data.data?.list || [];
+      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, returned: articles.length });
+      if (data.error === 0) {
+        return { articles, variant: v.name, attempts };
+      }
+    } catch (e) {
+      attempts.push({ variant: v.name, error: -1, message: e.message });
+    }
+  }
+  return { articles: [], variant: null, attempts };
+}
+
+// Xu ly comment cua 1 article — extract de scan + scan-article dung chung.
+async function processArticleComments(articleId, since, replied, report) {
+  const list = await getComments(articleId, 0, 50);
+  if (list.error !== 0) {
+    report.errors.push({ article_id: articleId, error: list.message || list.error, raw: list });
+    return;
+  }
+  const comments = list.data?.comments || list.data?.list || [];
+  for (const c of comments) {
+    report.comments++;
+    const cId = c.id || c.comment_id;
+    if (!cId || replied[cId]) continue;
+    // Khong reply comment cua chinh OA
+    if (c.from?.is_oa || c.is_oa) continue;
+    // Filter theo thoi gian
+    const cTime = (c.created_time || c.time || 0) * (c.created_time > 1e12 ? 1 : 1000);
+    if (cTime && cTime < since) continue;
+    report.new_comments++;
+
+    const text = c.message || c.content || c.text || '';
+    const mod = isSpam(text);
+    if (mod.spam) {
+      report.skipped_spam++;
+      logEvent({ kind: 'spam', comment_id: cId, article_id: articleId, reason: mod.reason, text: text.substring(0, 200) });
+      markReplied(cId, { article_id: articleId, skipped: mod.reason });
+      continue;
+    }
+
+    const tplReply = matchTemplate(text);
+    if (!tplReply) {
+      // Khong match template — log de Le Na xu ly tay sau
+      logEvent({ kind: 'no_template', comment_id: cId, article_id: articleId, text: text.substring(0, 200) });
+      continue;
+    }
+
+    const reply = await replyComment(cId, tplReply, articleId);
+    if (reply.error === 0) {
+      markReplied(cId, { article_id: articleId, template: true });
+      logEvent({ kind: 'reply_template', comment_id: cId, article_id: articleId, text: text.substring(0, 100), reply: tplReply.substring(0, 100) });
+      report.replied++;
+    } else {
+      report.errors.push({ comment_id: cId, error: reply.message || reply.error });
+    }
+  }
 }
 
 async function cmdScan(hours = 24) {
   const since = Date.now() - hours * 3600 * 1000;
-  const articles = await listArticles(20);
+  const listResult = await listArticles(20);
+  const articles = listResult.articles || [];
   const replied = loadReplied();
-  const report = { articles: 0, comments: 0, new_comments: 0, replied: 0, skipped_spam: 0, errors: [] };
+  const report = {
+    articles: 0,
+    comments: 0,
+    new_comments: 0,
+    replied: 0,
+    skipped_spam: 0,
+    errors: [],
+    list_articles: { variant: listResult.variant, attempts: listResult.attempts }
+  };
 
   for (const art of articles) {
     if (art.created_date && art.created_date * 1000 < since - 14 * 24 * 3600 * 1000) continue;
     report.articles++;
-    const list = await getComments(art.id, 0, 50);
-    if (list.error !== 0) {
-      report.errors.push({ article_id: art.id, error: list.message || list.error });
-      continue;
-    }
-    const comments = list.data?.comments || list.data?.list || [];
-    for (const c of comments) {
-      report.comments++;
-      const cId = c.id || c.comment_id;
-      if (!cId || replied[cId]) continue;
-      // Khong reply comment cua chinh OA
-      if (c.from?.is_oa || c.is_oa) continue;
-      // Filter theo thoi gian
-      const cTime = (c.created_time || c.time || 0) * (c.created_time > 1e12 ? 1 : 1000);
-      if (cTime && cTime < since) continue;
-      report.new_comments++;
-
-      const text = c.message || c.content || c.text || '';
-      const mod = isSpam(text);
-      if (mod.spam) {
-        report.skipped_spam++;
-        logEvent({ kind: 'spam', comment_id: cId, article_id: art.id, reason: mod.reason, text: text.substring(0, 200) });
-        markReplied(cId, { article_id: art.id, skipped: mod.reason });
-        continue;
-      }
-
-      const tplReply = matchTemplate(text);
-      if (!tplReply) {
-        // Khong match template — log de Le Na xu ly tay sau
-        logEvent({ kind: 'no_template', comment_id: cId, article_id: art.id, text: text.substring(0, 200) });
-        continue;
-      }
-
-      const reply = await replyComment(cId, tplReply, art.id);
-      if (reply.error === 0) {
-        markReplied(cId, { article_id: art.id, template: true });
-        logEvent({ kind: 'reply_template', comment_id: cId, article_id: art.id, text: text.substring(0, 100), reply: tplReply.substring(0, 100) });
-        report.replied++;
-      } else {
-        report.errors.push({ comment_id: cId, error: reply.message || reply.error });
-      }
-    }
+    await processArticleComments(art.id, since, replied, report);
   }
 
+  console.log(JSON.stringify({ success: true, ...report }, null, 2));
+}
+
+// Scan comments cua 1 article cu the — bypass listArticles, dung khi CEO biet
+// article_id (vd: tu webhook event hoac copy link bai viet). Cung dung de test
+// API getcomment co quyen doc khong, doc lap voi article/getslice.
+async function cmdScanArticle(articleId, hours = 24 * 30) {
+  if (!articleId) {
+    console.log(JSON.stringify({ success: false, error: 'Missing article_id' }));
+    process.exit(1);
+  }
+  const since = Date.now() - hours * 3600 * 1000;
+  const replied = loadReplied();
+  const report = {
+    article_id: articleId,
+    articles: 1,
+    comments: 0,
+    new_comments: 0,
+    replied: 0,
+    skipped_spam: 0,
+    errors: []
+  };
+  await processArticleComments(articleId, since, replied, report);
   console.log(JSON.stringify({ success: true, ...report }, null, 2));
 }
 
@@ -230,7 +290,8 @@ function usage() {
     usage: {
       list: 'node zalo-oa-comment.js list <article_id> [offset] [limit]',
       reply: 'node zalo-oa-comment.js reply <comment_id> "<message>" [article_id]',
-      scan: 'node zalo-oa-comment.js scan [hours]'
+      scan: 'node zalo-oa-comment.js scan [hours]',
+      'scan-article': 'node zalo-oa-comment.js scan-article <article_id> [hours]'
     }
   }));
 }
@@ -247,6 +308,9 @@ async function main() {
   }
   if (cmd === 'scan') {
     return cmdScan(parseInt(process.argv[3] || '24', 10));
+  }
+  if (cmd === 'scan-article') {
+    return cmdScanArticle(process.argv[3], parseInt(process.argv[4] || String(24 * 30), 10));
   }
 
   console.log(JSON.stringify({ success: false, error: `Unknown cmd: ${cmd}` }));

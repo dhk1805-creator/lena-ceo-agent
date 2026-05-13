@@ -162,26 +162,45 @@ async function postArticle(article) {
   return data;
 }
 
+// [2026-05-13 — Issue #17] /v2.0/article/getslice với `type: 'normal'` trả về
+// -201 "type accept only 2 value normal and video." trên OA production. Thử
+// nhiều biến thể URL/param thay vì fail im lặng. Đồng bộ với listArticles
+// trong zalo-oa-comment.js.
 async function listArticles() {
-  const params = JSON.stringify({ offset: 0, limit: 10, type: 'normal' });
-  const res = await fetch('https://openapi.zalo.me/v2.0/article/getslice?data=' + encodeURIComponent(params), {
-    headers: { 'access_token': ACCESS_TOKEN }
-  });
-  const data = await res.json();
+  const variants = [
+    { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
+    { name: 'v2_data_no_type', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10 }))}` },
+    { name: 'v2_flat_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=10&type=normal` },
+    { name: 'v2_data_video', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'video' }))}` },
+    { name: 'v3_data_normal', url: `https://openapi.zalo.me/v3.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
+  ];
 
-  if (data.error === 0 && data.data?.articles) {
-    return {
-      success: true,
-      total: data.data.total,
-      articles: data.data.articles.map(a => ({
-        id: a.id,
-        title: a.title,
-        status: a.status,
-        created: a.created_date ? new Date(a.created_date * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'
-      }))
-    };
+  const attempts = [];
+  for (const v of variants) {
+    try {
+      const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
+      const data = await res.json();
+      const articles = data.data?.articles || data.data?.list || [];
+      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, returned: articles.length });
+      if (data.error === 0) {
+        return {
+          success: true,
+          variant: v.name,
+          total: data.data?.total ?? articles.length,
+          articles: articles.map(a => ({
+            id: a.id,
+            title: a.title,
+            status: a.status,
+            created: a.created_date ? new Date(a.created_date * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'
+          })),
+          attempts
+        };
+      }
+    } catch (e) {
+      attempts.push({ variant: v.name, error: -1, message: e.message });
+    }
   }
-  return { success: false, detail: data };
+  return { success: false, attempts };
 }
 
 async function main() {

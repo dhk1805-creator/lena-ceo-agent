@@ -371,15 +371,15 @@ const TOOLS = [
   },
   {
     name: 'zalo_oa_comment',
-    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét tất cả article gần đây + auto reply theo template + filter spam).',
+    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
     input_schema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['list', 'reply', 'scan'], description: 'list | reply | scan' },
-        article_id: { type: 'string', description: 'ID bài viết (cho list, hoặc reply)' },
+        action: { type: 'string', enum: ['list', 'reply', 'scan', 'scan-article'], description: 'list | reply | scan | scan-article' },
+        article_id: { type: 'string', description: 'ID bài viết (cho list, reply, hoặc scan-article)' },
         comment_id: { type: 'string', description: 'ID comment cần reply' },
         message: { type: 'string', description: 'Nội dung reply' },
-        hours: { type: 'number', description: 'Quét comment trong N giờ qua (cho scan, default 24)' }
+        hours: { type: 'number', description: 'Quét comment trong N giờ qua (scan: default 24, scan-article: default 720 = 30 ngày)' }
       },
       required: ['action']
     }
@@ -467,6 +467,8 @@ async function runTool(name, input) {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'list', input.article_id || '', '0', '20'];
       } else if (action === 'reply') {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'reply', input.comment_id || '', input.message || '', input.article_id || ''];
+      } else if (action === 'scan-article') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan-article', input.article_id || '', String(input.hours || 24 * 30)];
       } else {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan', String(input.hours || 24)];
       }
