@@ -650,8 +650,6 @@ async function handleFollow(event) {
     followers.push({ user_id: userId, display_name: displayName, followed_at: new Date().toISOString() });
   }
   try { fs.writeFileSync(FOLLOWERS_FILE, JSON.stringify(followers, null, 2)); } catch (e) {}
-
-  await sendZaloMessage(userId, `Chào ${displayName}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Anh/chị nhắn tin cho em bất cứ lúc nào ạ.`);
 }
 
 async function handleUnfollow(event) {
