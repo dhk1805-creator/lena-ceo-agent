@@ -68,6 +68,20 @@ function readEvents(filterUserId) {
           type: 'text',
           text: entry.event.message?.text || '',
         });
+      } else if (eventName === 'user_send_link') {
+        const text = entry.event.message?.text || '';
+        const urls = (entry.event.message?.attachments || [])
+          .filter(a => a?.type === 'link' && a?.payload?.url)
+          .map(a => a.payload.url);
+        const missing = urls.filter(u => !text.includes(u));
+        events.push({
+          time: timeVN,
+          time_iso_utc: entry.time,
+          from: VIP_NAMES[senderId] || senderId,
+          type: 'link',
+          text: missing.length > 0 ? (text ? `${text}\n${missing.join('\n')}` : missing.join('\n')) : text,
+          urls,
+        });
       } else if (eventName === 'user_send_image') {
         const att = entry.event?.message?.attachments?.[0];
         events.push({

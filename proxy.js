@@ -623,7 +623,7 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
 
   console.log(`[zalo-webhook] ${event.event_name} from ${event.sender?.id || event.follower?.id || '?'}`);
 
-  if (event.event_name === 'user_send_text') {
+  if (event.event_name === 'user_send_text' || event.event_name === 'user_send_link') {
     handleUserMessage(event).catch(err => console.error('[lena] handler error:', err.message));
   } else if (event.event_name === 'follow') {
     handleFollow(event).catch(err => console.error('[follow] error:', err.message));
@@ -737,7 +737,20 @@ async function handleArticleComment(event) {
 // === LÊ NA AGENT — TOOL CALLING LOOP ===
 async function handleUserMessage(event) {
   const senderId = event.sender?.id;
-  const messageText = event.message?.text;
+  let messageText = event.message?.text || '';
+
+  // user_send_link: ensure URL từ attachments có trong messageText (Zalo có thể không bỏ URL vào text)
+  if (event.event_name === 'user_send_link') {
+    const linkUrls = (event.message?.attachments || [])
+      .filter(a => a?.type === 'link' && a?.payload?.url)
+      .map(a => a.payload.url);
+    const missing = linkUrls.filter(u => !messageText.includes(u));
+    if (missing.length > 0) {
+      messageText = messageText ? `${messageText}\n${missing.join('\n')}` : missing.join('\n');
+    }
+    console.log(`[lena] user_send_link from ${senderId}: ${linkUrls.length} url(s)`);
+  }
+
   if (!senderId || !messageText) return;
 
   const vip = VIP_USERS[senderId];
