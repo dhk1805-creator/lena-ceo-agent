@@ -18,6 +18,13 @@ const execFileAsync = promisify(execFile);
 const path = require('path');
 const fs   = require('fs');
 
+// Load env fallback from /app/.env.json (Railway exec may not pass all env vars)
+try {
+  const _envJson = JSON.parse(fs.readFileSync("/app/.env.json", "utf-8"));
+  Object.keys(_envJson).forEach(k => { if (!process.env[k]) process.env[k] = _envJson[k]; });
+  console.log("[env] Loaded fallback from /app/.env.json");
+} catch(e) { console.log("[env] No .env.json:", e.message); }
+
 const FRONT_PORT    = parseInt(process.env.PORT || '8080', 10);
 const OPENCLAW_PORT = parseInt(process.env.OPENCLAW_INTERNAL_PORT || '8090', 10);
 const PUBLIC_DIR    = path.join(__dirname, 'public');
