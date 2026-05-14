@@ -427,6 +427,29 @@ const TOOLS = [
     }
   },
   {
+    name: 'web_search',
+    description: 'Tìm kiếm web qua Google/DuckDuckGo. Dùng để research thị trường HVAC, đối thủ, xu hướng, tra cứu tiêu chuẩn kỹ thuật mới, tin tức ngành.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Từ khóa tìm kiếm (vd: "VAV box ASHRAE 2025", "đối thủ HVAC Việt Nam")' },
+        max_results: { type: 'number', description: 'Số kết quả tối đa (default 10, tối đa 20)' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'web_read',
+    description: 'Đọc nội dung 1 trang web (HTML → plain text). Dùng khi VIP gửi link cần em tóm tắt, hoặc khi cần đọc chi tiết 1 URL từ web_search. KHÔNG đọc được PDF binary.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL đầy đủ (http:// hoặc https://)' }
+      },
+      required: ['url']
+    }
+  },
+  {
     name: 'zalo_oa_comment',
     description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
     input_schema: {
@@ -526,6 +549,12 @@ async function runTool(name, input) {
       break;
     case 'drive_download':
       cmd = 'node'; args = [`${GTOOL}/drive-download.js`, input.file_id, input.output_path || ''];
+      break;
+    case 'web_search':
+      cmd = 'node'; args = [`${GTOOL}/web-search.js`, input.query || '', String(input.max_results || 10)];
+      break;
+    case 'web_read':
+      cmd = 'node'; args = [`${GTOOL}/web-read.js`, input.url || ''];
       break;
     case 'zalo_oa_comment': {
       const action = input.action || 'scan';
