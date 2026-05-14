@@ -63,33 +63,39 @@ fi
 
 echo "Workspace sync complete"
 
-# === WRITE ENV VARS TO /app/.env.json USING BASH (not node) ===
-# bash cat heredoc reads env vars from shell directly — 100% reliable
+# ============================================================
+# === ENV DIAGNOSTIC — biến nào shell cua start.sh THUC SU nhin thay?
+# === Neu cac bien ZALO_OA_* hien ">>> MISSING <<<" o day → loi nam o
+# === Railway (sai scope bien / chua redeploy sau khi them bien),
+# === KHONG phai loi code. Doc dong nay trong Railway Deploy Logs.
+# ============================================================
+echo "=== ENV DIAGNOSTIC (start.sh shell) ==="
+for _v in CLAUDE_API_KEY ZALO_OA_ACCESS_TOKEN ZALO_OA_APP_ID ZALO_OA_SECRET ZALO_OA_REFRESH_TOKEN ZALO_OA_USER_SEP_KHANH ZALO_OA_USER_CHI_HONG ZALO_OA_USER_ANH_NGOC; do
+  _val="${!_v}"
+  if [ -n "$_val" ]; then
+    echo "  $_v = SET (len ${#_val})"
+  else
+    echo "  $_v = >>> MISSING <<<"
+  fi
+done
+echo "======================================="
+
+# ============================================================
+# === WRITE ENV VARS TO /app/.env.json  (node = JSON-safe)
+# === Dung node thay heredoc: JSON.stringify tu escape ky tu dac biet
+# === (dau ngoac kep, xuong dong) trong token — tranh .env.json hong
+# === cu phap khien proxy.js nuot loi am tham.
+# === node ke thua dung moi truong cua start.sh nen "thay" gi thi ghi nay.
+# ============================================================
 echo "Writing env vars to /app/.env.json..."
-cat > /app/.env.json << ENVEOF
-{
-  "GITHUB_TOKEN": "${GITHUB_TOKEN}",
-  "GITHUB_REPO": "${GITHUB_REPO}",
-  "GOOGLE_SHEET_ID": "${GOOGLE_SHEET_ID}",
-  "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
-  "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
-  "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}",
-  "GOOGLE_REFRESH_TOKEN_LENA": "${GOOGLE_REFRESH_TOKEN_LENA}",
-  "CLAUDE_API_KEY": "${CLAUDE_API_KEY}",
-  "GEMINI_API_KEY": "${GEMINI_API_KEY}",
-  "OPENAI_API_KEY": "${OPENAI_API_KEY}",
-  "ZALO_OA_ACCESS_TOKEN": "${ZALO_OA_ACCESS_TOKEN}",
-  "ZALO_OA_APP_ID": "${ZALO_OA_APP_ID}",
-  "ZALO_OA_SECRET": "${ZALO_OA_SECRET}",
-  "ZALO_OA_REFRESH_TOKEN": "${ZALO_OA_REFRESH_TOKEN}",
-  "ZALO_OA_USER_SEP_KHANH": "${ZALO_OA_USER_SEP_KHANH}",
-  "ZALO_OA_USER_CHI_HONG": "${ZALO_OA_USER_CHI_HONG}",
-  "ZALO_OA_USER_ANH_NGOC": "${ZALO_OA_USER_ANH_NGOC}",
-  "FACEBOOK_PAGE_TOKEN": "${FACEBOOK_PAGE_TOKEN}",
-  "FACEBOOK_PAGE_ID": "${FACEBOOK_PAGE_ID}"
-}
-ENVEOF
-echo "Wrote .env.json with bash heredoc (shell env vars guaranteed)"
+node -e '
+  const keys = ["GITHUB_TOKEN","GITHUB_REPO","GOOGLE_SHEET_ID","GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GOOGLE_REFRESH_TOKEN_LENA","CLAUDE_API_KEY","GEMINI_API_KEY","OPENAI_API_KEY","ZALO_OA_ACCESS_TOKEN","ZALO_OA_APP_ID","ZALO_OA_SECRET","ZALO_OA_REFRESH_TOKEN","ZALO_OA_USER_SEP_KHANH","ZALO_OA_USER_CHI_HONG","ZALO_OA_USER_ANH_NGOC","FACEBOOK_PAGE_TOKEN","FACEBOOK_PAGE_ID"];
+  const out = {};
+  for (const k of keys) out[k] = process.env[k] || "";
+  require("fs").writeFileSync("/app/.env.json", JSON.stringify(out, null, 2));
+  const present = keys.filter(k => out[k]).length;
+  console.log("[.env.json] wrote " + present + "/" + keys.length + " non-empty values");
+'
 
 # Verify key vars made it in
 echo "Verify SEP_KHANH in .env.json: $(node -e "try{const e=JSON.parse(require('fs').readFileSync('/app/.env.json'));console.log(e.ZALO_OA_USER_SEP_KHANH||'MISSING')}catch(x){console.log('ERROR:'+x.message)}")"
