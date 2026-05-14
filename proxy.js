@@ -17,8 +17,8 @@ const OPENCLAW_PORT = parseInt(process.env.OPENCLAW_INTERNAL_PORT || '8090', 10)
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
-const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
-const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // Proven working — do NOT change without testing
+const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat + all followers
+const CLAUDE_MODEL_VIP  = 'claude-haiku-4-5-20251001';   // VIP also uses Haiku (cost-optimised)
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
@@ -78,11 +78,11 @@ async function refreshOAToken() {
 
 const VIP_USERS = {
   [process.env.ZALO_OA_USER_SEP_KHANH || '_none_sep']: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO', model: CLAUDE_MODEL_VIP },
-  [process.env.ZALO_OA_USER_CHI_HONG || '_none_hong']: { name: 'chị Hồng', alias: 'chi-hong', role: 'GĐ Pháp lý + TCKT', model: CLAUDE_MODEL_VIP },
-  [process.env.ZALO_OA_USER_ANH_NGOC || '_none_ngoc']: { name: 'anh Ngọc', alias: 'anh-ngoc', role: 'TP Kinh Doanh', model: CLAUDE_MODEL_VIP },
+  [process.env.ZALO_OA_USER_CHI_HONG  || '_none_hong']: { name: 'chị Hồng', alias: 'chi-hong', role: 'GĐ Pháp lý + TCKT', model: CLAUDE_MODEL_VIP },
+  [process.env.ZALO_OA_USER_ANH_NGOC  || '_none_ngoc']: { name: 'anh Ngọc', alias: 'anh-ngoc', role: 'TP Kinh Doanh', model: CLAUDE_MODEL_VIP },
 };
 
-// Session memory per VIP (last 10 messages)
+// Session memory per user (last 20 messages)
 const SESSION_DIR = '/root/.openclaw/zalo-oa-sessions';
 try { fs.mkdirSync(SESSION_DIR, { recursive: true }); } catch (e) {}
 
@@ -96,13 +96,10 @@ function loadSession(userId) {
 
 function saveSession(userId, messages) {
   const file = path.join(SESSION_DIR, `${userId}.json`);
-  // Keep last 20 messages only
   const trimmed = messages.slice(-20);
   try { fs.writeFileSync(file, JSON.stringify(trimmed, null, 2)); } catch (e) {}
 }
 
-// Minutes since last message in this user's session (Infinity if no prior session).
-// Reads mtime of the session file — saveSession updates it on every turn.
 function getSessionAgeMin(userId) {
   const file = path.join(SESSION_DIR, `${userId}.json`);
   try {
@@ -112,27 +109,6 @@ function getSessionAgeMin(userId) {
     }
   } catch (e) {}
   return Infinity;
-}
-
-// Non-VIP greeting throttle — only send canned "Em là Lê Na..." once per 6h.
-// File mtime tracks last greet; subsequent messages within window → silent.
-const NONVIP_GREET_DIR = '/root/.openclaw/zalo-oa-nonvip-greet';
-try { fs.mkdirSync(NONVIP_GREET_DIR, { recursive: true }); } catch (e) {}
-
-function getNonVipGreetAgeMin(userId) {
-  const file = path.join(NONVIP_GREET_DIR, `${userId}.touch`);
-  try {
-    if (fs.existsSync(file)) {
-      const ageMs = Date.now() - fs.statSync(file).mtime.getTime();
-      return Math.floor(ageMs / 60000);
-    }
-  } catch (e) {}
-  return Infinity;
-}
-
-function markNonVipGreeted(userId) {
-  const file = path.join(NONVIP_GREET_DIR, `${userId}.touch`);
-  try { fs.writeFileSync(file, ''); } catch (e) {}
 }
 
 // === TOOLS — Lê Na có thể gọi qua OA ===
@@ -226,36 +202,36 @@ const TOOLS = [
   },
   {
     name: 'hvac_lookup',
-    description: 'Tra cứu tài liệu HVAC (tiêu chuẩn, thuật ngữ, kiến thức kỹ thuật) từ knowledge base do Sếp Khánh cung cấp. Dùng khi VIP hỏi về HVAC, điều hòa, thông gió, chiller, EER/COP, lưu lượng gió, áp suất, v.v.',
+    description: 'Tra cứu tài liệu HVAC (tiêu chuẩn, thuật ngữ, kiến thức kỹ thuật) từ knowledge base do Sếp Khánh cung cấp.',
     input_schema: {
       type: 'object',
       properties: {
-        keyword: { type: 'string', description: 'Từ khóa tra cứu, vd: "EER", "chiller", "Btu/h". Để trống = đọc 50 dòng đầu.' },
-        range: { type: 'string', description: 'Range A1, vd: "A:Z" hoặc "Tieu Chuan!A:F". Default "A:Z" (tab đầu tiên).' }
+        keyword: { type: 'string', description: 'Từ khóa tra cứu, vd: "EER", "chiller", "Btu/h".' },
+        range: { type: 'string', description: 'Range A1, vd: "A:Z". Default "A:Z".' }
       }
     }
   },
   {
     name: 'memory_search',
-    description: 'Tra cứu kiến thức trong long-term memory (cả baked-in /app/workspace/memory + learned overlay /root/.openclaw/lena-learned). BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật (bài OA, post FB, email khách) — đặc biệt khi nhắc tới tiêu chuẩn (UL, EN, AHRI, AMCA, ASHRAE, ISO, QCVN). File "hvac-standards" chứa spec sản phẩm; "hvac-knowledge" chứa công thức + thuật ngữ.',
+    description: 'Tra cứu kiến thức trong long-term memory. BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật có tiêu chuẩn.',
     input_schema: {
       type: 'object',
       properties: {
-        keyword: { type: 'string', description: 'Từ khóa tra cứu (vd: "fire damper", "VAV", "ASHRAE 62.1", "EI 180")' },
-        file: { type: 'string', description: 'Tên file giới hạn (optional, vd: "hvac-standards", "hvac-knowledge", "brand-guide"). Để trống = quét tất cả.' }
+        keyword: { type: 'string', description: 'Từ khóa tra cứu (vd: "fire damper", "VAV", "ASHRAE 62.1")' },
+        file: { type: 'string', description: 'Tên file giới hạn (optional, vd: "hvac-standards", "hvac-knowledge")' }
       },
       required: ['keyword']
     }
   },
   {
     name: 'memory_update',
-    description: 'Lưu kiến thức mới Lê Na học được vào persistent volume (ghi vào /root/.openclaw/lena-learned/<topic>.md — overlay không ghi đè memory baked-in). Dùng khi: VIP dạy thêm 1 fact mới, Lê Na phát hiện info cần nhớ cho lần sau (vd: tiêu chuẩn mới, đối thủ mới, brand fact). KHÔNG dùng để log task/báo cáo — dùng sheets_append.',
+    description: 'Lưu kiến thức mới vào persistent volume. Dùng khi VIP dạy thêm fact mới.',
     input_schema: {
       type: 'object',
       properties: {
-        topic: { type: 'string', description: 'Tên topic (kebab-case, vd: "hvac-standards", "competitor-intel", "customer-feedback"). Cùng topic = append vào cùng file.' },
-        content: { type: 'string', description: 'Nội dung markdown muốn lưu (vd: "EN 16798-3:2017 — ventilation in non-residential buildings, thay thế EN 13779")' },
-        section: { type: 'string', description: 'Heading phụ để gom (optional, vd: "Cập nhật từ Sếp Khánh 13/5/2026"). Để trống = auto timestamp.' }
+        topic: { type: 'string', description: 'Tên topic (kebab-case)' },
+        content: { type: 'string', description: 'Nội dung markdown muốn lưu' },
+        section: { type: 'string', description: 'Heading phụ (optional)' }
       },
       required: ['topic', 'content']
     }
@@ -274,14 +250,14 @@ const TOOLS = [
   },
   {
     name: 'task_add',
-    description: 'Tạo task/công việc mới vào Task Tracker. Dùng khi VIP giao việc cho ai đó.',
+    description: 'Tạo task/công việc mới vào Task Tracker.',
     input_schema: {
       type: 'object',
       properties: {
-        task: { type: 'string', description: 'Mô tả công việc' },
-        assignee: { type: 'string', description: 'Email người nhận (vd: ducdd@nsca.vn)' },
-        deadline: { type: 'string', description: 'Hạn hoàn thành YYYY-MM-DD' },
-        source: { type: 'string', description: 'Nguồn giao (vd: "Sếp Khánh qua Zalo", "Họp giao ban")' }
+        task: { type: 'string' },
+        assignee: { type: 'string' },
+        deadline: { type: 'string', description: 'YYYY-MM-DD' },
+        source: { type: 'string' }
       },
       required: ['task', 'assignee', 'deadline']
     }
@@ -293,12 +269,12 @@ const TOOLS = [
   },
   {
     name: 'task_status',
-    description: 'Tổng hợp trạng thái tất cả task (theo người, theo status).',
+    description: 'Tổng hợp trạng thái tất cả task.',
     input_schema: { type: 'object', properties: {} }
   },
   {
     name: 'zalo_oa_send_to_vip',
-    description: 'Gửi TIN NHẮN cá nhân cho VIP (sep-khanh, chi-hong, anh-ngoc). CHỈ dùng để nhắn tin riêng. KHÔNG dùng để đăng bài — dùng zalo_oa_article thay thế.',
+    description: 'Gửi TIN NHẮN cá nhân cho VIP (sep-khanh, chi-hong, anh-ngoc).',
     input_schema: {
       type: 'object',
       properties: {
@@ -310,167 +286,167 @@ const TOOLS = [
   },
   {
     name: 'github_create_issue',
-    description: 'Tạo GitHub Issue để yêu cầu sửa code/cron/config. CHỈ dùng khi Sếp Khánh yêu cầu thay đổi hệ thống (sửa cron job, thêm tính năng, fix bug). KHÔNG tự ý tạo issue.',
+    description: 'Tạo GitHub Issue để yêu cầu sửa code/cron/config.',
     input_schema: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: 'Tiêu đề ngắn (vd: "Sửa cron báo cáo PKD chỉ lấy từ anh Ngọc")' },
-        body: { type: 'string', description: 'Mô tả chi tiết: cần sửa gì, tại sao, file/cron nào liên quan' },
-        requester: { type: 'string', description: 'Người yêu cầu (vd: "Sếp Khánh")' }
+        title: { type: 'string' },
+        body: { type: 'string' },
+        requester: { type: 'string' }
       },
       required: ['title', 'body', 'requester']
     }
   },
   {
     name: 'zalo_oa_history',
-    description: 'Đọc lịch sử tin nhắn Zalo OA từ VIP. Dùng khi Sếp hỏi "chị Hồng/anh Ngọc nhắn gì?"',
+    description: 'Đọc lịch sử tin nhắn Zalo OA từ VIP.',
     input_schema: {
       type: 'object',
       properties: {
-        target: { type: 'string', description: 'VIP alias: sep-khanh, chi-hong, anh-ngoc, hoặc "all"', enum: ['all', 'sep-khanh', 'chi-hong', 'anh-ngoc'] },
-        hours: { type: 'number', description: 'Số giờ ngược lại (default 24)' }
+        target: { type: 'string', enum: ['all', 'sep-khanh', 'chi-hong', 'anh-ngoc'] },
+        hours: { type: 'number' }
       }
     }
   },
   {
     name: 'email_reply',
-    description: 'Reply vào thread email đang có. Dùng khi cần trả lời email cụ thể.',
+    description: 'Reply vào thread email đang có.',
     input_schema: {
       type: 'object',
       properties: {
-        message_id: { type: 'string', description: 'Message ID của email cần reply (lấy từ email_read)' },
-        body: { type: 'string', description: 'Nội dung reply (HTML hoặc plain text)' },
-        cc: { type: 'string', description: 'CC thêm (optional)' }
+        message_id: { type: 'string' },
+        body: { type: 'string' },
+        cc: { type: 'string' }
       },
       required: ['message_id', 'body']
     }
   },
   {
     name: 'kpi_update',
-    description: 'Cập nhật KPI Tracker tự động từ data các sheet khác. Chạy khi Sếp yêu cầu hoặc tự động T7 22h.',
+    description: 'Cập nhật KPI Tracker tự động.',
     input_schema: { type: 'object', properties: {} }
   },
   {
     name: 'zalo_oa_article',
-    description: 'ĐĂNG BÀI VIẾT lên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → dùng tool NÀY. KHÔNG dùng zalo_oa_send_to_vip.',
+    description: 'ĐĂNG BÀI VIẾT lên TRANG Zalo OA Starasia JSC (public).',
     input_schema: {
       type: 'object',
       properties: {
-        action: { type: 'string', description: 'create hoặc list', default: 'create' },
-        title: { type: 'string', description: 'Tiêu đề bài viết' },
-        body: { type: 'string', description: 'Nội dung bài viết (plain text, tự convert HTML)' },
-        cover: { type: 'string', description: 'URL ảnh bìa hoặc local path (VD: ảnh VIP gửi qua Zalo)' }
+        action: { type: 'string', default: 'create' },
+        title: { type: 'string' },
+        body: { type: 'string' },
+        cover: { type: 'string' }
       },
       required: ['title', 'body']
     }
   },
   {
     name: 'task_update',
-    description: 'Cập nhật trạng thái task (Done/Đang làm/Hủy). Dùng khi nhận xác nhận hoàn thành.',
+    description: 'Cập nhật trạng thái task.',
     input_schema: {
       type: 'object',
       properties: {
-        row: { type: 'number', description: 'Số dòng trong Sheet Task Tracker (lấy từ task_overdue hoặc task_status)' },
-        status: { type: 'string', description: 'Trạng thái mới: Done, Đang làm, Hủy' }
+        row: { type: 'number' },
+        status: { type: 'string' }
       },
       required: ['row', 'status']
     }
   },
   {
     name: 'image_overlay',
-    description: 'Ghép logo STARDUCT + text lên ảnh tạo banner/cover chuyên nghiệp. Layouts: hero (bài viết chính thức), banner-bottom (tin ngắn), banner-left (cột dọc), minimal (logo góc).',
+    description: 'Ghép logo STARDUCT + text lên ảnh tạo banner/cover chuyên nghiệp.',
     input_schema: {
       type: 'object',
       properties: {
-        input_image: { type: 'string', description: 'Đường dẫn ảnh đầu vào (VD: /tmp/photo.jpg)' },
-        text: { type: 'string', description: 'Text hiển thị trên ảnh (VD: tiêu đề bài viết)' },
-        output_path: { type: 'string', description: 'Đường dẫn ảnh đầu ra (VD: /tmp/cover.png)' },
-        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal (mặc định: hero)' }
+        input_image: { type: 'string' },
+        text: { type: 'string' },
+        output_path: { type: 'string' },
+        layout: { type: 'string' }
       },
       required: ['input_image']
     }
   },
   {
     name: 'gemini_write',
-    description: 'Dùng Gemini Flash (FREE) để soạn nội dung dài: bài viết, email, báo cáo, content marketing.',
+    description: 'Dùng Gemini Flash (FREE) để soạn nội dung dài.',
     input_schema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'Yêu cầu viết (VD: "Viết bài 200 từ giới thiệu nhà máy STARDUCT")' },
-        max_tokens: { type: 'number', description: 'Số token tối đa (mặc định 600)' }
+        prompt: { type: 'string' },
+        max_tokens: { type: 'number' }
       },
       required: ['prompt']
     }
   },
   {
     name: 'drive_list',
-    description: 'Liệt kê file/ảnh trong Google Drive folder. MẶC ĐỊNH folder STARDUCT (394 ảnh sản phẩm) — KHÔNG cần truyền folder_id trừ khi VIP nói folder khác. Trả về `public_url` cho mỗi file — dùng URL này làm cover cho zalo_oa_article.',
+    description: 'Liệt kê file/ảnh trong Google Drive folder.',
     input_schema: {
       type: 'object',
       properties: {
-        folder_id: { type: 'string', description: 'Drive folder ID (optional, default = folder STARDUCT 394 ảnh)' },
-        query: { type: 'string', description: 'Tìm theo tên file (optional, vd: "van ngan chay", "exhibition", "nha may")' },
-        max: { type: 'number', description: 'Số file tối đa trả về (default 30)' }
+        folder_id: { type: 'string' },
+        query: { type: 'string' },
+        max: { type: 'number' }
       }
     }
   },
   {
     name: 'drive_download',
-    description: 'Tải file Google Drive về local path (/tmp/...). Dùng khi cần ảnh local cho image_overlay. KHÔNG dùng cho zalo_oa_article cover — dùng public_url từ drive_list trực tiếp.',
+    description: 'Tải file Google Drive về local path.',
     input_schema: {
       type: 'object',
       properties: {
-        file_id: { type: 'string', description: 'Google Drive file ID (lấy từ drive_list)' },
-        output_path: { type: 'string', description: 'Đường dẫn output (default /tmp/drive-<fileId>.bin)' }
+        file_id: { type: 'string' },
+        output_path: { type: 'string' }
       },
       required: ['file_id']
     }
   },
   {
     name: 'web_search',
-    description: 'Tìm kiếm web qua Google/DuckDuckGo. Dùng để research thị trường HVAC, đối thủ, xu hướng, tra cứu tiêu chuẩn kỹ thuật mới, tin tức ngành.',
+    description: 'Tìm kiếm web. Dùng để research thị trường HVAC, tra cứu tiêu chuẩn kỹ thuật.',
     input_schema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Từ khóa tìm kiếm (vd: "VAV box ASHRAE 2025", "đối thủ HVAC Việt Nam")' },
-        max_results: { type: 'number', description: 'Số kết quả tối đa (default 10, tối đa 20)' }
+        query: { type: 'string' },
+        max_results: { type: 'number' }
       },
       required: ['query']
     }
   },
   {
     name: 'web_read',
-    description: 'Đọc nội dung 1 trang web (HTML → plain text). Dùng khi VIP gửi link cần em tóm tắt, hoặc khi cần đọc chi tiết 1 URL từ web_search. KHÔNG đọc được PDF binary.',
+    description: 'Đọc nội dung 1 trang web.',
     input_schema: {
       type: 'object',
       properties: {
-        url: { type: 'string', description: 'URL đầy đủ (http:// hoặc https://)' }
+        url: { type: 'string' }
       },
       required: ['url']
     }
   },
   {
     name: 'auto_learn',
-    description: 'Quet session Zalo OA cua VIP trong N gio qua, dung Gemini Flash extract contacts moi / technical facts / customer feedback / business insights, roi auto-save vao lena-learned overlay. Dung khi: VIP yeu cau "rut kinh nghiem session", hoac sau hoi thoai dai co nhieu thong tin moi. Mac dinh chay tu dong qua cron 23h moi ngay — chi can goi manual khi VIP yeu cau ngay.',
+    description: 'Quét session VIP, extract insights, auto-save vào lena-learned.',
     input_schema: {
       type: 'object',
       properties: {
-        target: { type: 'string', description: 'VIP alias (sep-khanh, chi-hong, anh-ngoc) hoac "all". Default "all".' },
-        hours: { type: 'number', description: 'Quet session active trong N gio qua (default 24)' }
+        target: { type: 'string' },
+        hours: { type: 'number' }
       }
     }
   },
   {
     name: 'zalo_oa_comment',
-    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
+    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC.',
     input_schema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['list', 'reply', 'scan', 'scan-article'], description: 'list | reply | scan | scan-article' },
-        article_id: { type: 'string', description: 'ID bài viết (cho list, reply, hoặc scan-article)' },
-        comment_id: { type: 'string', description: 'ID comment cần reply' },
-        message: { type: 'string', description: 'Nội dung reply' },
-        hours: { type: 'number', description: 'Quét comment trong N giờ qua (scan: default 24, scan-article: default 720 = 30 ngày)' }
+        action: { type: 'string', enum: ['list', 'reply', 'scan', 'scan-article'] },
+        article_id: { type: 'string' },
+        comment_id: { type: 'string' },
+        message: { type: 'string' },
+        hours: { type: 'number' }
       },
       required: ['action']
     }
@@ -619,7 +595,7 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
 
   const event = req.body;
 
-  // Dedup by message ID (Zalo can send duplicate webhooks)
+  // Dedup by message ID
   const msgId = event.message?.msg_id;
   if (msgId) {
     if (_webhookDedup.has(msgId)) {
@@ -720,8 +696,6 @@ async function handleImageMessage(event) {
   await sendZaloMessage(senderId, `Dạ ${name}, em đã nhận ảnh.${vip ? ' Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?' : ''}`);
 }
 
-// Auto-reply tu dong cho comment cua follower tren bai viet OA.
-// Co che: chay zalo-oa-comment.js voi action=reply (template) hoac log de Le Na xu ly sau.
 async function handleArticleComment(event) {
   const commentId = event.comment?.id || event.comment_id || event.message?.comment_id;
   const articleId = event.article?.id || event.article_id || event.comment?.article_id;
@@ -734,7 +708,6 @@ async function handleArticleComment(event) {
   }
   console.log(`[comment] new on article=${articleId} from=${senderId}: ${text.substring(0, 80)}`);
 
-  // Goi tool de unify logic spam-filter + template-match + reply
   try {
     const { stdout, stderr } = await execFileAsync('node', [
       '/app/google-tools/zalo-oa-comment.js',
@@ -748,12 +721,96 @@ async function handleArticleComment(event) {
   }
 }
 
-// === LÊ NA AGENT — TOOL CALLING LOOP ===
+// ============================================================
+// === LÊ NA AGENT — FOLLOWER HANDLER (Claude Haiku, bilingual)
+// ============================================================
+async function handleFollowerMessage(senderId, messageText) {
+  const follower = lookupFollower(senderId);
+  const name = follower?.display_name || 'anh/chị';
+  console.log(`[lena-follower] message from ${name} (${senderId}): ${messageText.substring(0, 80)}`);
+
+  // Load/save session (shared SESSION_DIR, same as VIP)
+  let session = loadSession(senderId);
+  if (!Array.isArray(session)) session = [];
+  session.push({ role: 'user', content: messageText });
+  if (session.length > 20) session.splice(0, session.length - 20);
+
+  // Detect language — reply in same language as user
+  const systemPrompt = `You are Lê Na — the official AI assistant of STARDUCT, a professional brand of air terminal products (grilles, diffusers, fire dampers, smoke dampers, VAV boxes, volume control dampers, louvers, silencers) manufactured by Ngoi Sao Chau A JSC (NSCA) in Dan Phuong, Hanoi, Vietnam. Website: starduct.vn
+
+STARDUCT is the ONLY manufacturer in Vietnam certified by AHRI 880 (air terminal performance), and holds UL/FM certifications for fire and smoke dampers.
+
+You are an HVAC expert assistant. You have deep knowledge in:
+- HVAC air distribution systems: grilles, diffusers, VAV boxes, dampers (fire/smoke/volume), louvers, silencers
+- International standards: ASHRAE 62.1/55/90.1, AMCA 500-D/500-L, UL 555/555S, EN 1751, EN 13779, AHRI 880, ISO 5801, QCVN 06:2022/BXD
+- System design: air flow calculation, pressure drop, duct sizing, room air distribution, noise criteria (NC/RC)
+- Applications: office buildings, hospitals, cleanrooms, hotels, industrial facilities, metro/underground
+
+LANGUAGE RULE — CRITICAL:
+- If the user writes in VIETNAMESE → reply in Vietnamese
+- If the user writes in ENGLISH → reply in English
+- If the user writes in another language → reply in that language if possible, otherwise English
+- NEVER switch languages mid-conversation unless the user does
+
+PERSONA & TONE:
+- Friendly, professional, concise (max 3-4 sentences per reply)
+- Refer to yourself as "em" (Vietnamese) or "I" (English)
+- Address the user as "anh/chị" (Vietnamese) or "you" (English)
+- Be genuinely helpful — give real technical answers, not just redirect
+
+RESPONSE RULES:
+- Technical HVAC questions → answer directly from your expert knowledge (standards, formulas, product specs)
+- Product enquiries (specific models, datasheets, submittals) → "Anh/chị vui lòng liên hệ team kỹ thuật qua email info@nsca.vn hoặc sales@nsca.vn để được hỗ trợ chi tiết ạ." / "Please contact our technical team at info@nsca.vn or sales@nsca.vn for detailed support."
+- Pricing / ordering → "Anh/chị liên hệ sales@nsca.vn hoặc hotline 0246.260.9999 để được báo giá ạ." / "Please contact sales@nsca.vn or hotline 0246.260.9999 for a quotation."
+- Out-of-scope questions → politely redirect, stay on HVAC/STARDUCT topic
+- NEVER invent product specs, model numbers, or pricing
+- NEVER mention internal company matters, VIPs, or CEO`;
+
+  let reply = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL_FAST,
+        max_tokens: 400,
+        system: systemPrompt,
+        messages: session
+      })
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`[lena-follower] Claude API ${res.status}: ${errBody.substring(0, 200)}`);
+      throw new Error(`Claude API ${res.status}`);
+    }
+
+    const data = await res.json();
+    reply = data.content?.find(c => c.type === 'text')?.text || '';
+    session.push({ role: 'assistant', content: data.content });
+    saveSession(senderId, session);
+  } catch (e) {
+    console.error(`[lena-follower] error: ${e.message}`);
+    reply = 'Xin lỗi anh/chị, em đang gặp sự cố kỹ thuật. Vui lòng liên hệ info@nsca.vn để được hỗ trợ ạ.\n\nSorry, I\'m experiencing a technical issue. Please contact info@nsca.vn for support.';
+  }
+
+  if (reply) {
+    await sendZaloMessage(senderId, reply);
+    console.log(`[lena-follower] replied to ${name}: ${reply.substring(0, 80)}...`);
+  }
+}
+
+// ============================================================
+// === LÊ NA AGENT — VIP HANDLER (full tool calling loop)
+// ============================================================
 async function handleUserMessage(event) {
   const senderId = event.sender?.id;
   let messageText = event.message?.text || '';
 
-  // user_send_link: ensure URL từ attachments có trong messageText (Zalo có thể không bỏ URL vào text)
   if (event.event_name === 'user_send_link') {
     const linkUrls = (event.message?.attachments || [])
       .filter(a => a?.type === 'link' && a?.payload?.url)
@@ -769,35 +826,22 @@ async function handleUserMessage(event) {
 
   const vip = VIP_USERS[senderId];
 
-  // Non-VIP: look up follower name, polite response
+  // ── NON-VIP: route to follower Haiku handler ──────────────
   if (!vip) {
-    const follower = lookupFollower(senderId);
-    const name = follower?.display_name || 'anh/chị';
-    console.log(`[lena] non-VIP message from ${name} (${senderId}): ${messageText.substring(0, 60)}`);
-
-    // Only send full greeting once per 6h session — avoid spamming same canned reply
-    const greetAgeMin = getNonVipGreetAgeMin(senderId);
-    if (greetAgeMin >= 360) {
-      await sendZaloMessage(senderId, `Chào ${name}! Em là Lê Na — trợ lý AI của NSCA/STARDUCT. Hiện em chỉ hỗ trợ nhân sự nội bộ. ${name !== 'anh/chị' ? 'Cảm ơn ' + name + ' đã quan tâm OA của STARDUCT. ' : ''}Anh/chị cần gì vui lòng liên hệ hotline hoặc email info@nsca.vn ạ.`);
-      markNonVipGreeted(senderId);
-    } else {
-      console.log(`[lena] non-VIP ${name} already greeted ${greetAgeMin}min ago (<6h), silent`);
-    }
+    await handleFollowerMessage(senderId, messageText);
     return;
   }
 
+  // ── VIP: full agent loop ──────────────────────────────────
   const senderInfo = `${vip.name} (${vip.role})`;
   const model = vip.model;
 
   console.log(`[lena] tin từ ${senderInfo}: ${messageText.substring(0, 60)}...`);
 
-  // Session age BEFORE load — used to decide whether to greet
   const sessionAgeMin = getSessionAgeMin(senderId);
 
-  // Load session — validate it's usable, reset if corrupt
   let session = loadSession(senderId);
   if (!Array.isArray(session)) session = [];
-  // Ensure session doesn't have orphaned tool_result without matching tool_use
   if (session.length > 0) {
     const last = session[session.length - 1];
     if (last.role === 'user' && Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
@@ -806,13 +850,11 @@ async function handleUserMessage(event) {
     }
   }
 
-  // Fresh conversation = no prior turns, or >6h gap since last reply
   const isFreshSession = session.length === 0 || sessionAgeMin >= 360;
   console.log(`[lena] session: ${session.length} msgs, last ${sessionAgeMin === Infinity ? '∞' : sessionAgeMin}min ago, fresh=${isFreshSession}`);
 
   session.push({ role: 'user', content: messageText });
 
-  // System prompt
   const today = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   const systemPrompt = `Bạn là **Đào Thị Lê Na**, trợ lý AI của CEO Đào Huy Khánh (NSCA/STARDUCT).
 
@@ -822,118 +864,42 @@ Thời gian: ${today}
 TRẠNG THÁI HỘI THOẠI:
 ${isFreshSession
   ? `- Đây là TIN ĐẦU TIÊN của session mới (${sessionAgeMin === Infinity ? 'chưa từng chat' : `lần cuối ${sessionAgeMin} phút trước, >6h`}). Em CÓ THỂ mở đầu ngắn 1 lần (vd: "Dạ ${vip.name}, ...") rồi vào nội dung.`
-  : `- Đang trong session ACTIVE (tin trước cách đây ${sessionAgeMin} phút). KHÔNG chào, KHÔNG mở đầu bằng "Dạ ${vip.name}" / "Chào anh/chị" / "Xin chào". Trả lời THẲNG vào nội dung như đang nói chuyện liên tục.`}
+  : `- Đang trong session ACTIVE (tin trước cách đây ${sessionAgeMin} phút). KHÔNG chào, KHÔNG mở đầu bằng "Dạ ${vip.name}" / "Chào anh/chị". Trả lời THẲNG vào nội dung.`}
 
-⛔ CHỐNG SPAM CHÀO HỎI (LUẬT QUAN TRỌNG):
-❌ KHÔNG bắt đầu reply bằng "Chào anh/chị", "Xin chào", "Dạ chào ${vip.name}" — TRỪ khi TRẠNG THÁI ở trên nói "TIN ĐẦU TIÊN".
-❌ KHÔNG mở đầu bằng "Dạ ${vip.name}," nếu đang trong session ACTIVE — vào thẳng câu trả lời.
-❌ KHÔNG lặp lại lời chào trong cùng 1 session dù VIP gửi nhiều tin liên tục.
-✅ Session active → reply bắt đầu trực tiếp bằng nội dung (vd: "Báo cáo PKD tuần này...", "Đã gửi mail cho anh Đức.", "Em check rồi: ...").
+⛔ CHỐNG SPAM CHÀO HỎI:
+❌ KHÔNG bắt đầu reply bằng "Chào anh/chị", "Xin chào", "Dạ chào ${vip.name}" — TRỪ khi là TIN ĐẦU TIÊN.
+❌ KHÔNG lặp lại lời chào trong cùng 1 session.
+✅ Session active → reply bắt đầu trực tiếp bằng nội dung.
 
 NGUYÊN TẮC:
-- Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc / anh/chị)
+- Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc)
 - NGẮN GỌN, chính xác, có số liệu
 - KHÔNG tâm sự, gossip, viết dài
 - KHÔNG ký tên (proxy tự thêm "— Lê Na")
-- Tin nhắn trả lời tối đa 500 ký tự
-- Nếu cần phân tích dài → tạo gdoc rồi gửi link
-- CHẠY TOOL IM LẶNG → chỉ trả lời KẾT QUẢ CUỐI CÙNG. KHÔNG narrate "em đang đọc...", "bước 1..."
+- Tin nhắn tối đa 500 ký tự
+- CHẠY TOOL IM LẶNG → chỉ trả lời KẾT QUẢ CUỐI CÙNG
 
-⚠️ LINK WEBSITE - QUY TẮC BẮT BUỘC:
-- TUYỆT ĐỐI KHÔNG bịa/đoán link website
-- TRƯỚC khi gửi link trong email/tin nhắn → PHẢI web_search "site:starduct.vn [keyword]"
-- PHẢI web_read verify link hoạt động (không 404)
-- CHỈ gửi link đã test thực tế
-- Khi cần catalogue → web_search "site:starduct.vn [tên SP] catalogue download"
-- Vi phạm = lỗi nghiêm trọng, ảnh hưởng uy tín công ty
+⛔ HÀNH ĐỘNG — KHÔNG HỎI (LUẬT SỐ 1):
+VIP ra lệnh → GỌI TOOL NGAY. TUYỆT ĐỐI KHÔNG hỏi lại.
+TUYỆT ĐỐI CẤM:
+❌ "anh muốn em làm không?" ❌ "Option 1 / Option 2" ❌ "cột nào?" / "Sheet ID nào?"
+✅ CHỈ hỏi khi thiếu 1 thông tin KHÔNG THỂ suy ra.
 
-⛔ HÀNH ĐỘNG — KHÔNG HỎI (LUẬT SỐ 1, QUAN TRỌNG NHẤT):
-VIP ra lệnh → GỌI TOOL NGAY trong cùng lượt. TUYỆT ĐỐI KHÔNG hỏi lại.
-- "đăng bài/viết bài/đăng lên OA" → CHẠY WORKFLOW ĐĂNG BÀI (xem bên dưới). KHÔNG hỏi. KHÔNG dùng DALL-E. KHÔNG dùng zalouser.
-- "sửa X" → gọi github_create_issue NGAY. TỰ viết title+body chi tiết. KHÔNG hỏi "sửa thế nào".
-- "check Y" / "đọc Z" → gọi sheets_read / email_read / task_overdue NGAY. KHÔNG hỏi Sheet ID.
-- "gửi email cho A" → gọi email_send NGAY. KHÔNG hỏi "nội dung gì".
-- "tạo task cho B" → gọi task_add NGAY. TỰ suy ra deadline hợp lý nếu VIP không nói.
-
-TUYỆT ĐỐI CẤM (vi phạm = lỗi nghiêm trọng):
-❌ Hỏi "anh muốn em làm không?" — VIP ĐÃ NÓI RÕ.
-❌ Đưa "Option 1 / Option 2" cho VIP chọn — TỰ CHỌN cách tốt nhất.
-❌ Hỏi "công thức tính thế nào?" — TỰ chọn công thức hợp lý.
-❌ Hỏi "cột nào?" / "Sheet ID nào?" — TỰ xác định từ context.
-❌ Liệt kê câu hỏi thay vì hành động — ĐÂY LÀ LỖI NẶNG NHẤT.
-❌ Nói "em cần biết thêm" khi có đủ thông tin để hành động.
-
-✅ CHỈ được hỏi DUY NHẤT khi thiếu 1 thông tin KHÔNG THỂ suy ra (vd: email người lạ chưa từng gặp).
-✅ Nếu thiếu 1 chi tiết nhỏ → TỰ chọn giá trị hợp lý, LÀM, rồi báo kết quả.
-✅ Em là TRỢ LÝ HÀNH ĐỘNG, không phải chatbot hỏi-đáp.
-
-TOOLS có sẵn:
-- email_send / email_read / email_reply
-- calendar_read / calendar_create
-- sheets_read / sheets_write / sheets_append
-- hvac_lookup (tra cứu tiêu chuẩn / thuật ngữ / kiến thức HVAC từ Google Sheet — dùng khi VIP hỏi về điều hòa, chiller, EER/COP, lưu lượng gió, áp suất, v.v.)
-- memory_search (tra cứu long-term memory: hvac-standards, hvac-knowledge, brand-guide, contacts... — BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật có tiêu chuẩn)
-- memory_update (lưu kiến thức mới vào lena-learned overlay — dùng khi VIP dạy fact mới hoặc cần nhớ cho lần sau)
-- auto_learn (quét session VIP, Gemini extract contacts/technical/feedback/insights → auto save vào lena-learned. Chạy cron 23h hàng ngày. Chỉ gọi manual khi VIP yêu cầu "rút kinh nghiệm session" hoặc "ghi nhớ hội thoại này")
-- gdoc_create
-- task_add / task_overdue / task_status / task_update
-- zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
-- zalo_oa_history (đọc tin nhắn Zalo OA từ VIP — dùng khi Sếp hỏi "ai nhắn gì?")
-- github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu. GITHUB_TOKEN ĐÃ CÓ, cứ gọi)
-- zalo_oa_article (ĐĂNG BÀI lên TRANG OA Starasia JSC — public, mọi follower thấy)
-- image_overlay (ghép logo STARDUCT lên ảnh tạo cover chuyên nghiệp — layouts: hero, banner-bottom)
-- gemini_write (Gemini Flash soạn nội dung dài: bài viết, báo cáo — FREE)
-
-⚠️ PHÂN BIỆT 2 TOOL ZALO:
-- "đăng bài OA" / "đăng lên trang" → zalo_oa_article (bài viết PUBLIC trên trang Starasia JSC)
-- "nhắn tin cho ai" / "báo cho chị Hồng" → zalo_oa_send_to_vip (tin nhắn RIÊNG cho 1 người)
-TUYỆT ĐỐI KHÔNG dùng zalo_oa_send_to_vip để đăng bài. Đó là GỬI TIN NHẮN, không phải đăng bài.
-
-WORKFLOW ĐĂNG BÀI ZALO OA (khi VIP gửi ảnh + yêu cầu viết bài):
-⛔ KHÔNG dùng DALL-E tạo ảnh mới — PHẢI dùng ẢNH THẬT VIP đã gửi
-⛔ KHÔNG hỏi xác nhận — VIP đã ra lệnh, ĐĂNG NGAY
-⛔ KHÔNG dùng zalouser — dùng zalo_oa_article trực tiếp
-0. NẾU bài có nhắc tiêu chuẩn (UL/EN/AHRI/AMCA/ASHRAE/ISO/QCVN) hoặc sản phẩm STARDUCT (van ngăn cháy, VAV, VCD, louver, cửa gió) → memory_search keyword="<tên SP>" file="hvac-standards" TRƯỚC khi viết. Trích đúng mã chuẩn, KHÔNG bịa.
-1. zalo_oa_history → tìm type:"image" → lấy image_url (ẢNH VIP GỬI)
-2. image_overlay (input=image_url, layout="hero") → tạo ảnh bìa từ ẢNH THẬT
-3. gemini_write → soạn nội dung theo yêu cầu VIP (đã có spec đúng từ bước 0)
-4. zalo_oa_article create → đăng bài lên OA (KHÔNG cần chatId)
-5. Báo VIP: "✅ Đã đăng bài [tiêu đề] lên OA Starasia JSC"
-
-LONG-TERM MEMORY (memory_search + memory_update + auto_learn):
-✅ TRƯỚC khi viết content kỹ thuật (bài OA/FB, email khách, slide) có tiêu chuẩn → memory_search file="hvac-standards" để verify mã chuẩn.
-✅ Khi VIP nói "ghi nhớ X" / "lần sau Y" / "đừng quên Z" → memory_update topic="<chủ đề>" content="<X>". KHÔNG hỏi lại.
-✅ Khi VIP GIỚI THIỆU người mới (tên + chức vụ/công ty) → memory_update topic="contacts" content="<Tên — chức vụ — context gặp>". KHÔNG cần VIP yêu cầu.
-✅ Khi VIP chia sẻ fact kỹ thuật mới (tiêu chuẩn, công thức, spec) → memory_update topic="technical-facts" content="<fact>". KHÔNG hỏi lại.
-✅ Khi VIP truyền customer feedback / NPP phản hồi → memory_update topic="customer-feedback" content="<khách: phản hồi>".
-✅ Khi VIP đưa quyết định/insight kinh doanh quan trọng → memory_update topic="business-insights" content="<insight>".
-✅ Khi phát hiện fact mới đáng nhớ (đối thủ ra SP, khách phản hồi, tiêu chuẩn cập nhật) → memory_update để lần sau Lê Na tự biết.
-✅ TRƯỚC khi reply VIP về 1 người/khách/topic đã gặp → memory_search keyword="<tên>" để check đã biết gì về họ trước đó.
-⚙️ Cron 23h hàng ngày TỰ ĐỘNG chạy auto_learn quét toàn bộ session 24h — Lê Na KHÔNG cần lo backup. Chỉ gọi auto_learn manual khi VIP yêu cầu "rút kinh nghiệm session này".
-❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
-
-GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.
-Khi dùng sheets_read / sheets_write / sheets_append: CHỈ CẦN truyền range (vd: "'KPI Tracker'!A:Z"). Hệ thống TỰ ĐỘNG điền Sheet ID.
-21 tabs có sẵn: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performance | Task Tracker | NPP Tracker | NPP Orders | KHKD 2026 Baseline | Activity Log | Export Revenue | International Pipeline
-
-KHI SẾP KHÁNH NÓI "sửa" / "thêm" / "đổi" / "fix" BẤT CỨ GÌ VỀ CODE/CRON/HỆ THỐNG:
-→ GỌI github_create_issue NGAY TRONG LƯỢT NÀY. TỰ viết title + body chi tiết.
-→ Body phải ghi: file nào cần sửa, sửa gì cụ thể, lý do (từ lời Sếp).
-→ Báo: "Em đã tạo yêu cầu #[số]. Claude Code sẽ tự động xử lý trong 5 phút."
-→ TUYỆT ĐỐI KHÔNG hỏi "sửa thế nào?", "công thức gì?", "cột nào?" — TỰ SUY RA.
-VD: Sếp nói "thêm cột KPI vào Report Tracker" → TỰ tạo issue: title="Thêm cột % KPI vào Report Tracker", body="Sửa cron weekly-report-scan trong cron-jobs.json, thêm cột % hoàn thành KPI = Actual/Target*100 vào sheets-append Report Tracker. Yêu cầu từ Sếp Khánh."
+⚠️ LINK WEBSITE:
+- KHÔNG bịa/đoán link — PHẢI web_search verify trước khi gửi
 
 PHẠM VI VIP:
 - anh Khánh = CEO, toàn quyền
 - chị Hồng = TCKT/Pháp lý — KHÔNG share data Sếp
-- anh Ngọc = TP KD, quản lý PKD (anh Đức BD, Santiago BD Intl, chị Tâm BO) + 5 NPP
+- anh Ngọc = TP KD — quản lý PKD + 5 NPP
+- 3 VIP độc lập — KHÔNG tự ý forward thông tin
 
-LƯU Ý: 3 VIP độc lập, KHÔNG tự ý forward thông tin giữa họ.
-Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check email/data rồi trả lời. KHÔNG hỏi "check Zalo hay Gmail?".`;
+GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN — KHÔNG BAO GIỜ hỏi Sheet ID.
 
-  // Agent loop with tool calling
-  // MAX_ITER 15: chain phức tạp (drive_list → gemini_write → zalo_oa_article → verify retry)
-  // có thể tốn 7-10 tool calls + retry. Tăng từ 10 → 15 để tránh fallback sớm.
+KHI SẾP KHÁNH NÓI "sửa/thêm/đổi/fix" bất cứ gì về code/cron/hệ thống:
+→ GỌI github_create_issue NGAY. TỰ viết title + body chi tiết.
+→ Báo: "Em đã tạo yêu cầu #[số]. Claude Code sẽ tự động xử lý."`;
+
   let reply = '';
   let iterations = 0;
   const MAX_ITER = 15;
@@ -959,7 +925,6 @@ Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check e
       if (!res.ok) {
         const errBody = await res.text();
         console.error(`[lena] Claude API ${res.status}: ${errBody.substring(0, 300)}`);
-        // If session is causing the error, try once with fresh session
         if (res.status === 400 && session.length > 1) {
           console.log(`[lena] retrying with fresh session`);
           session = [{ role: 'user', content: messageText }];
@@ -1015,7 +980,7 @@ Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check e
 }
 
 const _zaloSendCache = new Map();
-const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
+const ZALO_CHAT_COOLDOWN = 5000;
 const _webhookDedup = new Set();
 
 async function sendZaloMessage(userId, message) {
@@ -1070,7 +1035,7 @@ app.get('/refresh-token', async (req, res) => {
   res.json({ refreshed: ok, token_exists: !!getOAToken() });
 });
 
-// === DEBUG — check VIP mapping + Claude API ===
+// === DEBUG ===
 app.get('/debug', async (req, res) => {
   const vipList = {};
   for (const [id, info] of Object.entries(VIP_USERS)) {
@@ -1119,9 +1084,9 @@ const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
   console.log(`[proxy] Public ${FRONT_PORT} -> OpenClaw ${OPENCLAW_PORT}`);
   console.log(`[proxy] Static: ${PUBLIC_DIR}`);
   console.log(`[proxy] Zalo OA 2-way bridge: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
+  console.log(`[proxy] Follower reply: Claude Haiku (bilingual VI/EN) — ALL followers`);
 
-  // Refresh OA token IMMEDIATELY on startup, then every 20h
-  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20h
+  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000;
   refreshOAToken().then(ok => {
     console.log(`[token] Startup refresh: ${ok ? 'OK' : 'FAILED (using cached/env)'}`);
   }).catch(() => {});
