@@ -162,16 +162,35 @@ async function postArticle(article) {
   return data;
 }
 
-// [2026-05-13 — Issue #17] /v2.0/article/getslice với `type: 'normal'` trả về
-// -201 "type accept only 2 value normal and video." trên OA production. Thử
-// nhiều biến thể URL/param thay vì fail im lặng. Đồng bộ với listArticles
-// trong zalo-oa-comment.js.
+// [2026-05-14 — Issue #34] Zalo OA API đổi format. Symptom cũ: error=0,
+// total=9, data=[] → response field đổi tên. Docs mới ở path "noi-dung-dang-
+// bai-viet" và SDK community dùng `/media/getslice` với `count` thay vì
+// `limit`. Thêm variant mới + nhận thêm field name `medias` / `items` /
+// `data` array. Đồng bộ với listArticles trong zalo-oa-comment.js.
+// [2026-05-13 — Issue #17] Lý do giữ nhiều variant: /v2.0/article/getslice
+// với `type: 'normal'` trả -201 "type accept only 2 value normal and video"
+// dù `normal` là 1 trong 2 giá trị docs cũ liệt kê → API rule đã đổi.
+function extractArticles(data) {
+  const d = data?.data;
+  if (!d) return [];
+  if (Array.isArray(d.articles)) return d.articles;
+  if (Array.isArray(d.medias)) return d.medias;
+  if (Array.isArray(d.list)) return d.list;
+  if (Array.isArray(d.items)) return d.items;
+  if (Array.isArray(d)) return d;
+  return [];
+}
+
 async function listArticles() {
   const variants = [
-    { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
+    { name: 'media_data', url: `https://openapi.zalo.me/v2.0/media/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, count: 10 }))}` },
+    { name: 'media_data_limit', url: `https://openapi.zalo.me/v2.0/media/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10 }))}` },
+    { name: 'media_flat', url: `https://openapi.zalo.me/v2.0/media/getslice?offset=0&count=10` },
     { name: 'v2_data_no_type', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10 }))}` },
-    { name: 'v2_flat_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=10&type=normal` },
+    { name: 'v2_data_count', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, count: 10 }))}` },
+    { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
     { name: 'v2_data_video', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'video' }))}` },
+    { name: 'v2_flat_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=10&type=normal` },
     { name: 'v3_data_normal', url: `https://openapi.zalo.me/v3.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
   ];
 
@@ -180,15 +199,18 @@ async function listArticles() {
     try {
       const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
       const data = await res.json();
-      const articles = data.data?.articles || data.data?.list || [];
-      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, returned: articles.length });
-      if (data.error === 0) {
+      const articles = extractArticles(data);
+      const total = data.data?.total ?? articles.length;
+      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, total, returned: articles.length });
+      // Chấp nhận variant khi error=0 VÀ có data thật (total>0 thì articles>0).
+      // Trước đây error=0 + articles=[] bị return success nhưng rỗng → giấu lỗi.
+      if (data.error === 0 && (articles.length > 0 || total === 0)) {
         return {
           success: true,
           variant: v.name,
-          total: data.data?.total ?? articles.length,
+          total,
           articles: articles.map(a => ({
-            id: a.id,
+            id: a.id || a.article_id || a.media_id,
             title: a.title,
             status: a.status,
             created: a.created_date ? new Date(a.created_date * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'

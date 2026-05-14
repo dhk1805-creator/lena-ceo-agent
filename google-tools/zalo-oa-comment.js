@@ -83,32 +83,67 @@ function matchTemplate(text) {
 }
 
 // === API CALLS ===
+// [2026-05-14 — Issue #34] Zalo đổi schema: thử cả `count` lẫn `limit` cho
+// pagination, và endpoint mới /v2.0/media/getcomment song song endpoint cũ.
+// Lý do: /article/getslice đã chuyển sang /media/getslice với `count` — giả
+// định getcomment cũng cùng trend.
 async function getComments(articleId, offset = 0, limit = 20) {
-  const params = JSON.stringify({ article_id: articleId, offset, limit });
-  const url = `https://openapi.zalo.me/v2.0/article/getcomment?data=${encodeURIComponent(params)}`;
-  try {
-    const res = await fetch(url, { headers: { 'access_token': ACCESS_TOKEN } });
-    const data = await res.json();
-    return { http: res.status, ...data };
-  } catch (e) {
-    return { error: -1, message: e.message };
+  const variants = [
+    { name: 'article_count', url: `https://openapi.zalo.me/v2.0/article/getcomment?data=${encodeURIComponent(JSON.stringify({ article_id: articleId, offset, count: limit }))}` },
+    { name: 'article_limit', url: `https://openapi.zalo.me/v2.0/article/getcomment?data=${encodeURIComponent(JSON.stringify({ article_id: articleId, offset, limit }))}` },
+    { name: 'media_count', url: `https://openapi.zalo.me/v2.0/media/getcomment?data=${encodeURIComponent(JSON.stringify({ media_id: articleId, offset, count: limit }))}` },
+    { name: 'media_article_count', url: `https://openapi.zalo.me/v2.0/media/getcomment?data=${encodeURIComponent(JSON.stringify({ article_id: articleId, offset, count: limit }))}` },
+  ];
+
+  const attempts = [];
+  for (const v of variants) {
+    try {
+      const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
+      const data = await res.json();
+      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null });
+      if (data.error === 0) {
+        return { http: res.status, variant: v.name, attempts, ...data };
+      }
+    } catch (e) {
+      attempts.push({ variant: v.name, error: -1, message: e.message });
+    }
   }
+  const last = attempts[attempts.length - 1] || {};
+  return { error: last.error ?? -1, message: last.message || 'all getcomment variants failed', attempts };
 }
 
 async function replyComment(commentId, message, articleId) {
+  // [2026-05-14 — Issue #34] Đồng bộ với migration article→media: fallback
+  // sang /media/replycomment khi endpoint article không còn support.
   const body = { comment_id: commentId, message };
   if (articleId) body.article_id = articleId;
-  try {
-    const res = await fetch('https://openapi.zalo.me/v2.0/article/replycomment', {
-      method: 'POST',
-      headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    return { http: res.status, ...data };
-  } catch (e) {
-    return { error: -1, message: e.message };
+  const mediaBody = { comment_id: commentId, message };
+  if (articleId) { mediaBody.media_id = articleId; mediaBody.article_id = articleId; }
+
+  const variants = [
+    { name: 'article', url: 'https://openapi.zalo.me/v2.0/article/replycomment', body },
+    { name: 'media', url: 'https://openapi.zalo.me/v2.0/media/replycomment', body: mediaBody },
+  ];
+
+  const attempts = [];
+  for (const v of variants) {
+    try {
+      const res = await fetch(v.url, {
+        method: 'POST',
+        headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify(v.body)
+      });
+      const data = await res.json();
+      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null });
+      if (data.error === 0) {
+        return { http: res.status, variant: v.name, attempts, ...data };
+      }
+    } catch (e) {
+      attempts.push({ variant: v.name, error: -1, message: e.message });
+    }
   }
+  const last = attempts[attempts.length - 1] || {};
+  return { error: last.error ?? -1, message: last.message || 'all replycomment variants failed', attempts };
 }
 
 // === REPLIED DEDUP — khong reply 2 lan cung 1 comment ===
@@ -160,18 +195,35 @@ async function cmdReply(commentId, message, articleId) {
   if (data.error !== 0) process.exit(1);
 }
 
-// [2026-05-13 — Issue #17] Zalo /v2.0/article/getslice with `type: 'normal'`
-// trả về -201 "type accept only 2 value normal and video." dù `normal` ĐÚNG là
-// 1 trong 2 giá trị hợp lệ theo docs. Bypass bằng cách thử nhiều biến thể URL/
-// param và trả về FULL diagnostic — không nuốt lỗi như trước (return [] im lặng
-// khiến scan luôn báo "0 articles" mà không biết tại sao).
+// [2026-05-14 — Issue #34] Zalo OA đổi format. Symptom cũ: error=0, total=9,
+// data=[] → response field đổi tên. Docs mới ở "noi-dung-dang-bai-viet" và
+// SDK community dùng `/media/getslice` với `count` thay vì `limit`. Cập nhật
+// đồng bộ với zalo-oa-article.js.
+// [2026-05-13 — Issue #17] Lý do giữ nhiều variant cũ: getslice phía OA này
+// trả -201 "type accept only 2 value normal and video" dù `normal` ĐÚNG là
+// 1 trong 2 giá trị docs cũ → API rule đã thay đổi runtime.
+function extractArticles(data) {
+  const d = data?.data;
+  if (!d) return [];
+  if (Array.isArray(d.articles)) return d.articles;
+  if (Array.isArray(d.medias)) return d.medias;
+  if (Array.isArray(d.list)) return d.list;
+  if (Array.isArray(d.items)) return d.items;
+  if (Array.isArray(d)) return d;
+  return [];
+}
+
 async function listArticles(limit = 10) {
-  const cap = Math.min(limit, 10); // Zalo docs: max limit = 10
+  const cap = Math.min(limit, 10); // Zalo docs: max page size = 10
   const variants = [
-    { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'normal' }))}` },
+    { name: 'media_data', url: `https://openapi.zalo.me/v2.0/media/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, count: cap }))}` },
+    { name: 'media_data_limit', url: `https://openapi.zalo.me/v2.0/media/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap }))}` },
+    { name: 'media_flat', url: `https://openapi.zalo.me/v2.0/media/getslice?offset=0&count=${cap}` },
     { name: 'v2_data_no_type', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap }))}` },
-    { name: 'v2_flat_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=${cap}&type=normal` },
+    { name: 'v2_data_count', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, count: cap }))}` },
+    { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'normal' }))}` },
     { name: 'v2_data_video', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'video' }))}` },
+    { name: 'v2_flat_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=${cap}&type=normal` },
     { name: 'v3_data_normal', url: `https://openapi.zalo.me/v3.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: cap, type: 'normal' }))}` },
   ];
 
@@ -180,9 +232,12 @@ async function listArticles(limit = 10) {
     try {
       const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
       const data = await res.json();
-      const articles = data.data?.articles || data.data?.list || [];
-      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, returned: articles.length });
-      if (data.error === 0) {
+      const articles = extractArticles(data);
+      const total = data.data?.total ?? articles.length;
+      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, total, returned: articles.length });
+      // Chỉ accept khi có data thật, nếu không thử variant tiếp theo. Tránh
+      // trường hợp error=0 total=9 nhưng articles=[] do field name sai.
+      if (data.error === 0 && (articles.length > 0 || total === 0)) {
         return { articles, variant: v.name, attempts };
       }
     } catch (e) {
@@ -199,7 +254,8 @@ async function processArticleComments(articleId, since, replied, report) {
     report.errors.push({ article_id: articleId, error: list.message || list.error, raw: list });
     return;
   }
-  const comments = list.data?.comments || list.data?.list || [];
+  // [2026-05-14 — Issue #34] Thêm `items` để khớp với schema mới `/media/*`.
+  const comments = list.data?.comments || list.data?.list || list.data?.items || [];
   for (const c of comments) {
     report.comments++;
     const cId = c.id || c.comment_id;
@@ -256,7 +312,13 @@ async function cmdScan(hours = 24) {
   for (const art of articles) {
     if (art.created_date && art.created_date * 1000 < since - 14 * 24 * 3600 * 1000) continue;
     report.articles++;
-    await processArticleComments(art.id, since, replied, report);
+    // [2026-05-14 — Issue #34] Schema mới có thể trả về `media_id` thay vì `id`.
+    const artId = art.id || art.article_id || art.media_id;
+    if (!artId) {
+      report.errors.push({ article: art, error: 'no article/media id in item' });
+      continue;
+    }
+    await processArticleComments(artId, since, replied, report);
   }
 
   console.log(JSON.stringify({ success: true, ...report }, null, 2));
