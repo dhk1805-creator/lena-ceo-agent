@@ -750,6 +750,20 @@ app.get('/staff-list',(req,res)=>{
 
 app.get('/refresh-token',async(req,res)=>res.json({refreshed:await refreshOAToken(),token:!!getOAToken()}));
 
+app.get('/env-check',(req,res)=>{
+  const k1=process.env.ZALO_OA_USER_SEP_KHANH;
+  const k2=process.env.ZALO_OA_USER_CHI_HONG;
+  const k3=process.env.ZALO_OA_USER_ANH_NGOC;
+  const tok=process.env.ZALO_OA_ACCESS_TOKEN;
+  res.json({
+    SEP_KHANH: k1?{len:k1.length,val:k1.substring(0,6)+'...'}:'MISSING',
+    CHI_HONG:  k2?{len:k2.length,val:k2.substring(0,6)+'...'}:'MISSING',
+    ANH_NGOC:  k3?{len:k3.length,val:k3.substring(0,6)+'...'}:'MISSING',
+    OA_TOKEN:  tok?{len:tok.length}:'MISSING',
+    VIP_KEYS:  Object.keys(VIP_USERS)
+  });
+});
+
 app.get('/debug',async(req,res)=>{
   const vipList={};
   for(const[id,info]of Object.entries(VIP_USERS))if(!id.startsWith('_none_'))vipList[id.substring(0,8)+'...']=info.name;
