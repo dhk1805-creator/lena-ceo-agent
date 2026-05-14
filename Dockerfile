@@ -15,8 +15,8 @@ RUN cd /app && npm install sharp express http-proxy-middleware
 # Copy agent files to staging area (start.sh syncs to volume at runtime)
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
 COPY AGENTS.md /app/workspace/AGENTS.md
-# MEMORY.md đọc ngay tại memory/ (không cần chuyển ra thư mục gốc)
-COPY memory/MEMORY.md /app/workspace/MEMORY.md
+# MEMORY.md đã được gỡ khỏi repo (trùng lặp với các file trong memory/) —
+# proxy.js không dùng tới file này. Cả thư mục memory/ vẫn được copy đầy đủ.
 COPY memory/ /app/workspace/memory/
 COPY skills/ /app/workspace/skills/
 COPY cron-jobs.json /app/cron-jobs.json
