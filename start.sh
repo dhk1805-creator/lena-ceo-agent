@@ -14,7 +14,6 @@ export OPENCLAW_GATEWAY_PORT="$OPENCLAW_INTERNAL_PORT"
 export OPENCLAW_GATEWAY_TOKEN="${GATEWAY_PASSWORD:-LeNa2026!}"
 
 # === PERSISTENT VOLUME SYNC ===
-# Volume mounts at /root/.openclaw — copy workspace files if missing or updated
 echo "Syncing workspace files to persistent volume..."
 mkdir -p /root/.openclaw/workspace/skills /root/.openclaw/workspace/memory
 mkdir -p /root/.openclaw/agents/main/sessions
@@ -49,12 +48,12 @@ else
   echo "WARNING: No Zalo credentials anywhere. Channel will be unconfigured."
 fi
 
-# Only clear sessions if AGENTS.md hash changed (avoid cold start every deploy)
+# Only clear sessions if AGENTS.md hash changed
 AGENTS_HASH_FILE="/root/.openclaw/.agents-md-hash"
 NEW_HASH=$(sha256sum /app/workspace/AGENTS.md 2>/dev/null | cut -d' ' -f1)
 OLD_HASH=$(cat "$AGENTS_HASH_FILE" 2>/dev/null || echo "none")
 if [ "$NEW_HASH" != "$OLD_HASH" ]; then
-  echo "AGENTS.md changed (hash: ${OLD_HASH:0:8} -> ${NEW_HASH:0:8}). Clearing sessions..."
+  echo "AGENTS.md changed. Clearing sessions..."
   rm -f /root/.openclaw/agents/main/sessions/*.jsonl /root/.openclaw/agents/main/sessions/sessions.json 2>/dev/null
   echo "$NEW_HASH" > "$AGENTS_HASH_FILE"
   echo "Sessions cleared"
@@ -64,28 +63,39 @@ fi
 
 echo "Workspace sync complete"
 
-# === WRITE ENV VARS TO /app/.env.json (OpenClaw exec fallback) ===
-# OpenClaw exec may not inherit Railway env vars — scripts read this file as fallback
-echo "Writing env vars to /app/.env.json for OpenClaw exec..."
-node -e "
-const keys = [
-  'GITHUB_TOKEN','GITHUB_REPO','GOOGLE_SHEET_ID',
-  'GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','GOOGLE_REFRESH_TOKEN','GOOGLE_REFRESH_TOKEN_LENA',
-  'CLAUDE_API_KEY','GEMINI_API_KEY','OPENAI_API_KEY',
-  'ZALO_OA_ACCESS_TOKEN','ZALO_OA_APP_ID','ZALO_OA_SECRET','ZALO_OA_REFRESH_TOKEN',
-  'ZALO_OA_USER_SEP_KHANH','ZALO_OA_USER_CHI_HONG','ZALO_OA_USER_ANH_NGOC',
-  'FACEBOOK_PAGE_TOKEN','FACEBOOK_PAGE_ID'
-];
-const env = {};
-keys.forEach(k => { if (process.env[k]) env[k] = process.env[k]; });
-require('fs').writeFileSync('/app/.env.json', JSON.stringify(env));
-console.log('Wrote ' + Object.keys(env).length + ' env vars to /app/.env.json');
-"
+# === WRITE ENV VARS TO /app/.env.json USING BASH (not node) ===
+# bash cat heredoc reads env vars from shell directly — 100% reliable
+echo "Writing env vars to /app/.env.json..."
+cat > /app/.env.json << ENVEOF
+{
+  "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+  "GITHUB_REPO": "${GITHUB_REPO}",
+  "GOOGLE_SHEET_ID": "${GOOGLE_SHEET_ID}",
+  "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+  "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+  "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}",
+  "GOOGLE_REFRESH_TOKEN_LENA": "${GOOGLE_REFRESH_TOKEN_LENA}",
+  "CLAUDE_API_KEY": "${CLAUDE_API_KEY}",
+  "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+  "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+  "ZALO_OA_ACCESS_TOKEN": "${ZALO_OA_ACCESS_TOKEN}",
+  "ZALO_OA_APP_ID": "${ZALO_OA_APP_ID}",
+  "ZALO_OA_SECRET": "${ZALO_OA_SECRET}",
+  "ZALO_OA_REFRESH_TOKEN": "${ZALO_OA_REFRESH_TOKEN}",
+  "ZALO_OA_USER_SEP_KHANH": "${ZALO_OA_USER_SEP_KHANH}",
+  "ZALO_OA_USER_CHI_HONG": "${ZALO_OA_USER_CHI_HONG}",
+  "ZALO_OA_USER_ANH_NGOC": "${ZALO_OA_USER_ANH_NGOC}",
+  "FACEBOOK_PAGE_TOKEN": "${FACEBOOK_PAGE_TOKEN}",
+  "FACEBOOK_PAGE_ID": "${FACEBOOK_PAGE_ID}"
+}
+ENVEOF
+echo "Wrote .env.json with bash heredoc (shell env vars guaranteed)"
+
+# Verify key vars made it in
+echo "Verify SEP_KHANH in .env.json: $(node -e "try{const e=JSON.parse(require('fs').readFileSync('/app/.env.json'));console.log(e.ZALO_OA_USER_SEP_KHANH||'MISSING')}catch(x){console.log('ERROR:'+x.message)}")"
 
 # === CLEAN CORRUPTED PLUGIN CACHE ===
-# Plugin runtime deps occasionally corrupt during install (missing files).
-# Force reinstall every deploy by removing cache. OpenClaw will redownload cleanly.
-echo "Removing plugin runtime deps cache (force clean reinstall)..."
+echo "Removing plugin runtime deps cache..."
 rm -rf /root/.openclaw/plugin-runtime-deps 2>/dev/null
 echo "Plugin cache cleared"
 
@@ -158,7 +168,6 @@ OPENCLAW_PID=$!
 # Wait briefly for OpenClaw to bind port
 sleep 3
 
-# Start Express proxy on PUBLIC port (this is what Railway exposes)
-# Proxy serves /public/* (Zalo domain verify) + forwards everything else to OpenClaw
+# Start Express proxy on PUBLIC port
 echo "=== Starting Express proxy on public port ${FRONT_PORT} (forwards to OpenClaw ${OPENCLAW_INTERNAL_PORT}) ==="
 exec node /app/proxy.js
