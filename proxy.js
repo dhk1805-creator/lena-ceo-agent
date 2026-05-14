@@ -36,7 +36,8 @@ const MODEL_FOLLOWER = 'claude-haiku-4-5-20251001';   // Follower/khách
 // === Mỗi hàng → { id, name, gender, pos, dept, email, phone }
 // ============================================================
 function parseStaffFromMemory() {
-  const staff = [];
+  const staff  = [];
+  const emails = new Set();
   try {
     if (!fs.existsSync(MEMORY_FILE)) {
       console.error(`[memory] File not found: ${MEMORY_FILE}`);
@@ -45,75 +46,83 @@ function parseStaffFromMemory() {
     const content = fs.readFileSync(MEMORY_FILE, 'utf-8');
     const lines   = content.split('\n');
 
-    // Detect department from ## heading above tables
-    let currentDept = '';
-    let inTable     = false;
-    let headers     = [];
+    // Only parse tables under these dept headings (skip NPP, OEM, Truong bo phan, etc.)
+    const STAFF_DEPTS = ['ban giam doc','phong kinh doanh','pkd','r&d','hcns','hanh chinh nhan su','tckt','tai chinh','qlsx','nha may','quan ly san xuat'];
+    const isStaffDept = (d) => STAFF_DEPTS.some(k => d.toLowerCase().includes(k));
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    let dept = '', inT = false;
+    let colCode=-1, colName=-1, colGender=-1, colPos=-1, colEmail=-1, colPhone=-1;
 
-      // Track department heading
-      if (line.startsWith('## ') || line.startsWith('# ')) {
-        currentDept = line.replace(/^#+\s*/, '').trim();
-        inTable = false;
-        headers = [];
+    for (const raw of lines) {
+      const line = raw.trim();
+
+      // Section heading
+      if (line.startsWith('#')) {
+        inT = false;
+        colCode=colName=colGender=colPos=colEmail=colPhone=-1;
+        dept = line.replace(/^#+\s*/, '').trim();
         continue;
       }
 
-      // Table header row — detect columns
-      if (line.startsWith('|') && line.toLowerCase().includes('email')) {
-        headers = line.split('|').map(h => h.trim().toLowerCase()).filter(Boolean);
-        inTable = true;
+      // Table header — must have email column
+      if (!inT && line.startsWith('|') && /email/i.test(line)) {
+        if (!isStaffDept(dept)) continue; // skip non-staff tables
+        const cols = line.split('|').map(c => c.trim().toLowerCase());
+        colCode   = cols.findIndex(c => c === 'code' || c === 'id');
+        colName   = cols.findIndex(c => c.includes('ho ten') || c === 'name' || c === 'ten');
+        colGender = cols.findIndex(c => c.includes('gioi tinh') || c === 'gender');
+        colPos    = cols.findIndex(c => c.includes('chuc vu') || c === 'position' || c === 'pos');
+        colEmail  = cols.findIndex(c => c === 'email');
+        colPhone  = cols.findIndex(c => c.includes('sdt') || c.includes('phone'));
+        if (colEmail >= 0 && colName >= 0) inT = true;
         continue;
       }
 
       // Separator row
-      if (inTable && line.startsWith('|') && line.includes('---')) continue;
+      if (inT && line.includes('---')) continue;
 
       // Data row
-      if (inTable && line.startsWith('|')) {
-        const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-        if (cells.length < 2) continue;
+      if (inT && line.startsWith('|')) {
+        const cells = line.split('|').map(c => c.trim());
+        const cell  = (i) => (i >= 0 && i < cells.length) ? cells[i] : '';
+        const email = cell(colEmail).toLowerCase().trim();
+        if (!email.includes('@nsca.vn')) continue;
+        if (emails.has(email)) continue;
+        emails.add(email);
 
-        const get = (key) => {
-          const idx = headers.findIndex(h => h.includes(key));
-          return idx >= 0 ? (cells[idx] || '') : '';
-        };
+        const name   = cell(colName).trim();
+        if (!name) continue;
+        const gender = cell(colGender).trim();
+        const pos    = cell(colPos).trim();
+        const phone  = cell(colPhone).trim();
+        const id     = cell(colCode).trim() || `AUTO_${staff.length + 1}`;
 
-        const email = get('email');
-        if (!email || !email.includes('@')) continue; // skip rows without real email
+        // Nickname: Anh/Chị + last name
+        const parts    = name.split(/\s+/);
+        const lastName = parts[parts.length - 1];
+        const isFemale = /^nữ$/i.test(gender) || (/^n/i.test(gender) && !/^nam$/i.test(gender));
+        const nick     = `${isFemale ? 'Chị' : 'Anh'} ${lastName}`;
 
-        const id     = get('code') || get('id') || `AUTO_${staff.length + 1}`;
-        const name   = get('ho ten') || get('name') || get('ten') || '';
-        const gender = get('gioi tinh') || get('gender') || '';
-        const pos    = get('chuc vu') || get('position') || get('pos') || '';
-        const phone  = get('sdt') || get('phone') || get('sdtzalo') || '';
-
-        // Build friendly nickname from name
-        const nameParts = name.trim().split(' ');
-        const lastName  = nameParts[nameParts.length - 1];
-        const isFemale  = gender.toLowerCase().includes('n') && !gender.toLowerCase().includes('nam');
-        const prefix    = isFemale ? 'Chị' : 'Anh';
-        const nick      = lastName ? `${prefix} ${lastName}` : name;
-
-        staff.push({ id, name, nick, gender, pos, dept: currentDept, email: email.toLowerCase(), phone });
+        staff.push({ id, name, nick, gender, pos, dept, email, phone });
         continue;
       }
 
       // End of table
-      if (inTable && !line.startsWith('|')) {
-        inTable = false;
-        headers = [];
+      if (inT && line !== '' && !line.startsWith('|')) {
+        inT = false;
+        colCode=colName=colGender=colPos=colEmail=colPhone=-1;
       }
     }
   } catch (e) {
     console.error(`[memory] Parse error: ${e.message}`);
   }
-  console.log(`[memory] Loaded ${staff.length} staff from MEMORY.md`);
+  console.log(`[memory] Loaded ${staff.length} CBCNV from MEMORY.md`);
+  if (staff.length > 0) {
+    const depts = [...new Set(staff.map(s => s.dept))];
+    console.log(`[memory] Depts: ${depts.join(', ')}`);
+  }
   return staff;
 }
-
 // Load once at startup + build email→staff map
 let NSCA_STAFF = parseStaffFromMemory();
 const STAFF_BY_EMAIL = {};
