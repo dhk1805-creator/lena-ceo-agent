@@ -19,10 +19,17 @@ const path = require('path');
 const fs   = require('fs');
 
 // Load env fallback from /app/.env.json (Railway exec may not pass all env vars)
+// Chỉ merge khi process.env CHƯA có key đó VÀ giá trị trong .env.json KHÔNG rỗng
+// → không bao giờ ghi đè biến thật bằng chuỗi rỗng.
 try {
   const _envJson = JSON.parse(fs.readFileSync("/app/.env.json", "utf-8"));
-  Object.keys(_envJson).forEach(k => { if (!process.env[k]) process.env[k] = _envJson[k]; });
-  console.log("[env] Loaded fallback from /app/.env.json");
+  let _loaded = 0, _empty = 0;
+  Object.keys(_envJson).forEach(k => {
+    const v = _envJson[k];
+    if (v && !process.env[k]) { process.env[k] = v; _loaded++; }
+    else if (!v) _empty++;
+  });
+  console.log(`[env] .env.json parsed — ${_loaded} key(s) merged, ${_empty} empty/skipped`);
 } catch(e) { console.log("[env] No .env.json:", e.message); }
 
 const FRONT_PORT    = parseInt(process.env.PORT || '8080', 10);
@@ -182,12 +189,22 @@ function lookupStaffByInput(input) {
 
 // ============================================================
 // === VIP CONFIG
+// === Zalo user ID của VIP CHỈ là định danh (KHÔNG phải secret) →
+// === hardcode làm fallback an toàn khi env var không tới được tiến trình.
+// === Thứ tự ưu tiên: process.env → .env.json (đã merge ở đầu file) → hardcode.
+// === Khi đã sửa xong env trên Railway, 3 dòng env vẫn được ưu tiên dùng trước.
 // ============================================================
-const VIP_USERS = {
-  [process.env.ZALO_OA_USER_SEP_KHANH || '_none_sep']: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO' },
-  [process.env.ZALO_OA_USER_CHI_HONG  || '_none_hong']: { name: 'chị Hồng',  alias: 'chi-hong',  role: 'GĐ Pháp lý + TCKT' },
-  [process.env.ZALO_OA_USER_ANH_NGOC  || '_none_ngoc']: { name: 'anh Ngọc',  alias: 'anh-ngoc',  role: 'TP Kinh Doanh' },
+const VIP_IDS = {
+  SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH || '686983494944296385',
+  CHI_HONG : process.env.ZALO_OA_USER_CHI_HONG  || '9076345556107321186',
+  ANH_NGOC : process.env.ZALO_OA_USER_ANH_NGOC  || '219363256978038684',
 };
+const VIP_USERS = {
+  [VIP_IDS.SEP_KHANH]: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO' },
+  [VIP_IDS.CHI_HONG] : { name: 'chị Hồng',  alias: 'chi-hong',  role: 'GĐ Pháp lý + TCKT' },
+  [VIP_IDS.ANH_NGOC] : { name: 'anh Ngọc',  alias: 'anh-ngoc',  role: 'TP Kinh Doanh' },
+};
+console.log(`[vip] ${Object.keys(VIP_USERS).length} VIP — SEP_KHANH src: ${process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'HARDCODED-FALLBACK'} | CHI_HONG src: ${process.env.ZALO_OA_USER_CHI_HONG ? 'env' : 'HARDCODED-FALLBACK'} | ANH_NGOC src: ${process.env.ZALO_OA_USER_ANH_NGOC ? 'env' : 'HARDCODED-FALLBACK'}`);
 
 // ============================================================
 // === ZALO OA TOKEN
@@ -489,7 +506,7 @@ async function handleFollow(event) {
 async function handleUnfollow(event) {
   const userId=event.follower?.id; if(!userId) return;
   const vip=VIP_USERS[userId];
-  if(vip){const sepId=process.env.ZALO_OA_USER_SEP_KHANH;if(sepId&&userId!==sepId)await sendZaloMessage(sepId,`⚠️ ${vip.name} đã unfollow OA.`).catch(()=>{});}
+  if(vip){const sepId=VIP_IDS.SEP_KHANH;if(sepId&&userId!==sepId)await sendZaloMessage(sepId,`⚠️ ${vip.name} đã unfollow OA.`).catch(()=>{});}
 }
 async function handleImageMessage(event) {
   const senderId=event.sender?.id; if(!senderId) return;
@@ -767,7 +784,12 @@ app.get('/env-check',(req,res)=>{
     CHI_HONG:  k2?{len:k2.length,val:k2.substring(0,6)+'...'}:'MISSING',
     ANH_NGOC:  k3?{len:k3.length,val:k3.substring(0,6)+'...'}:'MISSING',
     OA_TOKEN:  tok?{len:tok.length}:'MISSING',
-    VIP_KEYS:  Object.keys(VIP_USERS)
+    VIP_KEYS:  Object.keys(VIP_USERS),
+    VIP_ID_SOURCE: {
+      SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'hardcoded-fallback',
+      CHI_HONG:  process.env.ZALO_OA_USER_CHI_HONG  ? 'env' : 'hardcoded-fallback',
+      ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  ? 'env' : 'hardcoded-fallback'
+    }
   });
 });
 
@@ -793,7 +815,7 @@ const server=app.listen(FRONT_PORT,'0.0.0.0',()=>{
   console.log(`[proxy] Models: VIP=${MODEL_VIP} | STAFF=${MODEL_STAFF} | Follower=${MODEL_FOLLOWER}`);
   console.log(`[proxy] Staff: ${NSCA_STAFF.length} loaded from ${MEMORY_FILE} | Registered: ${Object.keys(loadZaloIdMap()).length}`);
   console.log(`[proxy] KB: ${KB_FILE} (${LENA_KB.length} chars) | Follower memory: Google Sheet`);
-  console.log(`[proxy] Endpoints: /health /staff-list /debug /refresh-token`);
+  console.log(`[proxy] Endpoints: /health /staff-list /debug /refresh-token /env-check`);
   const RI=20*60*60*1000;
   refreshOAToken().then(ok=>console.log(`[token] Startup: ${ok?'OK':'FAILED'}`)).catch(()=>{});
   setInterval(()=>refreshOAToken(),RI);
