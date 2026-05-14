@@ -11,7 +11,7 @@
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
 |----|--------|---------|-----|-------|-----|
 | PKD01 | Đào Nguyên Ngọc | TP PKD (Bộc Béo) | PKD | ndao@nsca.vn | 0902115796 |
-| PKD02 | Trần Minh Đức | BD Nội địa (Đức BD) | PKD | ducdd@nsca.vn | 0912345678 |
+| PKD02 | Đỗ Đình Đức | BD Nội địa (Đức BD) | PKD | ducdd@nsca.vn | 0912345678 |
 | PKD03 | Santiago | Xuất khẩu (Santi) | PKD | santiago@nsca.vn | 0978123456 |
 | PKD04 | Nguyễn Thị Thanh Tâm | Back Office (Chị Tâm) | PKD | tamntt@nsca.vn | 0934567890 |
 
@@ -57,7 +57,7 @@
 ## HANH CHINH NHAN SU (HCNS)
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
 |----|--------|---------|-----|-------|-----|
-| HC01 | Đặng Văn Sơn | TP HCNS | HCNS | sondt@nsca.vn | 0901765432 |
+| HC01 | Đặng Thanh Sơn | TP HCNS | HCNS | sondt@nsca.vn | 0901765432 |
 | HC02 | HCNS 01 | Nhân sự tổng hợp | HCNS | hc02@nsca.vn | 0912876501 |
 | HC03 | HCNS 02 | Lương & Chấm công | HCNS | hc03@nsca.vn | 0923987602 |
 | HC04 | HCNS 03 | Tuyển dụng & Đào tạo | HCNS | hc04@nsca.vn | 0934098703 |
