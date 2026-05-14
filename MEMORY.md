@@ -14,7 +14,6 @@
 |------|--------|-----------|---------|-------|----------|
 | CEO01 | Đào Huy Khánh | Nam | CEO — Tổng Giám đốc | dhk@nsca.vn | 0903232222 |
 | BGD02 | N.T.T. Hồng | Nữ | GĐ Đại diện Pháp luật | nsca@nsca.vn | 0903220024 |
-| BGD03 | N.T.TT Mai | Nữ | Trợ lý CEO · Quản lý Users | main@nsca.vn | 0916888001 |
 
 ## Phong Kinh Doanh (PKD)
 | Code | Ho ten | Gioi tinh | Chuc vu | Email | SDT/Zalo |
@@ -23,9 +22,17 @@
 | PKD02 | Trần Minh Đức | Nam | BD Nội địa (Đức BD) | ducdd@nsca.vn | 0912345678 |
 | PKD03 | Santiago de los Reyes | Nam | Xuất khẩu (Santi) - OMDM | santiago@nsca.vn | 0978123456 |
 | PKD04 | Nguyễn Thị Thanh Tâm | Nữ | Back Office (Chị Tâm) | tamntt@nsca.vn | 0934567890 |
-| PKD05 | PKD-Admin | - | Admin | pkd05@nsca.vn | 0945678901 |
-| PKD06 | PKD-Công nợ | - | Công nợ | pkd06@nsca.vn | 0956789012 |
-| PKD07-10 | BO1-BO4 | - | Back Office | pkd07-10@nsca.vn | - |
+
+## VIP & PKD Team Mapping (Sep Khanh yeu cau 2026-05-14)
+- **VIP MAPPING (3 nguoi):**
+  - sep-khanh → dhk@nsca.vn (CEO)
+  - chi-hong → nsca@nsca.vn (TCKT/Phap ly)
+  - anh-ngoc → ndao@nsca.vn (TP PKD)
+- **PKD TEAM (3 nguoi cap duoi anh Ngoc):**
+  - ducdd@nsca.vn (Đức BD — Noi dia)
+  - santiago@nsca.vn (Santiago — Xuat khau)
+  - tamntt@nsca.vn (Chị Tâm — Back Office)
+- **Loai bo:** main@nsca.vn (Trúc Mai), pkd05/06@nsca.vn (PKD Admin/Công nợ), pkd07-10@nsca.vn (BO1-4)
 
 ## R&D
 | Code | Ho ten | Gioi tinh | Chuc vu | Email | SDT/Zalo |
