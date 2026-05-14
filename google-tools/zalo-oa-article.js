@@ -166,6 +166,22 @@ async function postArticle(article) {
 // -201 "type accept only 2 value normal and video." trên OA production. Thử
 // nhiều biến thể URL/param thay vì fail im lặng. Đồng bộ với listArticles
 // trong zalo-oa-comment.js.
+//
+// [2026-05-14 — Issue #33] Bug "total=9 nhưng articles=[]": Zalo trả về
+// `data.total` nhưng mảng article ở key khác (medias/media_array/list/items)
+// — code cũ chỉ check `articles` và `list` nên parse miss. findArticleArray()
+// thử nhiều tên field rồi fallback scan bất kỳ array nào trong data.
+function findArticleArray(d) {
+  if (!d || typeof d !== 'object') return { items: [], key: null };
+  for (const k of ['articles', 'list', 'medias', 'media_array', 'media_list', 'items', 'data']) {
+    if (Array.isArray(d[k])) return { items: d[k], key: k };
+  }
+  for (const [k, v] of Object.entries(d)) {
+    if (Array.isArray(v)) return { items: v, key: k };
+  }
+  return { items: [], key: null };
+}
+
 async function listArticles() {
   const variants = [
     { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
@@ -176,19 +192,32 @@ async function listArticles() {
   ];
 
   const attempts = [];
+  let firstSuccess = null;
   for (const v of variants) {
     try {
       const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
       const data = await res.json();
-      const articles = data.data?.articles || data.data?.list || [];
-      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, returned: articles.length });
-      if (data.error === 0) {
+      const found = findArticleArray(data.data);
+      const articles = found.items;
+      const total = data.data?.total ?? data.data?.total_count ?? null;
+      attempts.push({
+        variant: v.name,
+        http: res.status,
+        error: data.error,
+        message: data.message || null,
+        returned: articles.length,
+        items_key: found.key,
+        total,
+        data_keys: data.data && typeof data.data === 'object' ? Object.keys(data.data) : null
+      });
+      if (data.error === 0 && articles.length > 0) {
         return {
           success: true,
           variant: v.name,
-          total: data.data?.total ?? articles.length,
+          items_key: found.key,
+          total: total ?? articles.length,
           articles: articles.map(a => ({
-            id: a.id,
+            id: a.id || a.article_id || a.media_id || a.token,
             title: a.title,
             status: a.status,
             created: a.created_date ? new Date(a.created_date * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'
@@ -196,9 +225,22 @@ async function listArticles() {
           attempts
         };
       }
+      if (data.error === 0 && !firstSuccess) {
+        firstSuccess = { variant: v.name, total };
+      }
     } catch (e) {
       attempts.push({ variant: v.name, error: -1, message: e.message });
     }
+  }
+  if (firstSuccess) {
+    return {
+      success: false,
+      variant: firstSuccess.variant,
+      total: firstSuccess.total,
+      articles: [],
+      error: 'Zalo trả về error=0 nhưng không tìm thấy mảng article (check attempts[].data_keys để biết Zalo dùng tên field gì)',
+      attempts
+    };
   }
   return { success: false, attempts };
 }
