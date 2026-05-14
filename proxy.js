@@ -450,6 +450,17 @@ const TOOLS = [
     }
   },
   {
+    name: 'auto_learn',
+    description: 'Quet session Zalo OA cua VIP trong N gio qua, dung Gemini Flash extract contacts moi / technical facts / customer feedback / business insights, roi auto-save vao lena-learned overlay. Dung khi: VIP yeu cau "rut kinh nghiem session", hoac sau hoi thoai dai co nhieu thong tin moi. Mac dinh chay tu dong qua cron 23h moi ngay — chi can goi manual khi VIP yeu cau ngay.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', description: 'VIP alias (sep-khanh, chi-hong, anh-ngoc) hoac "all". Default "all".' },
+        hours: { type: 'number', description: 'Quet session active trong N gio qua (default 24)' }
+      }
+    }
+  },
+  {
     name: 'zalo_oa_comment',
     description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
     input_schema: {
@@ -555,6 +566,9 @@ async function runTool(name, input) {
       break;
     case 'web_read':
       cmd = 'node'; args = [`${GTOOL}/web-read.js`, input.url || ''];
+      break;
+    case 'auto_learn':
+      cmd = 'node'; args = [`${GTOOL}/auto-learn.js`, input.target || 'all', String(input.hours || 24)];
       break;
     case 'zalo_oa_comment': {
       const action = input.action || 'scan';
@@ -852,6 +866,7 @@ TOOLS có sẵn:
 - hvac_lookup (tra cứu tiêu chuẩn / thuật ngữ / kiến thức HVAC từ Google Sheet — dùng khi VIP hỏi về điều hòa, chiller, EER/COP, lưu lượng gió, áp suất, v.v.)
 - memory_search (tra cứu long-term memory: hvac-standards, hvac-knowledge, brand-guide, contacts... — BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật có tiêu chuẩn)
 - memory_update (lưu kiến thức mới vào lena-learned overlay — dùng khi VIP dạy fact mới hoặc cần nhớ cho lần sau)
+- auto_learn (quét session VIP, Gemini extract contacts/technical/feedback/insights → auto save vào lena-learned. Chạy cron 23h hàng ngày. Chỉ gọi manual khi VIP yêu cầu "rút kinh nghiệm session" hoặc "ghi nhớ hội thoại này")
 - gdoc_create
 - task_add / task_overdue / task_status / task_update
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
@@ -877,10 +892,16 @@ WORKFLOW ĐĂNG BÀI ZALO OA (khi VIP gửi ảnh + yêu cầu viết bài):
 4. zalo_oa_article create → đăng bài lên OA (KHÔNG cần chatId)
 5. Báo VIP: "✅ Đã đăng bài [tiêu đề] lên OA Starasia JSC"
 
-LONG-TERM MEMORY (memory_search + memory_update):
+LONG-TERM MEMORY (memory_search + memory_update + auto_learn):
 ✅ TRƯỚC khi viết content kỹ thuật (bài OA/FB, email khách, slide) có tiêu chuẩn → memory_search file="hvac-standards" để verify mã chuẩn.
 ✅ Khi VIP nói "ghi nhớ X" / "lần sau Y" / "đừng quên Z" → memory_update topic="<chủ đề>" content="<X>". KHÔNG hỏi lại.
+✅ Khi VIP GIỚI THIỆU người mới (tên + chức vụ/công ty) → memory_update topic="contacts" content="<Tên — chức vụ — context gặp>". KHÔNG cần VIP yêu cầu.
+✅ Khi VIP chia sẻ fact kỹ thuật mới (tiêu chuẩn, công thức, spec) → memory_update topic="technical-facts" content="<fact>". KHÔNG hỏi lại.
+✅ Khi VIP truyền customer feedback / NPP phản hồi → memory_update topic="customer-feedback" content="<khách: phản hồi>".
+✅ Khi VIP đưa quyết định/insight kinh doanh quan trọng → memory_update topic="business-insights" content="<insight>".
 ✅ Khi phát hiện fact mới đáng nhớ (đối thủ ra SP, khách phản hồi, tiêu chuẩn cập nhật) → memory_update để lần sau Lê Na tự biết.
+✅ TRƯỚC khi reply VIP về 1 người/khách/topic đã gặp → memory_search keyword="<tên>" để check đã biết gì về họ trước đó.
+⚙️ Cron 23h hàng ngày TỰ ĐỘNG chạy auto_learn quét toàn bộ session 24h — Lê Na KHÔNG cần lo backup. Chỉ gọi auto_learn manual khi VIP yêu cầu "rút kinh nghiệm session này".
 ❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
 
 GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.
