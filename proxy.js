@@ -254,119 +254,28 @@ async function saveFollowerProfile(userId, name, lang, topic, lastMsg) {
 // ============================================================
 // === HVAC KNOWLEDGE BASE — embedded (KB-1.0 · 2026-05-13)
 // ============================================================
-const LENA_KB = `
-## LENA HVAC KNOWLEDGE BASE (KB-1.0 — NSCA/STARDUCT · 2026-05-13)
+// ============================================================
+// === LENA KB — đọc từ /app/memory/LENA_KB.md
+// === Cập nhật file trên GitHub → Railway redeploy → tự reload
+// ============================================================
+const KB_FILE = '/app/memory/LENA_KB.md';
 
-### CORE RULES
-- Lookup KB FIRST before answering any HVAC term or formula
-- If term not found → keep original English, never guess
-- Always cite standard when referencing specs
-- NEVER translate: model codes (SAG600,DAG450,SKD600,SLD-A2S,SVAV-S,VCD,S-MFSD), standards (ASHRAE 70,UL 555,AMCA 500-D,EN 1366), units (Pa,kPa,m³/h,CFM,L/s,°C,°F,NC,dB,kW,TR)
+function loadKB() {
+  try {
+    if (fs.existsSync(KB_FILE)) {
+      const kb = fs.readFileSync(KB_FILE, 'utf-8');
+      console.log(`[kb] Loaded ${kb.length} chars from ${KB_FILE}`);
+      return kb;
+    }
+    console.error(`[kb] File not found: ${KB_FILE}`);
+  } catch(e) { console.error(`[kb] Load error: ${e.message}`); }
+  return '## KB not loaded — file missing';
+}
 
-### KEY FORMULAS
-| Formula (EN) | VI | Equation | Unit |
-|---|---|---|---|
-| Dry Air Mass Flow | Lưu lượng khối khí khô | m_da=Q/[1.005×ΔT] | kg/s |
-| Humidity Ratio | Tỉ số ẩm | W=0.29198×Pv/(P-Pv) | kg/kg |
-| Relative Humidity | Độ ẩm tương đối | φ=Pv/Pvs×100% | % |
-| Enthalpy Moist Air | Enthalpy không khí ẩm | h=1.005×T+W×(2500+1.887×T) | kJ/kg |
-| Density | Mật độ khí ẩm | ρ=P/(287×T) | kg/m³ |
-| Sensible Heat | Nhiệt hiện | Qs=1.23×CFM×ΔT | Btu/hr |
-| Latent Heat | Nhiệt ẩn | Ql=0.44×CFM×ΔW | Btu/hr |
-| Total Heat | Tổng nhiệt | Qt=Qs+Ql | Btu/hr |
-| Cooling Load | Tải lạnh | TR=Qt/12000 | TR |
-| SHF | Hệ số nhiệt hiện | SHF=Qs/Qt | — |
-| Air Velocity | Vận tốc | V=Q/A | m/s |
-| Equiv. Diameter | Đường kính tương đương | D=√(4A/π) | mm |
-| Duct Friction | Tổn thất ma sát | ΔP=f×(L/D)×(ρV²/2) | Pa |
-| Velocity Pressure | Áp suất động | Pv=ρV²/2 | Pa |
-| ACH | Số lần thay khí/giờ | ACH=CFM×60/Vol | /hr |
-| COP | Hệ số hiệu suất lạnh | COP=(h1-h4)/(h2-h1) | — |
-| Fan Law — Flow | Q1/Q2=N1/N2 | — |
-| Fan Law — Pressure | P1/P2=(N1/N2)² | — |
-| Fan Law — Power | HP1/HP2=(N1/N2)³ | — |
+let LENA_KB = loadKB();
+// Reload mỗi 10 phút (sync với MEMORY.md reload)
+setInterval(() => { LENA_KB = loadKB(); }, 10 * 60 * 1000);
 
-### UNIT CONVERSIONS
-1 TR=3.517 kW=12,000 Btu/hr | 1 CFM=0.4719 L/s | 1 kW=3412 Btu/hr | 1 in.wg=249.1 Pa | °F=9/5×°C+32
-
-### GLOSSARY (EN | VI | ZH | KO | JP | Standard)
-Dry Bulb Temp | Nhiệt độ bầu khô | 干球温度 | 건구온도 | 乾球温度 [ASHRAE Fund.2021]
-Wet Bulb Temp | Nhiệt độ bầu ướt | 湿球温度 | 습구온도 | 湿球温度 [ASHRAE Fund.2021]
-Dew Point | Nhiệt độ điểm sương | 露点温度 | 이슬점 | 露点温度 [ASHRAE 55-2023]
-Relative Humidity | Độ ẩm tương đối | 相对湿度 | 상대습도 | 相対湿度 [ASHRAE 55-2023]
-Psychrometric Chart | Biểu đồ nhiệt ẩm | 焓湿图 | 습공기선도 | 湿り空気線図
-Sensible Heat | Nhiệt hiện | 显热 | 현열 | 顕熱 [ASHRAE Fund.2021]
-Latent Heat | Nhiệt ẩn | 潜热 | 잠열 | 潜熱 [ASHRAE Fund.2021]
-Static Pressure | Áp suất tĩnh | 静压 | 정압 | 静圧 [SMACNA 2006]
-Velocity Pressure | Áp suất động | 动压 | 동압 | 動圧 [SMACNA 2006]
-AHU | Bộ xử lý không khí | 空气处理机组 | 공조기 | 空調機 [AHRI 430]
-FCU | Dàn lạnh quạt cuộn | 风机盘管 | 팬코일유닛 | ファンコイルユニット [AHRI 440]
-VAV Box | Hộp VAV | 变风量末端 | VAV박스 | VAVボックス [AHRI 880]
-Supply Air | Không khí cấp | 送风 | 급기 | 給気 [ASHRAE 62.1]
-Return Air | Không khí hồi | 回风 | 환기 | 還気 [ASHRAE 62.1]
-Outdoor Air | Không khí ngoài | 室外空气 | 외기 | 外気 [ASHRAE 62.1]
-Air Diffuser | Miệng khuếch tán | 散流器 | 디퓨저 | ディフューザー [ASHRAE 70]
-Slot Diffuser | Miệng thổi khe | 线型散流器 | 슬롯디퓨저 | スロットディフューザー [ASHRAE 70]
-Grille | Miệng lưới | 格栅 | 그릴 | グリル [ASHRAE/AMCA]
-VCD | Van điều chỉnh lưu lượng | 风量调节阀 | VCD댐퍼 | 風量調節ダンパー [AMCA 500-D]
-Fire Damper | Van ngăn cháy | 防火阀 | 방화댐퍼 | 防火ダンパー [UL 555]
-Smoke Damper | Van ngăn khói | 防烟阀 | 연기댐퍼 | 防煙ダンパー [UL 555S]
-Combination Damper | Van ngăn cháy-khói | 防火防烟阀 | 복합댐퍼 | 防火防煙ダンパー [UL 555/555S]
-Backdraft Damper | Van chống gió ngược | 止回风阀 | 역풍방지댐퍼 | 逆流防止ダンパー [AMCA 500-D]
-Louver | Lá chớp | 百叶窗 | 루버 | ルーバー [AMCA 500-L]
-Silencer | Bộ giảm âm | 消声器 | 소음기 | サイレンサー [AMCA 300]
-ADPI | Chỉ số khuếch tán khí | 空气扩散性能指数 | 공기확산성능지수 | 気流拡散性能指数 [ASHRAE 70]
-Throw | Tầm phun | 射程 | 취출거리 | 到達距離 [ASHRAE 70]
-Coanda Effect | Hiệu ứng Coanda | 柯恩达效应 | 코안다효과 | コアンダ効果
-PMV/PPD | Chỉ số cảm giác nhiệt | 热感觉预测指标 | PMV/PPD | PMV/PPD [ASHRAE 55/ISO 7730]
-IAQ | Chất lượng KK trong nhà | 室内空气质量 | 실내공기질 | 室内空気質 [ASHRAE 62.1]
-CO₂ | Nồng độ CO₂ | 二氧化碳 | 이산화탄소 | 二酸化炭素 [ASHRAE 62.1]
-HEPA Filter | Bộ lọc HEPA | 高效过滤器 | 헤파필터 | HEPAフィルター [EN 1822]
-MERV | Cấp lọc MERV | MERV等级 | MERV등급 | MERV評価 [ASHRAE 52.2]
-DCV | Thông gió theo nhu cầu | 需求控制通风 | 수요제어환기 | 需要制御換気 [ASHRAE 62.1]
-COP | Hệ số hiệu suất lạnh | 性能系数 | 성능계수 | 成績係数 [ASHRAE]
-EER/SEER | Tỉ số hiệu quả năng lượng | 能效比 | 에너지효율비 | エネルギー消費効率 [AHRI 210/240]
-Chiller | Máy làm lạnh nước | 冷水机组 | 칠러 | チラー [AHRI 550/590]
-Cooling Tower | Tháp giải nhiệt | 冷却塔 | 냉각탑 | 冷却塔
-VRF | Lưu lượng môi chất biến đổi | 变冷媒流量 | VRF | 可変冷媒流量 [AHRI 1230]
-Heat Pump | Bơm nhiệt | 热泵 | 히트펌프 | ヒートポンプ
-ERV | Thu hồi năng lượng | 能量回收新风机 | 에너지회수환기 | 全熱交換換気 [AHRI 1060]
-VFD/VSD | Biến tần | 变频器 | 인버터 | インバーター [IEC 61800]
-BAS/BMS | Tự động hóa tòa nhà | 楼宇自控 | 빌딩자동화 | ビル自動化 [ISO 16484]
-BACnet | Giao thức BACnet | BACnet协议 | BACnet | BACnet [ASHRAE 135]
-Commissioning | Nghiệm thu vận hành | 调试验收 | 시운전 | コミッショニング [ASHRAE GL.0]
-TAB | Kiểm tra điều chỉnh cân bằng | 测试调整平衡 | TAB | TAB [ASHRAE GL.12]
-Fire Rating | Cấp chịu lửa | 耐火等级 | 내화등급 | 耐火等級 [UL 555/NFPA 90A]
-Fusible Link | Mắt cầu chì nhiệt | 易熔合金片 | 용융링크 | 温度ヒューズ [UL 33]
-Smoke Control | Kiểm soát khói | 防排烟 | 연기제어 | 防煙制御 [NFPA 92]
-NC Curve | Tiêu chí ồn NC | 噪声评价 | 소음기준 | NC曲線 [ASHRAE HVAC Apps]
-Insertion Loss | Mức suy giảm âm | 插入损失 | 삽입손실 | 挿入損失 [ASTM E477]
-U-value | Hệ số truyền nhiệt | 总传热系数 | 열관류율 | 熱貫流率 [ISO 6946]
-R-value | Nhiệt trở | 热阻 | 열저항 | 熱抵抗 [ASHRAE 90.1]
-
-### STARDUCT PRODUCT FACTS
-- ONLY Vietnamese manufacturer certified AHRI 880 (air terminal performance)
-- Certs: UL 555, UL 555S, FM, AHRI 880, AMCA member
-- Products: grilles, diffusers, VAV boxes (SVAV-S), fire/smoke/VCDs, louvers, silencers
-- Model codes NOT translated: SAG, DAG, SKD, SLD-A2S, SVAV-S, VCD, S-MFSD
-- Technical: info@nsca.vn | Sales: sales@nsca.vn | Hotline: 0246.260.9999 | Web: starduct.vn
-
-### STARDUCT TERMS (VI ↔ EN)
-Van ngăn cháy cách nhiệt = Insulated Fire Damper EI type [UL 555+EN 1366]
-Van ngăn cháy = Fire Damper [UL 555/QCVN 06:2022]
-Van ngăn khói = Smoke Damper [UL 555S]
-Van ngăn cháy-khói = Combination Fire/Smoke Damper [UL 555/555S]
-Van điều chỉnh lưu lượng = Volume Control Damper VCD [AMCA 500-D]
-Van một chiều = Backdraft Damper [AMCA 500-D]
-Miệng thổi khe = Slot Diffuser SLD [ASHRAE 70/AHRI 880]
-Miệng khuếch tán = Ceiling Diffuser [ASHRAE 70/AHRI 880]
-Miệng lưới = Grille [ASHRAE 70]
-Hộp VAV = VAV Box SVAV-S [AHRI 880 — ONLY certified in VN]
-Bộ giảm âm = Silencer/Attenuator [AMCA 300]
-Lá chớp = Louver [AMCA 500-L]
-Bộ truyền động lò xo = Spring-return actuator
-Bông gốm cách nhiệt = Ceramic Fiber Insulation [EI fire rating]
-`;
 
 // ============================================================
 // === TOOLS
@@ -819,7 +728,7 @@ app.get('/health',(req,res)=>res.json({
   vips:Object.keys(VIP_USERS).filter(k=>!k.startsWith('_none_')).length,
   staff_loaded:NSCA_STAFF.length,
   staff_registered:Object.keys(loadZaloIdMap()).length,
-  kb_embedded:true, kb_chars:LENA_KB.length,
+  kb_file:KB_FILE, kb_chars:LENA_KB.length, kb_loaded:LENA_KB.length>100,
   memory_source:MEMORY_FILE,
   follower_memory:'Google Sheet — Follower Memory tab'
 }));
@@ -846,7 +755,7 @@ app.get('/debug',async(req,res)=>{
   for(const[id,info]of Object.entries(VIP_USERS))if(!id.startsWith('_none_'))vipList[id.substring(0,8)+'...']=info.name;
   let claudeOk=false;
   try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01','Content-Type':'application/json'},body:JSON.stringify({model:MODEL_STAFF,max_tokens:10,messages:[{role:'user',content:'ping'}]})});claudeOk=r.ok;}catch(e){}
-  res.json({vips:vipList,claude_api:claudeOk?'OK':'FAIL',models:{vip:MODEL_VIP,staff:MODEL_STAFF,follower:MODEL_FOLLOWER},staff_count:NSCA_STAFF.length,registered:Object.keys(loadZaloIdMap()).length,kb_chars:LENA_KB.length,memory_file:MEMORY_FILE,zalo_token:getOAToken()?'OK':'MISSING'});
+  res.json({vips:vipList,claude_api:claudeOk?'OK':'FAIL',models:{vip:MODEL_VIP,staff:MODEL_STAFF,follower:MODEL_FOLLOWER},staff_count:NSCA_STAFF.length,registered:Object.keys(loadZaloIdMap()).length,kb_chars:LENA_KB.length,kb_file:KB_FILE,memory_file:MEMORY_FILE,zalo_token:getOAToken()?'OK':'MISSING'});
 });
 
 // ============================================================
@@ -862,7 +771,7 @@ const server=app.listen(FRONT_PORT,'0.0.0.0',()=>{
   console.log(`[proxy] Port ${FRONT_PORT} → OpenClaw ${OPENCLAW_PORT}`);
   console.log(`[proxy] Models: VIP=${MODEL_VIP} | STAFF=${MODEL_STAFF} | Follower=${MODEL_FOLLOWER}`);
   console.log(`[proxy] Staff: ${NSCA_STAFF.length} loaded from ${MEMORY_FILE} | Registered: ${Object.keys(loadZaloIdMap()).length}`);
-  console.log(`[proxy] KB: ${LENA_KB.length} chars | Follower memory: Google Sheet`);
+  console.log(`[proxy] KB: ${KB_FILE} (${LENA_KB.length} chars) | Follower memory: Google Sheet`);
   console.log(`[proxy] Endpoints: /health /staff-list /debug /refresh-token`);
   const RI=20*60*60*1000;
   refreshOAToken().then(ok=>console.log(`[token] Startup: ${ok?'OK':'FAILED'}`)).catch(()=>{});
