@@ -165,6 +165,22 @@ async function cmdReply(commentId, message, articleId) {
 // 1 trong 2 giá trị hợp lệ theo docs. Bypass bằng cách thử nhiều biến thể URL/
 // param và trả về FULL diagnostic — không nuốt lỗi như trước (return [] im lặng
 // khiến scan luôn báo "0 articles" mà không biết tại sao).
+//
+// [2026-05-14 — Issue #33] Bug "total=9 nhưng articles=[]": Zalo trả về
+// `data.total` nhưng mảng article ở key khác (medias/media_array/list/items).
+// findArticleArray() thử nhiều tên field rồi fallback scan bất kỳ array nào.
+// Đồng bộ với zalo-oa-article.js.
+function findArticleArray(d) {
+  if (!d || typeof d !== 'object') return { items: [], key: null };
+  for (const k of ['articles', 'list', 'medias', 'media_array', 'media_list', 'items', 'data']) {
+    if (Array.isArray(d[k])) return { items: d[k], key: k };
+  }
+  for (const [k, v] of Object.entries(d)) {
+    if (Array.isArray(v)) return { items: v, key: k };
+  }
+  return { items: [], key: null };
+}
+
 async function listArticles(limit = 10) {
   const cap = Math.min(limit, 10); // Zalo docs: max limit = 10
   const variants = [
@@ -176,20 +192,35 @@ async function listArticles(limit = 10) {
   ];
 
   const attempts = [];
+  let bestEmpty = null;
   for (const v of variants) {
     try {
       const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
       const data = await res.json();
-      const articles = data.data?.articles || data.data?.list || [];
-      attempts.push({ variant: v.name, http: res.status, error: data.error, message: data.message || null, returned: articles.length });
-      if (data.error === 0) {
-        return { articles, variant: v.name, attempts };
+      const found = findArticleArray(data.data);
+      const articles = found.items;
+      const total = data.data?.total ?? data.data?.total_count ?? null;
+      attempts.push({
+        variant: v.name,
+        http: res.status,
+        error: data.error,
+        message: data.message || null,
+        returned: articles.length,
+        items_key: found.key,
+        total,
+        data_keys: data.data && typeof data.data === 'object' ? Object.keys(data.data) : null
+      });
+      if (data.error === 0 && articles.length > 0) {
+        return { articles, variant: v.name, items_key: found.key, attempts };
+      }
+      if (data.error === 0 && !bestEmpty) {
+        bestEmpty = { variant: v.name, total };
       }
     } catch (e) {
       attempts.push({ variant: v.name, error: -1, message: e.message });
     }
   }
-  return { articles: [], variant: null, attempts };
+  return { articles: [], variant: bestEmpty?.variant || null, total: bestEmpty?.total ?? null, attempts };
 }
 
 // Xu ly comment cua 1 article — extract de scan + scan-article dung chung.
@@ -255,8 +286,13 @@ async function cmdScan(hours = 24) {
 
   for (const art of articles) {
     if (art.created_date && art.created_date * 1000 < since - 14 * 24 * 3600 * 1000) continue;
+    const artId = art.id || art.article_id || art.media_id || art.token;
+    if (!artId) {
+      report.errors.push({ error: 'article missing id field', keys: Object.keys(art || {}) });
+      continue;
+    }
     report.articles++;
-    await processArticleComments(art.id, since, replied, report);
+    await processArticleComments(artId, since, replied, report);
   }
 
   console.log(JSON.stringify({ success: true, ...report }, null, 2));
