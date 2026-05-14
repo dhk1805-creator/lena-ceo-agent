@@ -416,7 +416,7 @@ const FOLLOWER_TOOLS = [
 async function runTool(name, input) {
   let cmd, args;
   switch(name) {
-    case 'email_send':     cmd='node';args=[`${GTOOL}/gmail-send.js`,input.to,input.subject,input.body,input.cc||',''];break;
+    case 'email_send':     cmd='node';args=[`${GTOOL}/gmail-send.js`,input.to,input.subject,input.body,input.cc||'',''];break;
     case 'email_read':     cmd='node';args=[`${GTOOL}/gmail-read.js`,String(input.hours),String(input.max||20),input.query||''];break;
     case 'email_reply':    cmd='node';args=[`${GTOOL}/gmail-reply.js`,input.message_id,input.body,input.cc||''];break;
     case 'calendar_read':  cmd='node';args=[`${GTOOL}/calendar-read.js`,String(input.days||7)];break;
