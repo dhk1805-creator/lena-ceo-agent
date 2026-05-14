@@ -1,825 +1,1305 @@
 #!/usr/bin/env node
-// ============================================================
-// LÊ NA AI — Zalo OA Bridge · proxy.js
-// 3 tầng user:
-//   VIP     → claude-sonnet-4-5 + full tools
-//   CBCNV   → claude-haiku-4-5-20251001 + task/lịch/HVAC
-//   Follower → claude-haiku-4-5-20251001 + HVAC KB + web search
+// Express proxy + Zalo OA 2-way bridge with TOOL CALLING
+// - Serves /public/* (Zalo domain verification)
+// - Proxies / -> OpenClaw on internal port
+// - Receives Zalo OA webhook → Lê Na (Claude) with tools → replies via Zalo OA API
 //
-// Staff list: parse từ /app/memory/MEMORY.md (1 nguồn duy nhất)
-// Zalo ID:   lưu /root/.openclaw/staff-zalo-ids.json
-// ============================================================
+// RESTORED to commit 8c371bf (last working version before the 14/05 rewrite),
+// with 2 deliberate keepers + 1 minimal addition:
+//   [keeper]   VIP_IDS hardcoded fallback — VIP recognition no longer breaks if
+//              the ZALO_OA_USER_* env vars fail to reach the process.
+//   [keeper]   /env-check endpoint — quick diagnostic for env var delivery.
+//   [addition] handleFollowerMessage — followers/strangers now get a real Lê Na
+//              reply (limited, read-only scope) instead of a canned brush-off.
+// The VIP path and all other behaviour are untouched from 8c371bf.
 
-const express  = require('express');
+const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const path = require('path');
-const fs   = require('fs');
+const fs = require('fs');
 
-// Load env fallback from /app/.env.json (Railway exec may not pass all env vars)
-// Chỉ merge khi process.env CHƯA có key đó VÀ giá trị trong .env.json KHÔNG rỗng
-// → không bao giờ ghi đè biến thật bằng chuỗi rỗng.
-try {
-  const _envJson = JSON.parse(fs.readFileSync("/app/.env.json", "utf-8"));
-  let _loaded = 0, _empty = 0;
-  Object.keys(_envJson).forEach(k => {
-    const v = _envJson[k];
-    if (v && !process.env[k]) { process.env[k] = v; _loaded++; }
-    else if (!v) _empty++;
-  });
-  console.log(`[env] .env.json parsed — ${_loaded} key(s) merged, ${_empty} empty/skipped`);
-} catch(e) { console.log("[env] No .env.json:", e.message); }
-
-const FRONT_PORT    = parseInt(process.env.PORT || '8080', 10);
+const FRONT_PORT = parseInt(process.env.PORT || '8080', 10);
 const OPENCLAW_PORT = parseInt(process.env.OPENCLAW_INTERNAL_PORT || '8090', 10);
-const PUBLIC_DIR    = path.join(__dirname, 'public');
-const GTOOL         = '/app/google-tools';
-const MEMORY_FILE   = '/app/memory/MEMORY.md';
-const SHEET_ID      = process.env.GOOGLE_SHEET_ID || '';
+const PUBLIC_DIR = path.join(__dirname, 'public');
+
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
+const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // Proven working — do NOT change without testing
 
-const MODEL_VIP      = 'claude-sonnet-4-5';           // VIP
-const MODEL_STAFF    = 'claude-haiku-4-5-20251001';   // CBCNV nội bộ
-const MODEL_FOLLOWER = 'claude-haiku-4-5-20251001';   // Follower/khách
-
-// ============================================================
-// === PARSE STAFF FROM MEMORY.MD
-// === Đọc tất cả bảng markdown có cột Email trong MEMORY.md
-// === Mỗi hàng → { id, name, gender, pos, dept, email, phone }
-// ============================================================
-function parseStaffFromMemory() {
-  const staff  = [];
-  const emails = new Set();
-  try {
-    if (!fs.existsSync(MEMORY_FILE)) {
-      console.error(`[memory] File not found: ${MEMORY_FILE}`);
-      return staff;
-    }
-    const content = fs.readFileSync(MEMORY_FILE, 'utf-8');
-    const lines   = content.split('\n');
-
-    // Only parse tables under these dept headings (skip NPP, OEM, Truong bo phan, etc.)
-    const STAFF_DEPTS = ['ban giam doc','phong kinh doanh','pkd','r&d','hcns','hanh chinh nhan su','tckt','tai chinh','qlsx','nha may','quan ly san xuat'];
-    const isStaffDept = (d) => STAFF_DEPTS.some(k => d.toLowerCase().includes(k));
-
-    let dept = '', inT = false;
-    let colCode=-1, colName=-1, colGender=-1, colPos=-1, colEmail=-1, colPhone=-1;
-
-    for (const raw of lines) {
-      const line = raw.trim();
-
-      // Section heading
-      if (line.startsWith('#')) {
-        inT = false;
-        colCode=colName=colGender=colPos=colEmail=colPhone=-1;
-        dept = line.replace(/^#+\s*/, '').trim();
-        continue;
-      }
-
-      // Table header — must have email column
-      if (!inT && line.startsWith('|') && /email/i.test(line)) {
-        if (!isStaffDept(dept)) continue; // skip non-staff tables
-        const cols = line.split('|').map(c => c.trim().toLowerCase());
-        colCode   = cols.findIndex(c => c === 'code' || c === 'id');
-        colName   = cols.findIndex(c => c.includes('ho ten') || c === 'name' || c === 'ten');
-        colGender = cols.findIndex(c => c.includes('gioi tinh') || c === 'gender');
-        colPos    = cols.findIndex(c => c.includes('chuc vu') || c === 'position' || c === 'pos');
-        colEmail  = cols.findIndex(c => c === 'email');
-        colPhone  = cols.findIndex(c => c.includes('sdt') || c.includes('phone'));
-        if (colEmail >= 0 && colName >= 0) inT = true;
-        continue;
-      }
-
-      // Separator row
-      if (inT && line.includes('---')) continue;
-
-      // Data row
-      if (inT && line.startsWith('|')) {
-        const cells = line.split('|').map(c => c.trim());
-        const cell  = (i) => (i >= 0 && i < cells.length) ? cells[i] : '';
-        const email = cell(colEmail).toLowerCase().trim();
-        if (!email.includes('@nsca.vn')) continue;
-        if (emails.has(email)) continue;
-        emails.add(email);
-
-        const name   = cell(colName).trim();
-        if (!name) continue;
-        const gender = cell(colGender).trim();
-        const pos    = cell(colPos).trim();
-        const phone  = cell(colPhone).trim();
-        const id     = cell(colCode).trim() || `AUTO_${staff.length + 1}`;
-
-        // Nickname: Anh/Chị + last name
-        const parts    = name.split(/\s+/);
-        const lastName = parts[parts.length - 1];
-        const isFemale = /^nữ$/i.test(gender) || (/^n/i.test(gender) && !/^nam$/i.test(gender));
-        const nick     = `${isFemale ? 'Chị' : 'Anh'} ${lastName}`;
-
-        staff.push({ id, name, nick, gender, pos, dept, email, phone });
-        continue;
-      }
-
-      // End of table
-      if (inT && line !== '' && !line.startsWith('|')) {
-        inT = false;
-        colCode=colName=colGender=colPos=colEmail=colPhone=-1;
-      }
-    }
-  } catch (e) {
-    console.error(`[memory] Parse error: ${e.message}`);
-  }
-  console.log(`[memory] Loaded ${staff.length} CBCNV from MEMORY.md`);
-  if (staff.length > 0) {
-    const depts = [...new Set(staff.map(s => s.dept))];
-    console.log(`[memory] Depts: ${depts.join(', ')}`);
-  }
-  return staff;
-}
-// Load once at startup + build email→staff map
-let NSCA_STAFF = parseStaffFromMemory();
-const STAFF_BY_EMAIL = {};
-NSCA_STAFF.forEach(s => { STAFF_BY_EMAIL[s.email] = s; });
-
-// Reload every 10 min in case MEMORY.md is updated
-setInterval(() => {
-  NSCA_STAFF = parseStaffFromMemory();
-  NSCA_STAFF.forEach(s => { STAFF_BY_EMAIL[s.email] = s; });
-}, 10 * 60 * 1000);
-
-// ============================================================
-// === ZALO ID FILE  (/root/.openclaw/staff-zalo-ids.json)
-// === { "zaloId": "email@nsca.vn" }
-// ============================================================
-const ZALO_ID_FILE = '/root/.openclaw/staff-zalo-ids.json';
-
-function loadZaloIdMap() {
-  try { if (fs.existsSync(ZALO_ID_FILE)) return JSON.parse(fs.readFileSync(ZALO_ID_FILE, 'utf-8')); } catch(e) {}
-  return {};
-}
-function saveZaloIdMap(map) {
-  try { fs.writeFileSync(ZALO_ID_FILE, JSON.stringify(map, null, 2)); } catch(e) {}
-}
-function lookupStaffByZaloId(zaloId) {
-  const map = loadZaloIdMap();
-  const email = map[zaloId];
-  return email ? (STAFF_BY_EMAIL[email.toLowerCase()] || null) : null;
-}
-function registerStaffZaloId(zaloId, email) {
-  const map = loadZaloIdMap();
-  map[zaloId] = email.toLowerCase();
-  saveZaloIdMap(map);
-  console.log(`[staff-reg] ${zaloId} → ${email}`);
-}
-function lookupStaffByInput(input) {
-  const q = input.toLowerCase().trim();
-  // Match email first
-  if (q.includes('@nsca.vn')) {
-    const em = q.match(/[\w.]+@nsca\.vn/)?.[0];
-    if (em && STAFF_BY_EMAIL[em]) return STAFF_BY_EMAIL[em];
-  }
-  // Match name / nick
-  return NSCA_STAFF.find(s =>
-    s.name.toLowerCase().includes(q) ||
-    s.nick.toLowerCase().includes(q) ||
-    s.email.split('@')[0] === q.split('@')[0]
-  ) || null;
-}
-
-// ============================================================
-// === VIP CONFIG
-// === Zalo user ID của VIP CHỈ là định danh (KHÔNG phải secret) →
-// === hardcode làm fallback an toàn khi env var không tới được tiến trình.
-// === Thứ tự ưu tiên: process.env → .env.json (đã merge ở đầu file) → hardcode.
-// === Khi đã sửa xong env trên Railway, 3 dòng env vẫn được ưu tiên dùng trước.
-// ============================================================
-const VIP_IDS = {
-  SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH || '686983494944296385',
-  CHI_HONG : process.env.ZALO_OA_USER_CHI_HONG  || '9076345556107321186',
-  ANH_NGOC : process.env.ZALO_OA_USER_ANH_NGOC  || '219363256978038684',
-};
-const VIP_USERS = {
-  [VIP_IDS.SEP_KHANH]: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO' },
-  [VIP_IDS.CHI_HONG] : { name: 'chị Hồng',  alias: 'chi-hong',  role: 'GĐ Pháp lý + TCKT' },
-  [VIP_IDS.ANH_NGOC] : { name: 'anh Ngọc',  alias: 'anh-ngoc',  role: 'TP Kinh Doanh' },
-};
-console.log(`[vip] ${Object.keys(VIP_USERS).length} VIP — SEP_KHANH src: ${process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'HARDCODED-FALLBACK'} | CHI_HONG src: ${process.env.ZALO_OA_USER_CHI_HONG ? 'env' : 'HARDCODED-FALLBACK'} | ANH_NGOC src: ${process.env.ZALO_OA_USER_ANH_NGOC ? 'env' : 'HARDCODED-FALLBACK'}`);
-
-// ============================================================
-// === ZALO OA TOKEN
-// ============================================================
+// === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+
 function getOAToken() {
-  try { if (fs.existsSync(TOKEN_FILE)) { const d = JSON.parse(fs.readFileSync(TOKEN_FILE,'utf-8')); if (d.access_token) return d.access_token; } } catch(e) {}
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+      if (data.access_token) return data.access_token;
+    }
+  } catch (e) {}
   return process.env.ZALO_OA_ACCESS_TOKEN;
 }
+
 function getRefreshToken() {
-  try { if (fs.existsSync(TOKEN_FILE)) { const d = JSON.parse(fs.readFileSync(TOKEN_FILE,'utf-8')); if (d.refresh_token) return d.refresh_token; } } catch(e) {}
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+      if (data.refresh_token) return data.refresh_token;
+    }
+  } catch (e) {}
   return process.env.ZALO_OA_REFRESH_TOKEN;
 }
+
 async function refreshOAToken() {
-  const rt = getRefreshToken(), appId = process.env.ZALO_OA_APP_ID, secret = process.env.ZALO_OA_SECRET;
-  if (!rt || !appId || !secret) { console.error('[token] Missing credentials'); return false; }
+  const refreshToken = getRefreshToken();
+  const appId = process.env.ZALO_OA_APP_ID;
+  const secret = process.env.ZALO_OA_SECRET;
+  if (!refreshToken || !appId || !secret) {
+    console.error('[token] Missing credentials for refresh');
+    return false;
+  }
   try {
-    const res  = await fetch('https://oauth.zaloapp.com/v4/oa/access_token', { method:'POST', headers:{'secret_key':secret,'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({refresh_token:rt,app_id:appId,grant_type:'refresh_token'}).toString() });
+    const res = await fetch('https://oauth.zaloapp.com/v4/oa/access_token', {
+      method: 'POST',
+      headers: { 'secret_key': secret, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ refresh_token: refreshToken, app_id: appId, grant_type: 'refresh_token' }).toString()
+    });
     const data = await res.json();
     if (data.access_token) {
-      fs.writeFileSync(TOKEN_FILE, JSON.stringify({access_token:data.access_token,refresh_token:data.refresh_token,refreshed_at:new Date().toISOString(),expires_in:data.expires_in},null,2));
-      console.log(`[token] Refreshed at ${new Date().toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}`);
+      fs.writeFileSync(TOKEN_FILE, JSON.stringify({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        refreshed_at: new Date().toISOString(),
+        expires_in: data.expires_in
+      }, null, 2));
+      console.log(`[token] Refreshed OK at ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Next in 20h.`);
       return true;
     }
-    console.error('[token] Failed:', JSON.stringify(data)); return false;
-  } catch(e) { console.error('[token]', e.message); return false; }
+    console.error('[token] Refresh failed:', JSON.stringify(data));
+    return false;
+  } catch (e) {
+    console.error('[token] Refresh error:', e.message);
+    return false;
+  }
 }
 
-// ============================================================
-// === SESSION
-// ============================================================
+// Zalo user ID của VIP chỉ là ĐỊNH DANH (không phải secret) → hardcode làm fallback
+// để VIP luôn được nhận diện kể cả khi env var ZALO_OA_USER_* không tới được tiến trình.
+// Thứ tự ưu tiên: process.env (Railway) → giá trị hardcode bên dưới.
+const VIP_IDS = {
+  SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH || '686983494944296385',
+  CHI_HONG:  process.env.ZALO_OA_USER_CHI_HONG  || '9076345556107321186',
+  ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  || '219363256978038684',
+};
+
+const VIP_USERS = {
+  [VIP_IDS.SEP_KHANH]: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO', model: CLAUDE_MODEL_VIP },
+  [VIP_IDS.CHI_HONG]:  { name: 'chị Hồng', alias: 'chi-hong', role: 'GĐ Pháp lý + TCKT', model: CLAUDE_MODEL_VIP },
+  [VIP_IDS.ANH_NGOC]:  { name: 'anh Ngọc', alias: 'anh-ngoc', role: 'TP Kinh Doanh', model: CLAUDE_MODEL_VIP },
+};
+
+// Session memory per VIP (last 10 messages)
 const SESSION_DIR = '/root/.openclaw/zalo-oa-sessions';
-try { fs.mkdirSync(SESSION_DIR, {recursive:true}); } catch(e) {}
-function loadSession(key) {
-  try { const f=path.join(SESSION_DIR,`${key}.json`); if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f,'utf-8')); } catch(e) {}
+try { fs.mkdirSync(SESSION_DIR, { recursive: true }); } catch (e) {}
+
+function loadSession(userId) {
+  const file = path.join(SESSION_DIR, `${userId}.json`);
+  if (fs.existsSync(file)) {
+    try { return JSON.parse(fs.readFileSync(file, 'utf-8')); } catch (e) {}
+  }
   return [];
 }
-function saveSession(key, msgs) {
-  try { fs.writeFileSync(path.join(SESSION_DIR,`${key}.json`), JSON.stringify(msgs.slice(-20),null,2)); } catch(e) {}
+
+function saveSession(userId, messages) {
+  const file = path.join(SESSION_DIR, `${userId}.json`);
+  // Keep last 20 messages only
+  const trimmed = messages.slice(-20);
+  try { fs.writeFileSync(file, JSON.stringify(trimmed, null, 2)); } catch (e) {}
 }
-function getSessionAgeMin(key) {
-  try { const f=path.join(SESSION_DIR,`${key}.json`); if (fs.existsSync(f)) return Math.floor((Date.now()-fs.statSync(f).mtime.getTime())/60000); } catch(e) {}
+
+// Minutes since last message in this user's session (Infinity if no prior session).
+// Reads mtime of the session file — saveSession updates it on every turn.
+function getSessionAgeMin(userId) {
+  const file = path.join(SESSION_DIR, `${userId}.json`);
+  try {
+    if (fs.existsSync(file)) {
+      const ageMs = Date.now() - fs.statSync(file).mtime.getTime();
+      return Math.floor(ageMs / 60000);
+    }
+  } catch (e) {}
   return Infinity;
 }
 
-// ============================================================
-// === FOLLOWER PERSISTENT MEMORY (Google Sheet "Follower Memory")
-// ============================================================
-const FOLLOWER_SHEET = "'Follower Memory'";
-async function loadFollowerProfile(userId) {
+// Non-VIP greeting throttle — only send canned "Em là Lê Na..." once per 6h.
+// File mtime tracks last greet; subsequent messages within window → silent.
+const NONVIP_GREET_DIR = '/root/.openclaw/zalo-oa-nonvip-greet';
+try { fs.mkdirSync(NONVIP_GREET_DIR, { recursive: true }); } catch (e) {}
+
+function getNonVipGreetAgeMin(userId) {
+  const file = path.join(NONVIP_GREET_DIR, `${userId}.touch`);
   try {
-    const {stdout} = await execFileAsync('node',[`${GTOOL}/sheets-read.js`,SHEET_ID,`${FOLLOWER_SHEET}!A:H`],{encoding:'utf-8',timeout:15000});
-    for (const line of stdout.trim().split('\n').filter(Boolean)) {
-      try { const r=JSON.parse(line); if (Array.isArray(r)&&r[0]===userId) return {userId:r[0],name:r[1]||null,firstSeen:r[2],lastSeen:r[3],language:r[4]||'vi',topics:r[5]||'',lastMessage:r[6]||''}; } catch(e) {}
+    if (fs.existsSync(file)) {
+      const ageMs = Date.now() - fs.statSync(file).mtime.getTime();
+      return Math.floor(ageMs / 60000);
     }
-  } catch(e) { console.log(`[fmem:load] ${e.message}`); }
-  return null;
-}
-async function saveFollowerProfile(userId, name, lang, topic, lastMsg) {
-  const now = new Date().toISOString();
-  try {
-    const {stdout} = await execFileAsync('node',[`${GTOOL}/sheets-read.js`,SHEET_ID,`${FOLLOWER_SHEET}!A:A`],{encoding:'utf-8',timeout:15000});
-    const lines = stdout.trim().split('\n').filter(Boolean);
-    let row = -1;
-    for (let i=0;i<lines.length;i++) { try { const c=JSON.parse(lines[i]); if ((Array.isArray(c)?c[0]:c)===userId){row=i+1;break;} } catch(e) {} }
-    if (row>0) await execFileAsync('node',[`${GTOOL}/sheets-write.js`,SHEET_ID,`${FOLLOWER_SHEET}!D${row}:G${row}`,JSON.stringify([[now,lang,topic.substring(0,100),lastMsg.substring(0,100)]])],{encoding:'utf-8',timeout:15000});
-    else        await execFileAsync('node',[`${GTOOL}/sheets-append.js`,SHEET_ID,`${FOLLOWER_SHEET}!A:H`,JSON.stringify([[userId,name,now,now,lang,topic.substring(0,100),lastMsg.substring(0,100),'']])],{encoding:'utf-8',timeout:15000});
-  } catch(e) { console.log(`[fmem:save] ${e.message}`); }
+  } catch (e) {}
+  return Infinity;
 }
 
-// ============================================================
-// === HVAC KNOWLEDGE BASE — embedded (KB-1.0 · 2026-05-13)
-// ============================================================
-// ============================================================
-// === LENA KB — đọc từ /app/memory/LENA_KB.md
-// === Cập nhật file trên GitHub → Railway redeploy → tự reload
-// ============================================================
-const KB_FILE = '/app/memory/LENA_KB.md';
+function markNonVipGreeted(userId) {
+  const file = path.join(NONVIP_GREET_DIR, `${userId}.touch`);
+  try { fs.writeFileSync(file, ''); } catch (e) {}
+}
 
-function loadKB() {
-  try {
-    if (fs.existsSync(KB_FILE)) {
-      const kb = fs.readFileSync(KB_FILE, 'utf-8');
-      console.log(`[kb] Loaded ${kb.length} chars from ${KB_FILE}`);
-      return kb;
+// === TOOLS — Lê Na có thể gọi qua OA ===
+const TOOLS = [
+  {
+    name: 'email_send',
+    description: 'Gửi email. Dùng để gửi mail cho nhân viên/đối tác/khách hàng.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Email người nhận (vd: ducdd@nsca.vn). Nhiều người: "a@x.vn,b@x.vn"' },
+        subject: { type: 'string', description: 'Tiêu đề email' },
+        body: { type: 'string', description: 'Nội dung HTML hoặc plain text' },
+        cc: { type: 'string', description: 'CC (optional)' }
+      },
+      required: ['to', 'subject', 'body']
     }
-    console.error(`[kb] File not found: ${KB_FILE}`);
-  } catch(e) { console.error(`[kb] Load error: ${e.message}`); }
-  return '## KB not loaded — file missing';
-}
-
-let LENA_KB = loadKB();
-// Reload mỗi 10 phút (sync với MEMORY.md reload)
-setInterval(() => { LENA_KB = loadKB(); }, 10 * 60 * 1000);
-
-
-// ============================================================
-// === TOOLS
-// ============================================================
-const VIP_TOOLS = [
-  {name:'email_send',description:'Gửi email.',input_schema:{type:'object',properties:{to:{type:'string'},subject:{type:'string'},body:{type:'string'},cc:{type:'string'}},required:['to','subject','body']}},
-  {name:'email_read',description:'Đọc email.',input_schema:{type:'object',properties:{hours:{type:'number'},max:{type:'number'},query:{type:'string'}},required:['hours']}},
-  {name:'email_reply',description:'Reply email.',input_schema:{type:'object',properties:{message_id:{type:'string'},body:{type:'string'},cc:{type:'string'}},required:['message_id','body']}},
-  {name:'calendar_read',description:'Đọc lịch.',input_schema:{type:'object',properties:{days:{type:'number'}}}},
-  {name:'calendar_create',description:'Tạo lịch.',input_schema:{type:'object',properties:{title:{type:'string'},start:{type:'string'},end:{type:'string'},description:{type:'string'},location:{type:'string'}},required:['title','start','end']}},
-  {name:'sheets_read',description:'Đọc Sheet.',input_schema:{type:'object',properties:{range:{type:'string'}},required:['range']}},
-  {name:'sheets_write',description:'Ghi đè Sheet.',input_schema:{type:'object',properties:{range:{type:'string'},values:{type:'string'}},required:['range','values']}},
-  {name:'sheets_append',description:'Thêm dòng Sheet.',input_schema:{type:'object',properties:{range:{type:'string'},values:{type:'string'}},required:['range','values']}},
-  {name:'hvac_lookup',description:'Tra HVAC KB từ Sheet gốc.',input_schema:{type:'object',properties:{keyword:{type:'string'},range:{type:'string'}}}},
-  {name:'memory_search',description:'Tra long-term memory.',input_schema:{type:'object',properties:{keyword:{type:'string'},file:{type:'string'}},required:['keyword']}},
-  {name:'memory_update',description:'Lưu kiến thức mới.',input_schema:{type:'object',properties:{topic:{type:'string'},content:{type:'string'},section:{type:'string'}},required:['topic','content']}},
-  {name:'gdoc_create',description:'Tạo Google Doc.',input_schema:{type:'object',properties:{title:{type:'string'},content:{type:'string'}},required:['title','content']}},
-  {name:'task_add',description:'Tạo task.',input_schema:{type:'object',properties:{task:{type:'string'},assignee:{type:'string'},deadline:{type:'string'},source:{type:'string'}},required:['task','assignee','deadline']}},
-  {name:'task_overdue',description:'Task quá hạn.',input_schema:{type:'object',properties:{}}},
-  {name:'task_status',description:'Tổng hợp task.',input_schema:{type:'object',properties:{}}},
-  {name:'task_update',description:'Cập nhật task.',input_schema:{type:'object',properties:{row:{type:'number'},status:{type:'string'}},required:['row','status']}},
-  {name:'zalo_oa_send_to_vip',description:'Nhắn VIP qua OA.',input_schema:{type:'object',properties:{target:{type:'string',enum:['sep-khanh','chi-hong','anh-ngoc']},message:{type:'string'}},required:['target','message']}},
-  {name:'zalo_oa_history',description:'Lịch sử Zalo OA.',input_schema:{type:'object',properties:{target:{type:'string',enum:['all','sep-khanh','chi-hong','anh-ngoc']},hours:{type:'number'}}}},
-  {name:'github_create_issue',description:'Tạo GitHub Issue.',input_schema:{type:'object',properties:{title:{type:'string'},body:{type:'string'},requester:{type:'string'}},required:['title','body','requester']}},
-  {name:'kpi_update',description:'Cập nhật KPI.',input_schema:{type:'object',properties:{}}},
-  {name:'zalo_oa_article',description:'Đăng bài OA.',input_schema:{type:'object',properties:{action:{type:'string',default:'create'},title:{type:'string'},body:{type:'string'},cover:{type:'string'}},required:['title','body']}},
-  {name:'image_overlay',description:'Ghép logo ảnh.',input_schema:{type:'object',properties:{input_image:{type:'string'},text:{type:'string'},output_path:{type:'string'},layout:{type:'string'}},required:['input_image']}},
-  {name:'gemini_write',description:'Gemini soạn nội dung.',input_schema:{type:'object',properties:{prompt:{type:'string'},max_tokens:{type:'number'}},required:['prompt']}},
-  {name:'drive_list',description:'Liệt kê Drive.',input_schema:{type:'object',properties:{folder_id:{type:'string'},query:{type:'string'},max:{type:'number'}}}},
-  {name:'drive_download',description:'Tải Drive.',input_schema:{type:'object',properties:{file_id:{type:'string'},output_path:{type:'string'}},required:['file_id']}},
-  {name:'web_search',description:'Tìm web.',input_schema:{type:'object',properties:{query:{type:'string'},max_results:{type:'number'}},required:['query']}},
-  {name:'web_read',description:'Đọc trang web.',input_schema:{type:'object',properties:{url:{type:'string'}},required:['url']}},
-  {name:'auto_learn',description:'Extract insights session.',input_schema:{type:'object',properties:{target:{type:'string'},hours:{type:'number'}}}},
-  {name:'zalo_oa_comment',description:'Comment OA.',input_schema:{type:'object',properties:{action:{type:'string',enum:['list','reply','scan','scan-article']},article_id:{type:'string'},comment_id:{type:'string'},message:{type:'string'},hours:{type:'number'}},required:['action']}},
-];
-
-const STAFF_TOOLS = [
-  {name:'web_search',description:'Tìm kiếm kỹ thuật, tiêu chuẩn.',input_schema:{type:'object',properties:{query:{type:'string'},max_results:{type:'number'}},required:['query']}},
-  {name:'web_read',description:'Đọc trang web.',input_schema:{type:'object',properties:{url:{type:'string'}},required:['url']}},
-  {name:'memory_search',description:'Tra HVAC/STARDUCT knowledge.',input_schema:{type:'object',properties:{keyword:{type:'string'},file:{type:'string'}},required:['keyword']}},
-  {name:'task_status',description:'Xem trạng thái task.',input_schema:{type:'object',properties:{}}},
-  {name:'task_overdue',description:'Task quá hạn.',input_schema:{type:'object',properties:{}}},
-  {name:'calendar_read',description:'Xem lịch họp.',input_schema:{type:'object',properties:{days:{type:'number'}}}},
-  {name:'sheets_read',description:'Tra cứu thông tin sản phẩm/quy trình.',input_schema:{type:'object',properties:{range:{type:'string'}},required:['range']}},
-];
-
-const FOLLOWER_TOOLS = [
-  {name:'web_search',description:'Search web for HVAC standards, news.',input_schema:{type:'object',properties:{query:{type:'string'},max_results:{type:'number'}},required:['query']}},
-  {name:'web_read',description:'Read a web page.',input_schema:{type:'object',properties:{url:{type:'string'}},required:['url']}},
-  {name:'memory_search',description:'Search Lê Na HVAC/STARDUCT memory.',input_schema:{type:'object',properties:{keyword:{type:'string'},file:{type:'string'}},required:['keyword']}},
-];
-
-// ============================================================
-// === TOOL RUNNER
-// ============================================================
-async function runTool(name, input) {
-  let cmd, args;
-  switch(name) {
-    case 'email_send':     cmd='node';args=[`${GTOOL}/gmail-send.js`,input.to,input.subject,input.body,input.cc||'',''];break;
-    case 'email_read':     cmd='node';args=[`${GTOOL}/gmail-read.js`,String(input.hours),String(input.max||20),input.query||''];break;
-    case 'email_reply':    cmd='node';args=[`${GTOOL}/gmail-reply.js`,input.message_id,input.body,input.cc||''];break;
-    case 'calendar_read':  cmd='node';args=[`${GTOOL}/calendar-read.js`,String(input.days||7)];break;
-    case 'calendar_create':cmd='node';args=[`${GTOOL}/calendar-create.js`,input.title,input.start,input.end,input.description||'',input.location||''];break;
-    case 'sheets_read':    cmd='node';args=[`${GTOOL}/sheets-read.js`,SHEET_ID,input.range];break;
-    case 'sheets_write':   cmd='node';args=[`${GTOOL}/sheets-write.js`,SHEET_ID,input.range,input.values];break;
-    case 'sheets_append':  cmd='node';args=[`${GTOOL}/sheets-append.js`,SHEET_ID,input.range,input.values];break;
-    case 'hvac_lookup':    cmd='node';args=[`${GTOOL}/hvac-lookup.js`,input.keyword||'',input.range||'A:Z'];break;
-    case 'memory_search':  cmd='node';args=[`${GTOOL}/memory-search.js`,input.keyword||'',input.file||''];break;
-    case 'memory_update':  cmd='node';args=[`${GTOOL}/memory-update.js`,input.topic||'',input.content||'',input.section||''];break;
-    case 'gdoc_create':    cmd='node';args=[`${GTOOL}/gdoc-create.js`,input.title,input.content];break;
-    case 'task_add':       cmd='node';args=[`${GTOOL}/task-tracker.js`,'add',input.task,input.assignee,input.deadline,input.source||''];break;
-    case 'task_overdue':   cmd='node';args=[`${GTOOL}/task-tracker.js`,'overdue'];break;
-    case 'task_status':    cmd='node';args=[`${GTOOL}/task-tracker.js`,'status'];break;
-    case 'task_update':    cmd='node';args=[`${GTOOL}/task-tracker.js`,'update',String(input.row),input.status];break;
-    case 'zalo_oa_send_to_vip':cmd='node';args=[`${GTOOL}/zalo-oa-send.js`,input.target,input.message];break;
-    case 'zalo_oa_history':cmd='node';args=[`${GTOOL}/zalo-oa-history.js`,input.target||'all',String(input.hours||24)];break;
-    case 'kpi_update':     cmd='node';args=[`${GTOOL}/kpi-update.js`];break;
-    case 'zalo_oa_article':cmd='node';args=[`${GTOOL}/zalo-oa-article.js`,input.action||'create',input.title||'',input.body||'',input.cover||''];break;
-    case 'github_create_issue':cmd='node';args=[`${GTOOL}/github-issue.js`,input.title,input.body,input.requester||''];break;
-    case 'image_overlay':  cmd='node';args=[`${GTOOL}/image-overlay.js`,input.input_image,input.text||'',input.output_path||`/tmp/cover-${Date.now()}.png`,input.layout||'hero'];break;
-    case 'gemini_write':   cmd='node';args=[`${GTOOL}/gemini-write.js`,input.prompt,String(input.max_tokens||600)];break;
-    case 'drive_list':     cmd='node';args=[`${GTOOL}/drive-list.js`,input.folder_id||'1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR',input.query||'',String(input.max||30)];break;
-    case 'drive_download': cmd='node';args=[`${GTOOL}/drive-download.js`,input.file_id,input.output_path||''];break;
-    case 'web_search':     cmd='node';args=[`${GTOOL}/web-search.js`,input.query||'',String(input.max_results||10)];break;
-    case 'web_read':       cmd='node';args=[`${GTOOL}/web-read.js`,input.url||''];break;
-    case 'auto_learn':     cmd='node';args=[`${GTOOL}/auto-learn.js`,input.target||'all',String(input.hours||24)];break;
-    case 'zalo_oa_comment':{
-      const a=input.action||'scan';
-      if(a==='list')         {cmd='node';args=[`${GTOOL}/zalo-oa-comment.js`,'list',input.article_id||'','0','20'];}
-      else if(a==='reply')   {cmd='node';args=[`${GTOOL}/zalo-oa-comment.js`,'reply',input.comment_id||'',input.message||'',input.article_id||''];}
-      else if(a==='scan-article'){cmd='node';args=[`${GTOOL}/zalo-oa-comment.js`,'scan-article',input.article_id||'',String(input.hours||720)];}
-      else                   {cmd='node';args=[`${GTOOL}/zalo-oa-comment.js`,'scan',String(input.hours||24)];}
-      break;
+  },
+  {
+    name: 'email_read',
+    description: 'Đọc email gần đây với filter. Dùng để check inbox, tìm email cụ thể.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        hours: { type: 'number', description: 'Số giờ ngược lại (vd: 24, 168)' },
+        max: { type: 'number', description: 'Số email tối đa (default 20)' },
+        query: { type: 'string', description: 'Filter Gmail (vd: "from:ductm@nsca.vn", "subject:bao cao")' }
+      },
+      required: ['hours']
     }
-    default: return {error:`Unknown tool: ${name}`};
-  }
-  try {
-    const {stdout,stderr}=await execFileAsync(cmd,args,{encoding:'utf-8',timeout:60000});
-    if(stderr) console.log(`[tool:${name}] ${stderr.trim()}`);
-    const raw=stdout||'';
-    return {output:raw.length>3000?raw.substring(0,3000)+'\n⚠️[Truncated]':raw};
-  } catch(e) {
-    if(e.stderr) console.log(`[tool:${name}] ${e.stderr.trim()}`);
-    return {error:(e.stderr||e.stdout||e.message||'unknown').substring(0,1000)};
-  }
-}
-
-// ============================================================
-// === AGENT LOOP
-// ============================================================
-async function runAgentLoop(model, systemPrompt, tools, session, maxIter=8) {
-  let reply='', iters=0;
-  const maxTok = (tools===VIP_TOOLS)?2000:500;
-  while(iters++<maxIter) {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01','Content-Type':'application/json'},
-      body:JSON.stringify({model,max_tokens:maxTok,system:systemPrompt,tools,messages:session})
-    });
-    if(!res.ok) throw new Error(`Claude ${res.status}: ${(await res.text()).substring(0,200)}`);
-    const data=await res.json();
-    if(data.stop_reason==='tool_use') {
-      session.push({role:'assistant',content:data.content});
-      const results=[];
-      for(const blk of data.content) {
-        if(blk.type==='tool_use') {
-          console.log(`[tool] ${blk.name}(${JSON.stringify(blk.input).substring(0,60)})`);
-          results.push({type:'tool_result',tool_use_id:blk.id,content:JSON.stringify(await runTool(blk.name,blk.input))});
-        }
+  },
+  {
+    name: 'calendar_read',
+    description: 'Đọc lịch hẹn sắp tới',
+    input_schema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Số ngày phía trước (default 7)' }
       }
-      session.push({role:'user',content:results});
-    } else {
-      reply=data.content?.find(c=>c.type==='text')?.text||'';
-      session.push({role:'assistant',content:data.content});
-      break;
+    }
+  },
+  {
+    name: 'calendar_create',
+    description: 'Tạo lịch hẹn mới (sau khi VIP đồng ý)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        start: { type: 'string', description: 'ISO 8601: 2026-05-20T14:00:00+07:00' },
+        end: { type: 'string', description: 'ISO 8601' },
+        description: { type: 'string' },
+        location: { type: 'string' }
+      },
+      required: ['title', 'start', 'end']
+    }
+  },
+  {
+    name: 'sheets_read',
+    description: 'Đọc Google Sheet KPI/NPP/báo cáo',
+    input_schema: {
+      type: 'object',
+      properties: {
+        range: { type: 'string', description: 'Vd: "KPI Tracker!A1:Z50"' }
+      },
+      required: ['range']
+    }
+  },
+  {
+    name: 'sheets_write',
+    description: 'GHI ĐÈ data vào Google Sheet (overwrite). CHỈ dùng khi cần update ô cụ thể.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        range: { type: 'string' },
+        values: { type: 'string', description: 'JSON 2D array: [["col1","col2"]]' }
+      },
+      required: ['range', 'values']
+    }
+  },
+  {
+    name: 'sheets_append',
+    description: 'THÊM DÒNG MỚI vào cuối Google Sheet (không ghi đè data cũ). Dùng cho Report Tracker, Weekly Performance, Task Tracker, NPP Orders.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        range: { type: 'string', description: 'Vd: "Report Tracker!A:F" hoặc "Weekly Performance!A:E"' },
+        values: { type: 'string', description: 'JSON 2D array: [["col1","col2",...]]' }
+      },
+      required: ['range', 'values']
+    }
+  },
+  {
+    name: 'hvac_lookup',
+    description: 'Tra cứu tài liệu HVAC (tiêu chuẩn, thuật ngữ, kiến thức kỹ thuật) từ knowledge base do Sếp Khánh cung cấp. Dùng khi VIP hỏi về HVAC, điều hòa, thông gió, chiller, EER/COP, lưu lượng gió, áp suất, v.v.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        keyword: { type: 'string', description: 'Từ khóa tra cứu, vd: "EER", "chiller", "Btu/h". Để trống = đọc 50 dòng đầu.' },
+        range: { type: 'string', description: 'Range A1, vd: "A:Z" hoặc "Tieu Chuan!A:F". Default "A:Z" (tab đầu tiên).' }
+      }
+    }
+  },
+  {
+    name: 'memory_search',
+    description: 'Tra cứu kiến thức trong long-term memory (cả baked-in /app/workspace/memory + learned overlay /root/.openclaw/lena-learned). BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật (bài OA, post FB, email khách) — đặc biệt khi nhắc tới tiêu chuẩn (UL, EN, AHRI, AMCA, ASHRAE, ISO, QCVN). File "hvac-standards" chứa spec sản phẩm; "hvac-knowledge" chứa công thức + thuật ngữ.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        keyword: { type: 'string', description: 'Từ khóa tra cứu (vd: "fire damper", "VAV", "ASHRAE 62.1", "EI 180")' },
+        file: { type: 'string', description: 'Tên file giới hạn (optional, vd: "hvac-standards", "hvac-knowledge", "brand-guide"). Để trống = quét tất cả.' }
+      },
+      required: ['keyword']
+    }
+  },
+  {
+    name: 'memory_update',
+    description: 'Lưu kiến thức mới Lê Na học được vào persistent volume (ghi vào /root/.openclaw/lena-learned/<topic>.md — overlay không ghi đè memory baked-in). Dùng khi: VIP dạy thêm 1 fact mới, Lê Na phát hiện info cần nhớ cho lần sau (vd: tiêu chuẩn mới, đối thủ mới, brand fact). KHÔNG dùng để log task/báo cáo — dùng sheets_append.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'Tên topic (kebab-case, vd: "hvac-standards", "competitor-intel", "customer-feedback"). Cùng topic = append vào cùng file.' },
+        content: { type: 'string', description: 'Nội dung markdown muốn lưu (vd: "EN 16798-3:2017 — ventilation in non-residential buildings, thay thế EN 13779")' },
+        section: { type: 'string', description: 'Heading phụ để gom (optional, vd: "Cập nhật từ Sếp Khánh 13/5/2026"). Để trống = auto timestamp.' }
+      },
+      required: ['topic', 'content']
+    }
+  },
+  {
+    name: 'gdoc_create',
+    description: 'Tạo Google Doc (cho báo cáo dài). Trả về link Doc.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        content: { type: 'string' }
+      },
+      required: ['title', 'content']
+    }
+  },
+  {
+    name: 'task_add',
+    description: 'Tạo task/công việc mới vào Task Tracker. Dùng khi VIP giao việc cho ai đó.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task: { type: 'string', description: 'Mô tả công việc' },
+        assignee: { type: 'string', description: 'Email người nhận (vd: ducdd@nsca.vn)' },
+        deadline: { type: 'string', description: 'Hạn hoàn thành YYYY-MM-DD' },
+        source: { type: 'string', description: 'Nguồn giao (vd: "Sếp Khánh qua Zalo", "Họp giao ban")' }
+      },
+      required: ['task', 'assignee', 'deadline']
+    }
+  },
+  {
+    name: 'task_overdue',
+    description: 'Xem danh sách task quá hạn chưa hoàn thành.',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'task_status',
+    description: 'Tổng hợp trạng thái tất cả task (theo người, theo status).',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'zalo_oa_send_to_vip',
+    description: 'Gửi TIN NHẮN cá nhân cho VIP (sep-khanh, chi-hong, anh-ngoc). CHỈ dùng để nhắn tin riêng. KHÔNG dùng để đăng bài — dùng zalo_oa_article thay thế.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', enum: ['sep-khanh', 'chi-hong', 'anh-ngoc'] },
+        message: { type: 'string' }
+      },
+      required: ['target', 'message']
+    }
+  },
+  {
+    name: 'github_create_issue',
+    description: 'Tạo GitHub Issue để yêu cầu sửa code/cron/config. CHỈ dùng khi Sếp Khánh yêu cầu thay đổi hệ thống (sửa cron job, thêm tính năng, fix bug). KHÔNG tự ý tạo issue.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Tiêu đề ngắn (vd: "Sửa cron báo cáo PKD chỉ lấy từ anh Ngọc")' },
+        body: { type: 'string', description: 'Mô tả chi tiết: cần sửa gì, tại sao, file/cron nào liên quan' },
+        requester: { type: 'string', description: 'Người yêu cầu (vd: "Sếp Khánh")' }
+      },
+      required: ['title', 'body', 'requester']
+    }
+  },
+  {
+    name: 'zalo_oa_history',
+    description: 'Đọc lịch sử tin nhắn Zalo OA từ VIP. Dùng khi Sếp hỏi "chị Hồng/anh Ngọc nhắn gì?"',
+    input_schema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', description: 'VIP alias: sep-khanh, chi-hong, anh-ngoc, hoặc "all"', enum: ['all', 'sep-khanh', 'chi-hong', 'anh-ngoc'] },
+        hours: { type: 'number', description: 'Số giờ ngược lại (default 24)' }
+      }
+    }
+  },
+  {
+    name: 'email_reply',
+    description: 'Reply vào thread email đang có. Dùng khi cần trả lời email cụ thể.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        message_id: { type: 'string', description: 'Message ID của email cần reply (lấy từ email_read)' },
+        body: { type: 'string', description: 'Nội dung reply (HTML hoặc plain text)' },
+        cc: { type: 'string', description: 'CC thêm (optional)' }
+      },
+      required: ['message_id', 'body']
+    }
+  },
+  {
+    name: 'kpi_update',
+    description: 'Cập nhật KPI Tracker tự động từ data các sheet khác. Chạy khi Sếp yêu cầu hoặc tự động T7 22h.',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'zalo_oa_article',
+    description: 'ĐĂNG BÀI VIẾT lên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → dùng tool NÀY. KHÔNG dùng zalo_oa_send_to_vip.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'create hoặc list', default: 'create' },
+        title: { type: 'string', description: 'Tiêu đề bài viết' },
+        body: { type: 'string', description: 'Nội dung bài viết (plain text, tự convert HTML)' },
+        cover: { type: 'string', description: 'URL ảnh bìa hoặc local path (VD: ảnh VIP gửi qua Zalo)' }
+      },
+      required: ['title', 'body']
+    }
+  },
+  {
+    name: 'task_update',
+    description: 'Cập nhật trạng thái task (Done/Đang làm/Hủy). Dùng khi nhận xác nhận hoàn thành.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        row: { type: 'number', description: 'Số dòng trong Sheet Task Tracker (lấy từ task_overdue hoặc task_status)' },
+        status: { type: 'string', description: 'Trạng thái mới: Done, Đang làm, Hủy' }
+      },
+      required: ['row', 'status']
+    }
+  },
+  {
+    name: 'image_overlay',
+    description: 'Ghép logo STARDUCT + text lên ảnh tạo banner/cover chuyên nghiệp. Layouts: hero (bài viết chính thức), banner-bottom (tin ngắn), banner-left (cột dọc), minimal (logo góc).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        input_image: { type: 'string', description: 'Đường dẫn ảnh đầu vào (VD: /tmp/photo.jpg)' },
+        text: { type: 'string', description: 'Text hiển thị trên ảnh (VD: tiêu đề bài viết)' },
+        output_path: { type: 'string', description: 'Đường dẫn ảnh đầu ra (VD: /tmp/cover.png)' },
+        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal (mặc định: hero)' }
+      },
+      required: ['input_image']
+    }
+  },
+  {
+    name: 'gemini_write',
+    description: 'Dùng Gemini Flash (FREE) để soạn nội dung dài: bài viết, email, báo cáo, content marketing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Yêu cầu viết (VD: "Viết bài 200 từ giới thiệu nhà máy STARDUCT")' },
+        max_tokens: { type: 'number', description: 'Số token tối đa (mặc định 600)' }
+      },
+      required: ['prompt']
+    }
+  },
+  {
+    name: 'drive_list',
+    description: 'Liệt kê file/ảnh trong Google Drive folder. MẶC ĐỊNH folder STARDUCT (394 ảnh sản phẩm) — KHÔNG cần truyền folder_id trừ khi VIP nói folder khác. Trả về `public_url` cho mỗi file — dùng URL này làm cover cho zalo_oa_article.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        folder_id: { type: 'string', description: 'Drive folder ID (optional, default = folder STARDUCT 394 ảnh)' },
+        query: { type: 'string', description: 'Tìm theo tên file (optional, vd: "van ngan chay", "exhibition", "nha may")' },
+        max: { type: 'number', description: 'Số file tối đa trả về (default 30)' }
+      }
+    }
+  },
+  {
+    name: 'drive_download',
+    description: 'Tải file Google Drive về local path (/tmp/...). Dùng khi cần ảnh local cho image_overlay. KHÔNG dùng cho zalo_oa_article cover — dùng public_url từ drive_list trực tiếp.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_id: { type: 'string', description: 'Google Drive file ID (lấy từ drive_list)' },
+        output_path: { type: 'string', description: 'Đường dẫn output (default /tmp/drive-<fileId>.bin)' }
+      },
+      required: ['file_id']
+    }
+  },
+  {
+    name: 'web_search',
+    description: 'Tìm kiếm web qua Google/DuckDuckGo. Dùng để research thị trường HVAC, đối thủ, xu hướng, tra cứu tiêu chuẩn kỹ thuật mới, tin tức ngành.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Từ khóa tìm kiếm (vd: "VAV box ASHRAE 2025", "đối thủ HVAC Việt Nam")' },
+        max_results: { type: 'number', description: 'Số kết quả tối đa (default 10, tối đa 20)' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'web_read',
+    description: 'Đọc nội dung 1 trang web (HTML → plain text). Dùng khi VIP gửi link cần em tóm tắt, hoặc khi cần đọc chi tiết 1 URL từ web_search. KHÔNG đọc được PDF binary.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL đầy đủ (http:// hoặc https://)' }
+      },
+      required: ['url']
+    }
+  },
+  {
+    name: 'auto_learn',
+    description: 'Quet session Zalo OA cua VIP trong N gio qua, dung Gemini Flash extract contacts moi / technical facts / customer feedback / business insights, roi auto-save vao lena-learned overlay. Dung khi: VIP yeu cau "rut kinh nghiem session", hoac sau hoi thoai dai co nhieu thong tin moi. Mac dinh chay tu dong qua cron 23h moi ngay — chi can goi manual khi VIP yeu cau ngay.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', description: 'VIP alias (sep-khanh, chi-hong, anh-ngoc) hoac "all". Default "all".' },
+        hours: { type: 'number', description: 'Quet session active trong N gio qua (default 24)' }
+      }
+    }
+  },
+  {
+    name: 'zalo_oa_comment',
+    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'reply', 'scan', 'scan-article'], description: 'list | reply | scan | scan-article' },
+        article_id: { type: 'string', description: 'ID bài viết (cho list, reply, hoặc scan-article)' },
+        comment_id: { type: 'string', description: 'ID comment cần reply' },
+        message: { type: 'string', description: 'Nội dung reply' },
+        hours: { type: 'number', description: 'Quét comment trong N giờ qua (scan: default 24, scan-article: default 720 = 30 ngày)' }
+      },
+      required: ['action']
     }
   }
-  return reply;
+];
+
+// Follower chỉ được dùng các tool CHỈ-ĐỌC, an toàn (không gửi mail / tạo task / ghi sheet /
+// đăng bài / tạo issue). Tái dùng định nghĩa từ TOOLS — không nhân bản.
+const FOLLOWER_TOOL_NAMES = ['web_search', 'web_read', 'memory_search'];
+const FOLLOWER_TOOLS = TOOLS.filter(t => FOLLOWER_TOOL_NAMES.includes(t.name));
+
+async function runTool(name, input) {
+  const GTOOL = '/app/google-tools';
+  const sheetId = process.env.GOOGLE_SHEET_ID || '';
+
+  let cmd, args;
+  switch (name) {
+    case 'email_send':
+      cmd = 'node'; args = [`${GTOOL}/gmail-send.js`, input.to, input.subject, input.body, input.cc || '', ''];
+      break;
+    case 'email_read':
+      cmd = 'node'; args = [`${GTOOL}/gmail-read.js`, String(input.hours), String(input.max || 20), input.query || ''];
+      break;
+    case 'email_reply':
+      cmd = 'node'; args = [`${GTOOL}/gmail-reply.js`, input.message_id, input.body, input.cc || ''];
+      break;
+    case 'calendar_read':
+      cmd = 'node'; args = [`${GTOOL}/calendar-read.js`, String(input.days || 7)];
+      break;
+    case 'calendar_create':
+      cmd = 'node'; args = [`${GTOOL}/calendar-create.js`, input.title, input.start, input.end, input.description || '', input.location || ''];
+      break;
+    case 'sheets_read':
+      cmd = 'node'; args = [`${GTOOL}/sheets-read.js`, sheetId, input.range];
+      break;
+    case 'sheets_write':
+      cmd = 'node'; args = [`${GTOOL}/sheets-write.js`, sheetId, input.range, input.values];
+      break;
+    case 'sheets_append':
+      cmd = 'node'; args = [`${GTOOL}/sheets-append.js`, sheetId, input.range, input.values];
+      break;
+    case 'hvac_lookup':
+      cmd = 'node'; args = [`${GTOOL}/hvac-lookup.js`, input.keyword || '', input.range || 'A:Z'];
+      break;
+    case 'memory_search':
+      cmd = 'node'; args = [`${GTOOL}/memory-search.js`, input.keyword || '', input.file || ''];
+      break;
+    case 'memory_update':
+      cmd = 'node'; args = [`${GTOOL}/memory-update.js`, input.topic || '', input.content || '', input.section || ''];
+      break;
+    case 'gdoc_create':
+      cmd = 'node'; args = [`${GTOOL}/gdoc-create.js`, input.title, input.content];
+      break;
+    case 'task_add':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'add', input.task, input.assignee, input.deadline, input.source || ''];
+      break;
+    case 'task_overdue':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'overdue'];
+      break;
+    case 'task_status':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'status'];
+      break;
+    case 'task_update':
+      cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'update', String(input.row), input.status];
+      break;
+    case 'zalo_oa_send_to_vip':
+      cmd = 'node'; args = [`${GTOOL}/zalo-oa-send.js`, input.target, input.message];
+      break;
+    case 'zalo_oa_history':
+      cmd = 'node'; args = [`${GTOOL}/zalo-oa-history.js`, input.target || 'all', String(input.hours || 24)];
+      break;
+    case 'kpi_update':
+      cmd = 'node'; args = [`${GTOOL}/kpi-update.js`];
+      break;
+    case 'zalo_oa_article':
+      cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, input.action || 'create', input.title || '', input.body || '', input.cover || ''];
+      break;
+    case 'github_create_issue':
+      cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
+      break;
+    case 'image_overlay':
+      cmd = 'node'; args = [`${GTOOL}/image-overlay.js`, input.input_image, input.text || '', input.output_path || `/tmp/cover-${Date.now()}.png`, input.layout || 'hero'];
+      break;
+    case 'gemini_write':
+      cmd = 'node'; args = [`${GTOOL}/gemini-write.js`, input.prompt, String(input.max_tokens || 600)];
+      break;
+    case 'drive_list':
+      cmd = 'node'; args = [`${GTOOL}/drive-list.js`,
+        input.folder_id || '1cLP2jBglCctc_l1wh7MoQmhycdZzOxsR',
+        input.query || '',
+        String(input.max || 30)];
+      break;
+    case 'drive_download':
+      cmd = 'node'; args = [`${GTOOL}/drive-download.js`, input.file_id, input.output_path || ''];
+      break;
+    case 'web_search':
+      cmd = 'node'; args = [`${GTOOL}/web-search.js`, input.query || '', String(input.max_results || 10)];
+      break;
+    case 'web_read':
+      cmd = 'node'; args = [`${GTOOL}/web-read.js`, input.url || ''];
+      break;
+    case 'auto_learn':
+      cmd = 'node'; args = [`${GTOOL}/auto-learn.js`, input.target || 'all', String(input.hours || 24)];
+      break;
+    case 'zalo_oa_comment': {
+      const action = input.action || 'scan';
+      if (action === 'list') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'list', input.article_id || '', '0', '20'];
+      } else if (action === 'reply') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'reply', input.comment_id || '', input.message || '', input.article_id || ''];
+      } else if (action === 'scan-article') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan-article', input.article_id || '', String(input.hours || 24 * 30)];
+      } else {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan', String(input.hours || 24)];
+      }
+      break;
+    }
+    default:
+      return { error: `Unknown tool: ${name}` };
+  }
+
+  try {
+    const { stdout, stderr } = await execFileAsync(cmd, args, { encoding: 'utf-8', timeout: 60000 });
+    if (stderr) console.log(`[tool:${name}] ${stderr.trim()}`);
+    const raw = stdout || '';
+    if (raw.length > 3000) {
+      return { output: raw.substring(0, 3000) + '\n⚠️ [Cắt ngắn — vượt 3000 ký tự]' };
+    }
+    return { output: raw };
+  } catch (e) {
+    if (e.stderr) console.log(`[tool:${name}] ${e.stderr.trim()}`);
+    return { error: (e.stderr || e.stdout || e.message || 'unknown error').substring(0, 1000) };
+  }
 }
 
-// ============================================================
-// === EXPRESS
-// ============================================================
-const app=express();
-app.set('trust proxy',true);
-app.use((req,res,next)=>{
-  const fp=path.join(PUBLIC_DIR,req.path);
-  if(req.method==='GET'&&fs.existsSync(fp)&&fs.statSync(fp).isFile()) return res.sendFile(fp);
+const app = express();
+app.set('trust proxy', true);
+
+// === STATIC FILES ===
+app.use((req, res, next) => {
+  const filePath = path.join(PUBLIC_DIR, req.path);
+  if (req.method === 'GET' && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    return res.sendFile(filePath);
+  }
   next();
 });
 
-// ============================================================
-// === FOLLOWERS FILE
-// ============================================================
-const FOLLOWERS_FILE='/root/.openclaw/zalo-oa-followers.json';
-function lookupFollower(userId) {
-  try{return JSON.parse(fs.readFileSync(FOLLOWERS_FILE,'utf-8')).find(f=>f.user_id===userId);}catch(e){return null;}
-}
+// === ZALO WEBHOOK ===
+app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
+  res.json({ status: 'ok' });
 
-// ============================================================
-// === STAFF PENDING REGISTRATION
-// ============================================================
-const _staffPending=new Map(); // zaloId → {askedAt, attempts}
+  const event = req.body;
 
-// ============================================================
-// === WEBHOOK
-// ============================================================
-const _dedup=new Set();
-
-app.post('/zalo-webhook',express.json({limit:'5mb'}),(req,res)=>{
-  res.json({status:'ok'});
-  const event=req.body;
-  const msgId=event.message?.msg_id;
-  if(msgId){if(_dedup.has(msgId)){console.log(`[dedup] ${msgId}`);return;}_dedup.add(msgId);setTimeout(()=>_dedup.delete(msgId),60000);}
-  try{fs.appendFileSync('/root/.openclaw/zalo-events.jsonl',JSON.stringify({time:new Date().toISOString(),event})+'\n');}catch(e){}
-  console.log(`[webhook] ${event.event_name} from ${event.sender?.id||event.follower?.id||'?'}`);
-  if(event.event_name==='user_send_text'||event.event_name==='user_send_link')
-    handleUserMessage(event).catch(e=>console.error('[handler]',e.message));
-  else if(event.event_name==='follow')
-    handleFollow(event).catch(e=>console.error('[follow]',e.message));
-  else if(event.event_name==='unfollow')
-    handleUnfollow(event).catch(e=>console.error('[unfollow]',e.message));
-  else if(event.event_name==='user_send_image')
-    handleImageMessage(event).catch(e=>console.error('[image]',e.message));
-  else if(['user_send_comment','oa_comment','user_comment_article'].includes(event.event_name))
-    handleArticleComment(event).catch(e=>console.error('[comment]',e.message));
-});
-app.get('/zalo-webhook',(req,res)=>res.json({status:'active'}));
-
-// ============================================================
-// === FOLLOW / UNFOLLOW / IMAGE / COMMENT
-// ============================================================
-async function handleFollow(event) {
-  const userId=event.follower?.id; if(!userId) return;
-  let displayName='Unknown';
-  try{const r=await fetch(`https://openapi.zalo.me/v3.0/oa/user/detail?data=${encodeURIComponent(JSON.stringify({user_id:userId}))}`,{headers:{'access_token':getOAToken()}});displayName=(await r.json()).data?.display_name||'Unknown';}catch(e){}
-  console.log(`[follow] ${displayName} (${userId})`);
-  let followers=[];try{followers=JSON.parse(fs.readFileSync(FOLLOWERS_FILE,'utf-8'));}catch(e){}
-  const idx=followers.findIndex(f=>f.user_id===userId);
-  if(idx>=0){followers[idx].display_name=displayName;followers[idx].last_follow=new Date().toISOString();}
-  else followers.push({user_id:userId,display_name:displayName,followed_at:new Date().toISOString()});
-  try{fs.writeFileSync(FOLLOWERS_FILE,JSON.stringify(followers,null,2));}catch(e){}
-}
-async function handleUnfollow(event) {
-  const userId=event.follower?.id; if(!userId) return;
-  const vip=VIP_USERS[userId];
-  if(vip){const sepId=VIP_IDS.SEP_KHANH;if(sepId&&userId!==sepId)await sendZaloMessage(sepId,`⚠️ ${vip.name} đã unfollow OA.`).catch(()=>{});}
-}
-async function handleImageMessage(event) {
-  const senderId=event.sender?.id; if(!senderId) return;
-  const vip=VIP_USERS[senderId];
-  const staff=!vip?lookupStaffByZaloId(senderId):null;
-  const name=vip?vip.name:(staff?.nick||lookupFollower(senderId)?.display_name||'anh/chị');
-  const att=event.message?.attachments?.[0];
-  const imageUrl=att?.payload?.url||att?.payload?.thumbnail||'';
-  console.log(`[image] from ${name}: ${imageUrl.substring(0,80)}`);
-  await sendZaloMessage(senderId,`Dạ ${name}, em đã nhận ảnh.${vip?' Anh/chị muốn em làm gì với ảnh này ạ?':''}`);
-}
-async function handleArticleComment(event) {
-  const commentId=event.comment?.id||event.comment_id||event.message?.comment_id;
-  const text=event.comment?.message||event.comment?.text||event.message?.text||'';
-  if(!commentId||!text) return;
-  try{const{stdout}=await execFileAsync('node',[`${GTOOL}/zalo-oa-comment.js`,'scan','1'],{encoding:'utf-8',timeout:30000});console.log(`[comment:scan] ${stdout.trim().substring(0,200)}`);}catch(e){console.error('[comment]',e.message);}
-}
-
-// ============================================================
-// === MAIN ROUTER
-// ============================================================
-async function handleUserMessage(event) {
-  const senderId=event.sender?.id;
-  let messageText=event.message?.text||'';
-  if(event.event_name==='user_send_link'){
-    const urls=(event.message?.attachments||[]).filter(a=>a?.type==='link'&&a?.payload?.url).map(a=>a.payload.url);
-    const missing=urls.filter(u=>!messageText.includes(u));
-    if(missing.length) messageText=messageText?`${messageText}\n${missing.join('\n')}`:missing.join('\n');
+  // Dedup by message ID (Zalo can send duplicate webhooks)
+  const msgId = event.message?.msg_id;
+  if (msgId) {
+    if (_webhookDedup.has(msgId)) {
+      console.log(`[zalo-webhook] dedup: skipped ${msgId}`);
+      return;
+    }
+    _webhookDedup.add(msgId);
+    setTimeout(() => _webhookDedup.delete(msgId), 60000);
   }
-  if(!senderId||!messageText) return;
 
-  // 1. VIP?
-  const vip=VIP_USERS[senderId];
-  if(vip){ await handleVipMessage(senderId,messageText,vip); return; }
+  try {
+    fs.appendFileSync('/root/.openclaw/zalo-events.jsonl',
+      JSON.stringify({ time: new Date().toISOString(), event }) + '\n');
+  } catch (e) {}
 
-  // 2. CBCNV đã đăng ký Zalo ID?
-  const staff=lookupStaffByZaloId(senderId);
-  if(staff){ await handleStaffMessage(senderId,messageText,staff); return; }
+  console.log(`[zalo-webhook] ${event.event_name} from ${event.sender?.id || event.follower?.id || '?'}`);
 
-  // 3. Đang trong flow đăng ký?
-  if(_staffPending.has(senderId)){ await handleStaffRegistration(senderId,messageText); return; }
+  if (event.event_name === 'user_send_text' || event.event_name === 'user_send_link') {
+    handleUserMessage(event).catch(err => console.error('[lena] handler error:', err.message));
+  } else if (event.event_name === 'follow') {
+    handleFollow(event).catch(err => console.error('[follow] error:', err.message));
+  } else if (event.event_name === 'unfollow') {
+    handleUnfollow(event).catch(err => console.error('[unfollow] error:', err.message));
+  } else if (event.event_name === 'user_send_image') {
+    handleImageMessage(event).catch(err => console.error('[image] error:', err.message));
+  } else if (
+    event.event_name === 'user_send_comment' ||
+    event.event_name === 'oa_comment' ||
+    event.event_name === 'user_comment_article'
+  ) {
+    handleArticleComment(event).catch(err => console.error('[comment] error:', err.message));
+  }
+});
 
-  // 4. Email nội bộ trong tin nhắn → có thể là CBCNV
-  if(/@nsca\.vn/i.test(messageText)){ await handleStaffRegistration(senderId,messageText); return; }
+app.get('/zalo-webhook', (req, res) => res.json({ status: 'active' }));
 
-  // 5. Follower thông thường
-  await handleFollowerMessage(senderId,messageText);
+// === FOLLOW / UNFOLLOW / IMAGE HANDLERS ===
+const FOLLOWERS_FILE = '/root/.openclaw/zalo-oa-followers.json';
+
+function lookupFollower(userId) {
+  try {
+    const followers = JSON.parse(fs.readFileSync(FOLLOWERS_FILE, 'utf-8'));
+    return followers.find(f => f.user_id === userId);
+  } catch (e) {}
+  return null;
 }
 
-// ============================================================
-// === VIP HANDLER — Sonnet 4.5 + full tools
-// ============================================================
-async function handleVipMessage(senderId, messageText, vip) {
-  console.log(`[VIP] ${vip.name}: ${messageText.substring(0,60)}...`);
-  const ageMin=getSessionAgeMin(senderId);
-  let session=loadSession(senderId);
-  if(!Array.isArray(session)) session=[];
-  // Reset orphaned tool_result
-  if(session.length>0){const last=session[session.length-1];if(last.role==='user'&&Array.isArray(last.content)&&last.content[0]?.type==='tool_result')session=[];}
-  const isFresh=session.length===0||ageMin>=360;
-  session.push({role:'user',content:messageText});
+async function handleFollow(event) {
+  const userId = event.follower?.id;
+  if (!userId) return;
 
-  const today=new Date().toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'});
-  const sys=`Bạn là **Đào Thị Lê Na**, trợ lý AI của CEO Đào Huy Khánh (NSCA/STARDUCT).
-Đang chat với: **${vip.name} (${vip.role})** | ${today}
-${isFresh?`Session MỚI — có thể mở đầu ngắn "Dạ ${vip.name}..." 1 lần.`:`Session ACTIVE (${ageMin}p) — KHÔNG chào, trả lời THẲNG.`}
-NGUYÊN TẮC: Xưng "em" | Ngắn gọn có số liệu | KHÔNG ký tên | Max 500 ký tự
-LUẬT 1: VIP ra lệnh → GỌI TOOL NGAY, KHÔNG hỏi lại, KHÔNG đưa options.
-LINK: web_search verify TRƯỚC khi gửi. CODE: github_create_issue NGAY khi Sếp nói sửa/fix.
-SHEET: ID đã có sẵn, chỉ cần range. 3 VIP ĐỘC LẬP, không chia sẻ chéo.`;
+  const token = getOAToken();
+  let displayName = 'Unknown';
+  try {
+    const res = await fetch(`https://openapi.zalo.me/v3.0/oa/user/detail?data=${encodeURIComponent(JSON.stringify({ user_id: userId }))}`, {
+      headers: { 'access_token': token }
+    });
+    const profile = await res.json();
+    displayName = profile.data?.display_name || 'Unknown';
+  } catch (e) {}
 
-  let reply='';
-  try{ reply=await runAgentLoop(MODEL_VIP,sys,VIP_TOOLS,session,15); }
-  catch(e){ console.error(`[VIP] ${e.message}`); reply=`Dạ ${vip.name}, em gặp trục trặc kỹ thuật, thử lại sau 1 phút nhé.`; session=[{role:'user',content:messageText}]; }
-  if(!reply) reply='Em xin lỗi, yêu cầu quá phức tạp. Anh/chị thử yêu cầu đơn giản hơn nhé.';
-  saveSession(senderId,session);
-  try{ await sendZaloMessage(senderId,reply); console.log(`[VIP] → ${vip.name}: ${reply.substring(0,60)}...`); }
-  catch(e){ console.error(`[VIP] send FAILED: ${e.message}`); }
+  console.log(`[follow] New: ${displayName} (${userId})`);
+
+  let followers = [];
+  try { followers = JSON.parse(fs.readFileSync(FOLLOWERS_FILE, 'utf-8')); } catch (e) {}
+  const existing = followers.findIndex(f => f.user_id === userId);
+  if (existing >= 0) {
+    followers[existing].display_name = displayName;
+    followers[existing].last_follow = new Date().toISOString();
+  } else {
+    followers.push({ user_id: userId, display_name: displayName, followed_at: new Date().toISOString() });
+  }
+  try { fs.writeFileSync(FOLLOWERS_FILE, JSON.stringify(followers, null, 2)); } catch (e) {}
 }
 
-// ============================================================
-// === STAFF HANDLER — Haiku + KB + task/lịch của chính họ
-// ============================================================
-async function handleStaffMessage(senderId, messageText, staff) {
-  const nick=staff.nick||staff.name;
-  console.log(`[STAFF] ${nick} (${staff.dept}): ${messageText.substring(0,80)}`);
-  const key=`staff_${senderId}`;
-  const ageMin=getSessionAgeMin(key);
-  let session=loadSession(key);
-  if(!Array.isArray(session)) session=[];
-  session.push({role:'user',content:messageText});
-  if(session.length>20) session.splice(0,session.length-20);
-  const isFresh=session.length<=1||ageMin>=360;
-
-  const today=new Date().toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'});
-  const sys=`Bạn là Lê Na — trợ lý AI nội bộ NSCA/STARDUCT.
-ĐANG CHAT VỚI: ${nick} (${staff.name}) | ${staff.pos} | ${staff.dept} | ${staff.email} | ${today}
-${isFresh?`Session mới — chào ngắn "Dạ ${nick}! Em nghe ạ." rồi vào nội dung.`:`Session active (${ageMin}p) — KHÔNG chào lại, trả lời thẳng.`}
-GIAO TIẾP: Xưng "em", gọi "${nick}" | Thân thiện nội bộ | Ngắn gọn thực tế
-QUYỀN HẠN:
-✅ Task được giao cho ${staff.email} | Lịch họp bộ phận ${staff.dept}
-✅ Kỹ thuật HVAC/STARDUCT | Quy trình nội bộ
-✅ Báo hoàn thành task → Lê Na ghi nhận, hỏi có muốn báo trưởng BP không
-❌ KHÔNG xem task/email/KPI của người khác | KHÔNG xem lương/tài chính
-${LENA_KB}`;
-
-  let reply='';
-  try{ reply=await runAgentLoop(MODEL_STAFF,sys,STAFF_TOOLS,session,5); }
-  catch(e){ console.error(`[STAFF] ${e.message}`); reply=`Dạ ${nick}, em gặp sự cố kỹ thuật. Thử lại sau nhé.`; }
-  if(!reply) reply=`Dạ ${nick}, em chưa xử lý được. Anh/chị liên hệ trực tiếp trưởng bộ phận nhé.`;
-  saveSession(key,session);
-  await sendZaloMessage(senderId,reply);
-  console.log(`[STAFF] → ${nick}: ${reply.substring(0,80)}...`);
-}
-
-// ============================================================
-// === STAFF REGISTRATION — hỏi tên, match, lưu Zalo ID
-// ============================================================
-async function handleStaffRegistration(senderId, messageText) {
-  const pending=_staffPending.get(senderId);
-
-  if(pending) {
-    // User đang trả lời tên/email
-    const matched=lookupStaffByInput(messageText);
-    if(matched) {
-      registerStaffZaloId(senderId,matched.email);
-      _staffPending.delete(senderId);
-      await sendZaloMessage(senderId,`✅ Xác nhận rồi ạ!\n${matched.nick} — ${matched.pos} — Bộ phận ${matched.dept}\n\nTừ giờ ${matched.nick} có thể hỏi em về task, lịch họp, kỹ thuật STARDUCT hoặc bất cứ gì cần hỗ trợ nhé!`);
-      // Nếu tin nhắn gốc dài hơn tên → xử lý nội dung
-      if(messageText.length>30) await handleStaffMessage(senderId,messageText,matched);
-      return;
+async function handleUnfollow(event) {
+  const userId = event.follower?.id;
+  if (!userId) return;
+  const vip = VIP_USERS[userId];
+  console.log(`[unfollow] ${vip ? vip.name : userId}`);
+  if (vip) {
+    const sepId = VIP_IDS.SEP_KHANH;
+    if (sepId && userId !== sepId) {
+      await sendZaloMessage(sepId, `⚠️ ${vip.name} đã unfollow OA Starasia JSC.`);
     }
-    const attempts=(pending.attempts||0)+1;
-    if(attempts>=3) {
-      _staffPending.delete(senderId);
-      await sendZaloMessage(senderId,'Em chưa tìm thấy trong danh sách NSCA. Anh/chị liên hệ bộ phận HCNS (Anh Sơn — sondt@nsca.vn) để được thêm vào hệ thống nhé.');
-      return;
+  }
+}
+
+async function handleImageMessage(event) {
+  const senderId = event.sender?.id;
+  if (!senderId) return;
+  const vip = VIP_USERS[senderId];
+  const follower = !vip ? lookupFollower(senderId) : null;
+  const name = vip ? vip.name : (follower?.display_name || 'anh/chị');
+  const att = event.message?.attachments?.[0];
+  const imageUrl = att?.payload?.url || att?.payload?.thumbnail || '';
+  console.log(`[zalo] image from ${name} (${senderId}): ${imageUrl.substring(0, 80)}`);
+  await sendZaloMessage(senderId, `Dạ ${name}, em đã nhận ảnh.${vip ? ' Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?' : ''}`);
+}
+
+// Auto-reply tu dong cho comment cua follower tren bai viet OA.
+// Co che: chay zalo-oa-comment.js voi action=reply (template) hoac log de Le Na xu ly sau.
+async function handleArticleComment(event) {
+  const commentId = event.comment?.id || event.comment_id || event.message?.comment_id;
+  const articleId = event.article?.id || event.article_id || event.comment?.article_id;
+  const text = event.comment?.message || event.comment?.text || event.message?.text || '';
+  const senderId = event.sender?.id || event.user?.id;
+
+  if (!commentId || !text) {
+    console.log('[comment] missing comment_id or text, skip');
+    return;
+  }
+  console.log(`[comment] new on article=${articleId} from=${senderId}: ${text.substring(0, 80)}`);
+
+  // Goi tool de unify logic spam-filter + template-match + reply
+  try {
+    const { stdout, stderr } = await execFileAsync('node', [
+      '/app/google-tools/zalo-oa-comment.js',
+      'scan',
+      '1'
+    ], { encoding: 'utf-8', timeout: 30000 });
+    if (stderr) console.log(`[comment:scan] ${stderr.trim()}`);
+    console.log(`[comment:scan] ${stdout.trim().substring(0, 300)}`);
+  } catch (e) {
+    console.error(`[comment] scan failed: ${e.message}`);
+  }
+}
+
+// === LÊ NA AGENT — TOOL CALLING LOOP ===
+async function handleUserMessage(event) {
+  const senderId = event.sender?.id;
+  let messageText = event.message?.text || '';
+
+  // user_send_link: ensure URL từ attachments có trong messageText (Zalo có thể không bỏ URL vào text)
+  if (event.event_name === 'user_send_link') {
+    const linkUrls = (event.message?.attachments || [])
+      .filter(a => a?.type === 'link' && a?.payload?.url)
+      .map(a => a.payload.url);
+    const missing = linkUrls.filter(u => !messageText.includes(u));
+    if (missing.length > 0) {
+      messageText = messageText ? `${messageText}\n${missing.join('\n')}` : missing.join('\n');
     }
-    _staffPending.set(senderId,{askedAt:pending.askedAt,attempts});
-    await sendZaloMessage(senderId,`Em chưa tìm thấy "${messageText.substring(0,30)}" trong danh sách. Anh/chị thử nhập tên đầy đủ hoặc email nội bộ (vd: namph@nsca.vn) ạ.`);
+    console.log(`[lena] user_send_link from ${senderId}: ${linkUrls.length} url(s)`);
+  }
+
+  if (!senderId || !messageText) return;
+
+  const vip = VIP_USERS[senderId];
+
+  // Non-VIP (follower / người lạ) → Lê Na trả lời thật, phạm vi giới hạn.
+  // Trước đây non-VIP chỉ nhận 1 câu chào mẫu rồi dừng — đây là phần "thêm follower"
+  // được yêu cầu. VIP path bên dưới giữ NGUYÊN như bản 8c371bf.
+  if (!vip) {
+    await handleFollowerMessage(senderId, messageText)
+      .catch(err => console.error('[follower] handler error:', err.message));
     return;
   }
 
-  // Lần đầu — thử match email trong tin nhắn trước
-  if(/@nsca\.vn/i.test(messageText)) {
-    const em=messageText.match(/[\w.]+@nsca\.vn/i)?.[0];
-    if(em) {
-      const matched=lookupStaffByInput(em);
-      if(matched) {
-        registerStaffZaloId(senderId,matched.email);
-        await sendZaloMessage(senderId,`✅ Xác nhận! ${matched.nick} — ${matched.pos} — ${matched.dept}.\nTừ giờ anh/chị có thể hỏi em về task, lịch họp và kỹ thuật STARDUCT ạ!`);
-        return;
-      }
+  const senderInfo = `${vip.name} (${vip.role})`;
+  const model = vip.model;
+
+  console.log(`[lena] tin từ ${senderInfo}: ${messageText.substring(0, 60)}...`);
+
+  // Session age BEFORE load — used to decide whether to greet
+  const sessionAgeMin = getSessionAgeMin(senderId);
+
+  // Load session — validate it's usable, reset if corrupt
+  let session = loadSession(senderId);
+  if (!Array.isArray(session)) session = [];
+  // Ensure session doesn't have orphaned tool_result without matching tool_use
+  if (session.length > 0) {
+    const last = session[session.length - 1];
+    if (last.role === 'user' && Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
+      console.log(`[lena] session has orphaned tool_result — resetting`);
+      session = [];
     }
   }
 
-  // Hỏi tên
-  _staffPending.set(senderId,{askedAt:Date.now(),attempts:0});
-  await sendZaloMessage(senderId,'Chào anh/chị! Em là Lê Na — trợ lý AI nội bộ của NSCA/STARDUCT.\n\nAnh/chị cho em biết tên hoặc email nội bộ để em nhận diện nhé?\n(Ví dụ: "Phạm Hoài Nam" hoặc "namph@nsca.vn")');
+  // Fresh conversation = no prior turns, or >6h gap since last reply
+  const isFreshSession = session.length === 0 || sessionAgeMin >= 360;
+  console.log(`[lena] session: ${session.length} msgs, last ${sessionAgeMin === Infinity ? '∞' : sessionAgeMin}min ago, fresh=${isFreshSession}`);
+
+  session.push({ role: 'user', content: messageText });
+
+  // System prompt
+  const today = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const systemPrompt = `Bạn là **Đào Thị Lê Na**, trợ lý AI của CEO Đào Huy Khánh (NSCA/STARDUCT).
+
+Đang chat với: **${senderInfo}**
+Thời gian: ${today}
+
+TRẠNG THÁI HỘI THOẠI:
+${isFreshSession
+  ? `- Đây là TIN ĐẦU TIÊN của session mới (${sessionAgeMin === Infinity ? 'chưa từng chat' : `lần cuối ${sessionAgeMin} phút trước, >6h`}). Em CÓ THỂ mở đầu ngắn 1 lần (vd: "Dạ ${vip.name}, ...") rồi vào nội dung.`
+  : `- Đang trong session ACTIVE (tin trước cách đây ${sessionAgeMin} phút). KHÔNG chào, KHÔNG mở đầu bằng "Dạ ${vip.name}" / "Chào anh/chị" / "Xin chào". Trả lời THẲNG vào nội dung như đang nói chuyện liên tục.`}
+
+⛔ CHỐNG SPAM CHÀO HỎI (LUẬT QUAN TRỌNG):
+❌ KHÔNG bắt đầu reply bằng "Chào anh/chị", "Xin chào", "Dạ chào ${vip.name}" — TRỪ khi TRẠNG THÁI ở trên nói "TIN ĐẦU TIÊN".
+❌ KHÔNG mở đầu bằng "Dạ ${vip.name}," nếu đang trong session ACTIVE — vào thẳng câu trả lời.
+❌ KHÔNG lặp lại lời chào trong cùng 1 session dù VIP gửi nhiều tin liên tục.
+✅ Session active → reply bắt đầu trực tiếp bằng nội dung (vd: "Báo cáo PKD tuần này...", "Đã gửi mail cho anh Đức.", "Em check rồi: ...").
+
+NGUYÊN TẮC:
+- Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc / anh/chị)
+- NGẮN GỌN, chính xác, có số liệu
+- KHÔNG tâm sự, gossip, viết dài
+- KHÔNG ký tên (proxy tự thêm "— Lê Na")
+- Tin nhắn trả lời tối đa 500 ký tự
+- Nếu cần phân tích dài → tạo gdoc rồi gửi link
+- CHẠY TOOL IM LẶNG → chỉ trả lời KẾT QUẢ CUỐI CÙNG. KHÔNG narrate "em đang đọc...", "bước 1..."
+
+⚠️ LINK WEBSITE - QUY TẮC BẮT BUỘC:
+- TUYỆT ĐỐI KHÔNG bịa/đoán link website
+- TRƯỚC khi gửi link trong email/tin nhắn → PHẢI web_search "site:starduct.vn [keyword]"
+- PHẢI web_read verify link hoạt động (không 404)
+- CHỈ gửi link đã test thực tế
+- Khi cần catalogue → web_search "site:starduct.vn [tên SP] catalogue download"
+- Vi phạm = lỗi nghiêm trọng, ảnh hưởng uy tín công ty
+
+⛔ HÀNH ĐỘNG — KHÔNG HỎI (LUẬT SỐ 1, QUAN TRỌNG NHẤT):
+VIP ra lệnh → GỌI TOOL NGAY trong cùng lượt. TUYỆT ĐỐI KHÔNG hỏi lại.
+- "đăng bài/viết bài/đăng lên OA" → CHẠY WORKFLOW ĐĂNG BÀI (xem bên dưới). KHÔNG hỏi. KHÔNG dùng DALL-E. KHÔNG dùng zalouser.
+- "sửa X" → gọi github_create_issue NGAY. TỰ viết title+body chi tiết. KHÔNG hỏi "sửa thế nào".
+- "check Y" / "đọc Z" → gọi sheets_read / email_read / task_overdue NGAY. KHÔNG hỏi Sheet ID.
+- "gửi email cho A" → gọi email_send NGAY. KHÔNG hỏi "nội dung gì".
+- "tạo task cho B" → gọi task_add NGAY. TỰ suy ra deadline hợp lý nếu VIP không nói.
+
+TUYỆT ĐỐI CẤM (vi phạm = lỗi nghiêm trọng):
+❌ Hỏi "anh muốn em làm không?" — VIP ĐÃ NÓI RÕ.
+❌ Đưa "Option 1 / Option 2" cho VIP chọn — TỰ CHỌN cách tốt nhất.
+❌ Hỏi "công thức tính thế nào?" — TỰ chọn công thức hợp lý.
+❌ Hỏi "cột nào?" / "Sheet ID nào?" — TỰ xác định từ context.
+❌ Liệt kê câu hỏi thay vì hành động — ĐÂY LÀ LỖI NẶNG NHẤT.
+❌ Nói "em cần biết thêm" khi có đủ thông tin để hành động.
+
+✅ CHỈ được hỏi DUY NHẤT khi thiếu 1 thông tin KHÔNG THỂ suy ra (vd: email người lạ chưa từng gặp).
+✅ Nếu thiếu 1 chi tiết nhỏ → TỰ chọn giá trị hợp lý, LÀM, rồi báo kết quả.
+✅ Em là TRỢ LÝ HÀNH ĐỘNG, không phải chatbot hỏi-đáp.
+
+TOOLS có sẵn:
+- email_send / email_read / email_reply
+- calendar_read / calendar_create
+- sheets_read / sheets_write / sheets_append
+- hvac_lookup (tra cứu tiêu chuẩn / thuật ngữ / kiến thức HVAC từ Google Sheet — dùng khi VIP hỏi về điều hòa, chiller, EER/COP, lưu lượng gió, áp suất, v.v.)
+- memory_search (tra cứu long-term memory: hvac-standards, hvac-knowledge, brand-guide, contacts... — BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật có tiêu chuẩn)
+- memory_update (lưu kiến thức mới vào lena-learned overlay — dùng khi VIP dạy fact mới hoặc cần nhớ cho lần sau)
+- auto_learn (quét session VIP, Gemini extract contacts/technical/feedback/insights → auto save vào lena-learned. Chạy cron 23h hàng ngày. Chỉ gọi manual khi VIP yêu cầu "rút kinh nghiệm session" hoặc "ghi nhớ hội thoại này")
+- gdoc_create
+- task_add / task_overdue / task_status / task_update
+- zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
+- zalo_oa_history (đọc tin nhắn Zalo OA từ VIP — dùng khi Sếp hỏi "ai nhắn gì?")
+- github_create_issue (tạo yêu cầu sửa code — CHỈ khi Sếp Khánh yêu cầu. GITHUB_TOKEN ĐÃ CÓ, cứ gọi)
+- zalo_oa_article (ĐĂNG BÀI lên TRANG OA Starasia JSC — public, mọi follower thấy)
+- image_overlay (ghép logo STARDUCT lên ảnh tạo cover chuyên nghiệp — layouts: hero, banner-bottom)
+- gemini_write (Gemini Flash soạn nội dung dài: bài viết, báo cáo — FREE)
+
+⚠️ PHÂN BIỆT 2 TOOL ZALO:
+- "đăng bài OA" / "đăng lên trang" → zalo_oa_article (bài viết PUBLIC trên trang Starasia JSC)
+- "nhắn tin cho ai" / "báo cho chị Hồng" → zalo_oa_send_to_vip (tin nhắn RIÊNG cho 1 người)
+TUYỆT ĐỐI KHÔNG dùng zalo_oa_send_to_vip để đăng bài. Đó là GỬI TIN NHẮN, không phải đăng bài.
+
+WORKFLOW ĐĂNG BÀI ZALO OA (khi VIP gửi ảnh + yêu cầu viết bài):
+⛔ KHÔNG dùng DALL-E tạo ảnh mới — PHẢI dùng ẢNH THẬT VIP đã gửi
+⛔ KHÔNG hỏi xác nhận — VIP đã ra lệnh, ĐĂNG NGAY
+⛔ KHÔNG dùng zalouser — dùng zalo_oa_article trực tiếp
+0. NẾU bài có nhắc tiêu chuẩn (UL/EN/AHRI/AMCA/ASHRAE/ISO/QCVN) hoặc sản phẩm STARDUCT (van ngăn cháy, VAV, VCD, louver, cửa gió) → memory_search keyword="<tên SP>" file="hvac-standards" TRƯỚC khi viết. Trích đúng mã chuẩn, KHÔNG bịa.
+1. zalo_oa_history → tìm type:"image" → lấy image_url (ẢNH VIP GỬI)
+2. image_overlay (input=image_url, layout="hero") → tạo ảnh bìa từ ẢNH THẬT
+3. gemini_write → soạn nội dung theo yêu cầu VIP (đã có spec đúng từ bước 0)
+4. zalo_oa_article create → đăng bài lên OA (KHÔNG cần chatId)
+5. Báo VIP: "✅ Đã đăng bài [tiêu đề] lên OA Starasia JSC"
+
+LONG-TERM MEMORY (memory_search + memory_update + auto_learn):
+✅ TRƯỚC khi viết content kỹ thuật (bài OA/FB, email khách, slide) có tiêu chuẩn → memory_search file="hvac-standards" để verify mã chuẩn.
+✅ Khi VIP nói "ghi nhớ X" / "lần sau Y" / "đừng quên Z" → memory_update topic="<chủ đề>" content="<X>". KHÔNG hỏi lại.
+✅ Khi VIP GIỚI THIỆU người mới (tên + chức vụ/công ty) → memory_update topic="contacts" content="<Tên — chức vụ — context gặp>". KHÔNG cần VIP yêu cầu.
+✅ Khi VIP chia sẻ fact kỹ thuật mới (tiêu chuẩn, công thức, spec) → memory_update topic="technical-facts" content="<fact>". KHÔNG hỏi lại.
+✅ Khi VIP truyền customer feedback / NPP phản hồi → memory_update topic="customer-feedback" content="<khách: phản hồi>".
+✅ Khi VIP đưa quyết định/insight kinh doanh quan trọng → memory_update topic="business-insights" content="<insight>".
+✅ Khi phát hiện fact mới đáng nhớ (đối thủ ra SP, khách phản hồi, tiêu chuẩn cập nhật) → memory_update để lần sau Lê Na tự biết.
+✅ TRƯỚC khi reply VIP về 1 người/khách/topic đã gặp → memory_search keyword="<tên>" để check đã biết gì về họ trước đó.
+⚙️ Cron 23h hàng ngày TỰ ĐỘNG chạy auto_learn quét toàn bộ session 24h — Lê Na KHÔNG cần lo backup. Chỉ gọi auto_learn manual khi VIP yêu cầu "rút kinh nghiệm session này".
+❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
+
+GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.
+Khi dùng sheets_read / sheets_write / sheets_append: CHỈ CẦN truyền range (vd: "'KPI Tracker'!A:Z"). Hệ thống TỰ ĐỘNG điền Sheet ID.
+21 tabs có sẵn: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performance | Task Tracker | NPP Tracker | NPP Orders | KHKD 2026 Baseline | Activity Log | Export Revenue | International Pipeline
+
+KHI SẾP KHÁNH NÓI "sửa" / "thêm" / "đổi" / "fix" BẤT CỨ GÌ VỀ CODE/CRON/HỆ THỐNG:
+→ GỌI github_create_issue NGAY TRONG LƯỢT NÀY. TỰ viết title + body chi tiết.
+→ Body phải ghi: file nào cần sửa, sửa gì cụ thể, lý do (từ lời Sếp).
+→ Báo: "Em đã tạo yêu cầu #[số]. Claude Code sẽ tự động xử lý trong 5 phút."
+→ TUYỆT ĐỐI KHÔNG hỏi "sửa thế nào?", "công thức gì?", "cột nào?" — TỰ SUY RA.
+VD: Sếp nói "thêm cột KPI vào Report Tracker" → TỰ tạo issue: title="Thêm cột % KPI vào Report Tracker", body="Sửa cron weekly-report-scan trong cron-jobs.json, thêm cột % hoàn thành KPI = Actual/Target*100 vào sheets-append Report Tracker. Yêu cầu từ Sếp Khánh."
+
+PHẠM VI VIP:
+- anh Khánh = CEO, toàn quyền
+- chị Hồng = TCKT/Pháp lý — KHÔNG share data Sếp
+- anh Ngọc = TP KD, quản lý PKD (anh Đức BD, Santiago BD Intl, chị Tâm BO) + 5 NPP
+
+LƯU Ý: 3 VIP độc lập, KHÔNG tự ý forward thông tin giữa họ.
+Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check email/data rồi trả lời. KHÔNG hỏi "check Zalo hay Gmail?".`;
+
+  // Agent loop with tool calling
+  // MAX_ITER 15: chain phức tạp (drive_list → gemini_write → zalo_oa_article → verify retry)
+  // có thể tốn 7-10 tool calls + retry. Tăng từ 10 → 15 để tránh fallback sớm.
+  let reply = '';
+  let iterations = 0;
+  const MAX_ITER = 15;
+
+  try {
+    while (iterations++ < MAX_ITER) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 2000,
+          system: systemPrompt,
+          tools: TOOLS,
+          messages: session
+        })
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[lena] Claude API ${res.status}: ${errBody.substring(0, 300)}`);
+        // If session is causing the error, try once with fresh session
+        if (res.status === 400 && session.length > 1) {
+          console.log(`[lena] retrying with fresh session`);
+          session = [{ role: 'user', content: messageText }];
+          continue;
+        }
+        throw new Error(`Claude API ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data.stop_reason === 'tool_use') {
+        session.push({ role: 'assistant', content: data.content });
+
+        const toolResults = [];
+        for (const block of data.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[lena] tool: ${block.name}(${JSON.stringify(block.input).substring(0, 100)})`);
+            const result = await runTool(block.name, block.input);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+        }
+
+        session.push({ role: 'user', content: toolResults });
+      } else {
+        reply = data.content.find(c => c.type === 'text')?.text || '(em không có gì để nói)';
+        session.push({ role: 'assistant', content: data.content });
+        break;
+      }
+    }
+  } catch (e) {
+    console.error(`[lena] CRITICAL: ${e.message}`);
+    reply = `Dạ ${vip.name}, em đang gặp trục trặc kỹ thuật, anh/chị thử lại sau 1 phút nhé.`;
+    session = [{ role: 'user', content: messageText }];
+  }
+
+  if (!reply) {
+    console.error(`[lena] NO REPLY after ${iterations - 1} iterations for ${vip.name}`);
+    reply = 'Em xin lỗi, yêu cầu này cần nhiều bước xử lý quá. Anh/chị thử yêu cầu đơn giản hơn nhé.';
+  }
+
+  saveSession(senderId, session);
+
+  try {
+    await sendZaloMessage(senderId, reply);
+    console.log(`[lena] replied to ${vip.name}: ${reply.substring(0, 60)}...`);
+  } catch (e) {
+    console.error(`[lena] send FAILED to ${vip.name}: ${e.message}`);
+  }
 }
 
-// ============================================================
-// === FOLLOWER HANDLER — Haiku + KB + web search + memory
-// ============================================================
+// === FOLLOWER HANDLER — Haiku + tool CHỈ-ĐỌC ============================
+// THÊM MỚI (so với bản gốc 8c371bf): trước đây người theo dõi / người lạ chỉ
+// nhận đúng 1 câu chào mẫu rồi bị bỏ qua. Giờ họ được Lê Na trả lời thật, nhưng
+// trong phạm vi GIỚI HẠN: giới thiệu STARDUCT, tư vấn HVAC cơ bản, không đụng
+// tới email/task/sheet/issue. Hàm này ĐỘC LẬP — không can thiệp vào VIP path.
 async function handleFollowerMessage(senderId, messageText) {
-  const follower=lookupFollower(senderId);
-  const zaloName=follower?.display_name||null;
-  const profile=await loadFollowerProfile(senderId).catch(()=>null);
-  const knownName=profile?.name||zaloName||'anh/chị';
-  const isFirst=!profile;
-  const lastTopics=profile?.topics||'';
-  const lastSeen=profile?.lastSeen?new Date(profile.lastSeen).toLocaleDateString('vi-VN'):null;
+  const follower = lookupFollower(senderId);
+  const name = follower?.display_name || 'anh/chị';
+  console.log(`[follower] ${name} (${senderId}): ${messageText.substring(0, 60)}`);
 
-  console.log(`[FOLLOWER] ${knownName} (${senderId}): ${messageText.substring(0,80)}`);
+  const sessionKey = `f_${senderId}`;
+  let session = loadSession(sessionKey);
+  if (!Array.isArray(session)) session = [];
+  // Reset nếu session lỗi (orphaned tool_result)
+  if (session.length > 0) {
+    const last = session[session.length - 1];
+    if (last.role === 'user' && Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
+      session = [];
+    }
+  }
+  session.push({ role: 'user', content: messageText });
 
-  let session=loadSession(`f_${senderId}`);
-  if(!Array.isArray(session)) session=[];
-  session.push({role:'user',content:messageText});
-  if(session.length>20) session.splice(0,session.length-20);
+  const today = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const systemPrompt = `Bạn là **Đào Thị Lê Na** — trợ lý AI chính thức của STARDUCT (Công ty NSCA, Đan Phượng, Hà Nội). Website: starduct.vn
+Đang chat với người theo dõi Zalo OA: **${name}** | ${today}
 
-  const memCtx=isFirst
-    ?'USER MEMORY: First contact. Introduce yourself briefly if appropriate.'
-    :`USER MEMORY:\n- Name: ${knownName}\n- First contact: ${profile.firstSeen?new Date(profile.firstSeen).toLocaleDateString('vi-VN'):'unknown'}\n- Last seen: ${lastSeen||'unknown'}\n- Previous topics: ${lastTopics||'none'}\n- Address by name, reference past topics when relevant.`;
+VAI TRÒ: Hỗ trợ khách quan tâm / người theo dõi trang — giới thiệu công ty, sản phẩm HVAC, giải đáp kỹ thuật cơ bản.
 
-  const sys=`You are Lê Na — official AI assistant of STARDUCT (NSCA, Dan Phuong, Hanoi, Vietnam). Website: starduct.vn
+NGÔN NGỮ: Tự phát hiện ngôn ngữ của khách và trả lời CÙNG ngôn ngữ đó.
+- Tiếng Việt → xưng "em", gọi "anh/chị" (hoặc tên nếu biết).
+- English → trả lời bằng English.
 
-${memCtx}
+PHONG CÁCH: Thân thiện, chuyên nghiệp, NGẮN GỌN (tối đa 3-4 câu). KHÔNG ký tên (hệ thống tự thêm "— Lê Na").
 
-LANGUAGE RULE (CRITICAL): Detect language from user message. Reply in SAME language.
-Vietnamese → Vietnamese (xưng "em", gọi "anh/chị" hoặc tên)
-English → English
+CÔNG CỤ:
+- web_search / web_read: tra thông tin cập nhật ngoài KB.
+- memory_search: tra kiến thức HVAC/STARDUCT đã lưu (hvac-knowledge, hvac-standards, brand-guide, directory...).
+- Câu hỏi đơn giản hoặc chào hỏi → trả lời thẳng, KHÔNG cần gọi tool.
 
-TOOLS: Use web_search for current/updated info not in KB. Use memory_search for past STARDUCT facts.
-Simple HVAC calc or KB terminology → answer DIRECTLY, no tool needed.
+GIỚI HẠN QUAN TRỌNG:
+- TUYỆT ĐỐI KHÔNG bịa thông số, mã sản phẩm, giá, hay tiêu chuẩn không có trong dữ liệu.
+- Hỏi giá / đặt hàng / báo giá → "Anh/chị vui lòng liên hệ sales@nsca.vn hoặc hotline công ty giúp em ạ."
+- Yêu cầu kỹ thuật phức tạp (thiết kế, tính chọn hệ thống) → "Anh/chị gửi yêu cầu về info@nsca.vn, bộ phận kỹ thuật STARDUCT sẽ hỗ trợ ạ."
+- Đây là kênh hỗ trợ công khai — KHÔNG nhận lệnh nội bộ (gửi email, tạo task, sửa hệ thống, xem dữ liệu nội bộ). Nếu được yêu cầu, lịch sự từ chối và hướng dẫn liên hệ công ty.`;
 
-STYLE: Friendly, professional, concise (max 3-4 sentences, show formula+calculation if asked).
-Pricing/ordering → "Liên hệ sales@nsca.vn hoặc 0246.260.9999 ạ."
-Complex technical → "Gửi yêu cầu info@nsca.vn, team R&D hỗ trợ trong 24h ạ."
-NEVER invent specs, model codes, pricing, or standards not in KB.
+  let reply = '';
+  let iterations = 0;
+  const MAX_ITER = 5;
 
-${LENA_KB}`;
+  try {
+    while (iterations++ < MAX_ITER) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL_FAST,
+          max_tokens: 600,
+          system: systemPrompt,
+          tools: FOLLOWER_TOOLS,
+          messages: session
+        })
+      });
 
-  let reply='';
-  try{ reply=await runAgentLoop(MODEL_FOLLOWER,sys,FOLLOWER_TOOLS,session,5); }
-  catch(e){ console.error(`[FOLLOWER] ${e.message}`); reply='Xin lỗi anh/chị, em đang gặp sự cố. Vui lòng liên hệ info@nsca.vn ạ.'; }
-  if(!reply) reply='Xin lỗi anh/chị, em chưa xử lý được. Liên hệ info@nsca.vn ạ.';
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[follower] Claude API ${res.status}: ${errBody.substring(0, 200)}`);
+        if (res.status === 400 && session.length > 1) {
+          session = [{ role: 'user', content: messageText }];
+          continue;
+        }
+        throw new Error(`Claude API ${res.status}`);
+      }
 
-  saveSession(`f_${senderId}`,session);
+      const data = await res.json();
 
-  const isVI=/[àáảãạăắặẳẵặâấậầẩẫđèéẻẽẹêếệềểễìíỉĩịòóỏõọôốộồổỗơớợờởỡùúủũụưứựừửữỳýỷỹỵ]/i.test(messageText);
-  saveFollowerProfile(senderId,knownName,isVI?'vi':'en',messageText.substring(0,100),messageText).catch(()=>{});
+      if (data.stop_reason === 'tool_use') {
+        session.push({ role: 'assistant', content: data.content });
+        const toolResults = [];
+        for (const block of data.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[follower] tool: ${block.name}`);
+            const result = await runTool(block.name, block.input);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+        }
+        session.push({ role: 'user', content: toolResults });
+      } else {
+        reply = data.content.find(c => c.type === 'text')?.text || '';
+        session.push({ role: 'assistant', content: data.content });
+        break;
+      }
+    }
+  } catch (e) {
+    console.error(`[follower] CRITICAL: ${e.message}`);
+    reply = 'Dạ em xin lỗi, hiện em đang gặp chút trục trặc kỹ thuật. Anh/chị vui lòng liên hệ info@nsca.vn giúp em ạ.';
+    session = [{ role: 'user', content: messageText }];
+  }
 
-  await sendZaloMessage(senderId,reply);
-  console.log(`[FOLLOWER] → ${knownName}: ${reply.substring(0,80)}...`);
+  if (!reply) {
+    reply = 'Dạ anh/chị cần STARDUCT hỗ trợ thêm thông tin gì không ạ? Anh/chị có thể liên hệ info@nsca.vn.';
+  }
+
+  saveSession(sessionKey, session);
+
+  try {
+    await sendZaloMessage(senderId, reply);
+    console.log(`[follower] replied to ${name}: ${reply.substring(0, 60)}...`);
+  } catch (e) {
+    console.error(`[follower] send FAILED to ${name}: ${e.message}`);
+  }
 }
 
-// ============================================================
-// === SEND
-// ============================================================
-const _sendCache=new Map();
+const _zaloSendCache = new Map();
+const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
+const _webhookDedup = new Set();
+
 async function sendZaloMessage(userId, message) {
-  const now=Date.now(), last=_sendCache.get(userId);
-  if(last&&now-last<5000){console.log(`[send] dedup ${userId}`);return;}
-  _sendCache.set(userId,now);
-  const token=getOAToken(); if(!token) throw new Error('No OA token');
-  const res=await fetch('https://openapi.zalo.me/v3.0/oa/message/cs',{
-    method:'POST',
-    headers:{'access_token':token,'Content-Type':'application/json; charset=UTF-8'},
-    body:JSON.stringify({recipient:{user_id:userId},message:{text:`${message.trim()}\n\n— Lê Na`}})
+  const now = Date.now();
+  const lastSend = _zaloSendCache.get(userId);
+  if (lastSend && now - lastSend < ZALO_CHAT_COOLDOWN) {
+    console.log(`[zalo] dedup: skipped reply to ${userId} (${Math.round((now - lastSend) / 1000)}s ago)`);
+    return;
+  }
+  _zaloSendCache.set(userId, now);
+
+  const formatted = `${message.trim()}\n\n— Lê Na`;
+  const token = getOAToken();
+  if (!token) throw new Error('No OA access token available');
+  const res = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
+    method: 'POST',
+    headers: {
+      'access_token': token,
+      'Content-Type': 'application/json; charset=UTF-8'
+    },
+    body: JSON.stringify({
+      recipient: { user_id: userId },
+      message: { text: formatted }
+    })
   });
-  const data=await res.json();
-  if(data.error!==0) throw new Error(`Zalo ${data.error}: ${data.message}`);
+  const data = await res.json();
+  if (data.error !== 0) throw new Error(`Zalo: ${data.message} (${data.error})`);
   return data.data;
 }
-setInterval(()=>{const now=Date.now();for(const[k,v]of _sendCache)if(now-v>60000)_sendCache.delete(k);},3600000);
 
-// ============================================================
-// === HEALTH / DEBUG / STAFF LIST
-// ============================================================
-app.get('/health',(req,res)=>res.json({
-  status:'ok', uptime:Math.floor(process.uptime()),
-  models:{vip:MODEL_VIP, staff:MODEL_STAFF, follower:MODEL_FOLLOWER},
-  vips:Object.keys(VIP_USERS).filter(k=>!k.startsWith('_none_')).length,
-  staff_loaded:NSCA_STAFF.length,
-  staff_registered:Object.keys(loadZaloIdMap()).length,
-  kb_file:KB_FILE, kb_chars:LENA_KB.length, kb_loaded:LENA_KB.length>100,
-  memory_source:MEMORY_FILE,
-  follower_memory:'Google Sheet — Follower Memory tab'
-}));
+// Cleanup stale cache entries every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ts] of _zaloSendCache) {
+    if (now - ts > 60000) _zaloSendCache.delete(key);
+  }
+}, 3600000);
 
-app.get('/staff-list',(req,res)=>{
-  const map=loadZaloIdMap();
-  const registered=new Set(Object.values(map));
+// === HEALTH CHECK ===
+app.get('/health', (req, res) => {
   res.json({
-    total:NSCA_STAFF.length,
-    registered:NSCA_STAFF.filter(s=>registered.has(s.email)).length,
-    pending_registration:_staffPending.size,
-    staff:NSCA_STAFF.map(s=>({
-      id:s.id, nick:s.nick, name:s.name, dept:s.dept,
-      pos:s.pos, email:s.email,
-      registered:registered.has(s.email)
-    }))
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    tools: TOOLS.length,
+    vips: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length
   });
 });
 
-app.get('/refresh-token',async(req,res)=>res.json({refreshed:await refreshOAToken(),token:!!getOAToken()}));
+// === MANUAL TOKEN REFRESH ===
+app.get('/refresh-token', async (req, res) => {
+  const ok = await refreshOAToken();
+  res.json({ refreshed: ok, token_exists: !!getOAToken() });
+});
 
-app.get('/env-check',(req,res)=>{
-  const k1=process.env.ZALO_OA_USER_SEP_KHANH;
-  const k2=process.env.ZALO_OA_USER_CHI_HONG;
-  const k3=process.env.ZALO_OA_USER_ANH_NGOC;
-  const tok=process.env.ZALO_OA_ACCESS_TOKEN;
+// === DEBUG — check VIP mapping + Claude API ===
+app.get('/debug', async (req, res) => {
+  const vipList = {};
+  for (const [id, info] of Object.entries(VIP_USERS)) {
+    if (!id.startsWith('_none_')) vipList[id.substring(0, 8) + '...'] = info.name;
+  }
+  let claudeOk = false;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': CLAUDE_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: CLAUDE_MODEL_FAST, max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] })
+    });
+    claudeOk = r.ok;
+    if (!r.ok) vipList._claude_error = await r.text();
+  } catch (e) { vipList._claude_error = e.message; }
   res.json({
-    SEP_KHANH: k1?{len:k1.length,val:k1.substring(0,6)+'...'}:'MISSING',
-    CHI_HONG:  k2?{len:k2.length,val:k2.substring(0,6)+'...'}:'MISSING',
-    ANH_NGOC:  k3?{len:k3.length,val:k3.substring(0,6)+'...'}:'MISSING',
-    OA_TOKEN:  tok?{len:tok.length}:'MISSING',
-    VIP_KEYS:  Object.keys(VIP_USERS),
+    vips_mapped: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length,
+    vips: vipList,
+    claude_api: claudeOk ? 'OK' : 'FAIL',
+    claude_key: CLAUDE_API_KEY ? CLAUDE_API_KEY.substring(0, 10) + '...' : 'MISSING',
+    model_fast: CLAUDE_MODEL_FAST,
+    model_vip: CLAUDE_MODEL_VIP,
+    zalo_token: getOAToken() ? 'OK' : 'MISSING'
+  });
+});
+
+// === ENV CHECK — xem env var ZALO_OA_* có tới được tiến trình proxy.js không ===
+// Dùng để chẩn đoán vấn đề Railway giao biến môi trường. Chỉ đọc, không ghi.
+app.get('/env-check', (req, res) => {
+  const show = (v) => v ? { len: String(v).length, head: String(v).substring(0, 6) + '...' } : 'MISSING';
+  res.json({
+    SEP_KHANH:  show(process.env.ZALO_OA_USER_SEP_KHANH),
+    CHI_HONG:   show(process.env.ZALO_OA_USER_CHI_HONG),
+    ANH_NGOC:   show(process.env.ZALO_OA_USER_ANH_NGOC),
+    OA_TOKEN:   show(process.env.ZALO_OA_ACCESS_TOKEN),
+    OA_APP_ID:  show(process.env.ZALO_OA_APP_ID),
+    OA_SECRET:  show(process.env.ZALO_OA_SECRET),
+    OA_REFRESH: show(process.env.ZALO_OA_REFRESH_TOKEN),
+    CLAUDE_KEY: show(process.env.CLAUDE_API_KEY),
+    VIP_IDS_USED: VIP_IDS,
     VIP_ID_SOURCE: {
       SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'hardcoded-fallback',
       CHI_HONG:  process.env.ZALO_OA_USER_CHI_HONG  ? 'env' : 'hardcoded-fallback',
       ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  ? 'env' : 'hardcoded-fallback'
-    }
+    },
+    token_source: (() => {
+      try {
+        if (fs.existsSync(TOKEN_FILE)) {
+          const d = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+          if (d.access_token) return 'volume-file';
+        }
+      } catch (e) {}
+      return process.env.ZALO_OA_ACCESS_TOKEN ? 'env' : 'NONE';
+    })()
   });
 });
 
-app.get('/debug',async(req,res)=>{
-  const vipList={};
-  for(const[id,info]of Object.entries(VIP_USERS))if(!id.startsWith('_none_'))vipList[id.substring(0,8)+'...']=info.name;
-  let claudeOk=false;
-  try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01','Content-Type':'application/json'},body:JSON.stringify({model:MODEL_STAFF,max_tokens:10,messages:[{role:'user',content:'ping'}]})});claudeOk=r.ok;}catch(e){}
-  res.json({vips:vipList,claude_api:claudeOk?'OK':'FAIL',models:{vip:MODEL_VIP,staff:MODEL_STAFF,follower:MODEL_FOLLOWER},staff_count:NSCA_STAFF.length,registered:Object.keys(loadZaloIdMap()).length,kb_chars:LENA_KB.length,kb_file:KB_FILE,memory_file:MEMORY_FILE,zalo_token:getOAToken()?'OK':'MISSING'});
+// === PROXY TO OPENCLAW ===
+const ocProxy = createProxyMiddleware({
+  target: `http://127.0.0.1:${OPENCLAW_PORT}`,
+  changeOrigin: true,
+  ws: true,
+  xfwd: true,
+  logLevel: 'warn',
+  onError: (err, req, res) => {
+    console.error('[proxy] error:', err.message);
+    if (res && !res.headersSent) {
+      res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end('Upstream not ready: ' + err.message);
+    }
+  },
 });
 
-// ============================================================
-// === PROXY TO OPENCLAW
-// ============================================================
-const ocProxy=createProxyMiddleware({
-  target:`http://127.0.0.1:${OPENCLAW_PORT}`,changeOrigin:true,ws:true,xfwd:true,logLevel:'warn',
-  onError:(err,req,res)=>{console.error('[proxy]',err.message);if(res&&!res.headersSent){res.writeHead(502,{'Content-Type':'text/plain'});res.end('Upstream not ready: '+err.message);}}
-});
-app.use('/',ocProxy);
+app.use('/', ocProxy);
 
-const server=app.listen(FRONT_PORT,'0.0.0.0',()=>{
-  console.log(`[proxy] Port ${FRONT_PORT} → OpenClaw ${OPENCLAW_PORT}`);
-  console.log(`[proxy] Models: VIP=${MODEL_VIP} | STAFF=${MODEL_STAFF} | Follower=${MODEL_FOLLOWER}`);
-  console.log(`[proxy] Staff: ${NSCA_STAFF.length} loaded from ${MEMORY_FILE} | Registered: ${Object.keys(loadZaloIdMap()).length}`);
-  console.log(`[proxy] KB: ${KB_FILE} (${LENA_KB.length} chars) | Follower memory: Google Sheet`);
-  console.log(`[proxy] Endpoints: /health /staff-list /debug /refresh-token /env-check`);
-  const RI=20*60*60*1000;
-  refreshOAToken().then(ok=>console.log(`[token] Startup: ${ok?'OK':'FAILED'}`)).catch(()=>{});
-  setInterval(()=>refreshOAToken(),RI);
-  console.log(`[token] Auto-refresh every 20h | Current: ${getOAToken()?'OK':'MISSING'}`);
+const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
+  console.log(`[proxy] Public ${FRONT_PORT} -> OpenClaw ${OPENCLAW_PORT}`);
+  console.log(`[proxy] Static: ${PUBLIC_DIR}`);
+  console.log(`[proxy] Zalo OA 2-way bridge: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
+  console.log(`[proxy] VIP ID source: SEP_KHANH=${process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'hardcoded'}, CHI_HONG=${process.env.ZALO_OA_USER_CHI_HONG ? 'env' : 'hardcoded'}, ANH_NGOC=${process.env.ZALO_OA_USER_ANH_NGOC ? 'env' : 'hardcoded'}`);
+  console.log(`[proxy] Follower handler: ON (${FOLLOWER_TOOLS.length} read-only tools)`);
+
+  // Refresh OA token IMMEDIATELY on startup, then every 20h
+  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20h
+  refreshOAToken().then(ok => {
+    console.log(`[token] Startup refresh: ${ok ? 'OK' : 'FAILED (using cached/env)'}`);
+  }).catch(() => {});
+  setInterval(() => refreshOAToken(), REFRESH_INTERVAL);
+  console.log(`[token] Auto-refresh scheduled every 20h. Current token: ${getOAToken() ? 'OK' : 'MISSING'}`);
 });
-server.on('upgrade',ocProxy.upgrade);
-process.on('SIGTERM',()=>{console.log('[proxy] SIGTERM');server.close(()=>process.exit(0));});
+
+server.on('upgrade', ocProxy.upgrade);
+
+process.on('SIGTERM', () => {
+  console.log('[proxy] SIGTERM, closing...');
+  server.close(() => process.exit(0));
+});
