@@ -19,7 +19,7 @@
 | Code | Ho ten | Gioi tinh | Chuc vu | Email | SDT/Zalo |
 |------|--------|-----------|---------|-------|----------|
 | PKD01 | Đào Nguyên Ngọc | Nam | TP PKD (Bộc Béo) | ndao@nsca.vn | 0902115796 |
-| PKD02 | Trần Minh Đức | Nam | BD Nội địa (Đức BD) | ducdd@nsca.vn | 0912345678 |
+| PKD02 | Đỗ Đình Đức | Nam | BD Nội địa (Đức BD) | ducdd@nsca.vn | 0912345678 |
 | PKD03 | Santiago de los Reyes | Nam | Xuất khẩu (Santi) - OMDM | santiago@nsca.vn | 0978123456 |
 | PKD04 | Nguyễn Thị Thanh Tâm | Nữ | Back Office (Chị Tâm) | tamntt@nsca.vn | 0934567890 |
 
@@ -32,7 +32,7 @@
   - ducdd@nsca.vn (Đức BD — Noi dia)
   - santiago@nsca.vn (Santiago — Xuat khau)
   - tamntt@nsca.vn (Chị Tâm — Back Office)
-- **Loai bo:** main@nsca.vn (Trúc Mai), pkd05/06@nsca.vn (PKD Admin/Công nợ), pkd07-10@nsca.vn (BO1-4)
+- **Loai bo:** maintt@nsca.vn (Trúc Mai), pkd05/06@nsca.vn (PKD Admin/Công nợ), pkd07-10@nsca.vn (BO1-4)
 
 ## R&D
 | Code | Ho ten | Gioi tinh | Chuc vu | Email | SDT/Zalo |
