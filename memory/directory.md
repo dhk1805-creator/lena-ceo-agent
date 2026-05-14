@@ -1,12 +1,11 @@
 # DANH BA CBCNV NSCA & DOI TAC
-# Cap nhat: 2026-04-15
+# Cap nhat: 2026-05-14
 
 ## BAN GIAM DOC
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
 |----|--------|---------|-----|-------|-----|
 | CEO01 | Đào Huy Khánh | CEO — Tổng Giám đốc | Ban GĐ | dhk@nsca.vn | 0903232222 |
 | BGD02 | Nguyễn Thị Thuý Hồng | GĐ Đại diện Pháp luật | Ban GĐ | nsca@nsca.vn | 0903220024 |
-| BGD03 | Nguyễn Thị Thanh Trúc Mai | Trợ lý CEO · Quản lý Users | Ban GĐ | main@nsca.vn | 0916888001 |
 
 ## PHONG KINH DOANH (PKD)
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
@@ -15,12 +14,6 @@
 | PKD02 | Trần Minh Đức | BD Nội địa (Đức BD) | PKD | ducdd@nsca.vn | 0912345678 |
 | PKD03 | Santiago | Xuất khẩu (Santi) | PKD | santiago@nsca.vn | 0978123456 |
 | PKD04 | Nguyễn Thị Thanh Tâm | Back Office (Chị Tâm) | PKD | tamntt@nsca.vn | 0934567890 |
-| PKD05 | PKD-Admin | Admin | PKD | pkd05@nsca.vn | 0945678901 |
-| PKD06 | PKD-Công nợ | Công nợ | PKD | pkd06@nsca.vn | 0956789012 |
-| PKD07 | BO1 | Back Office 1 | PKD | pkd07@nsca.vn | 0967890123 |
-| PKD08 | BO2 | Back Office 2 | PKD | pkd08@nsca.vn | 0978901234 |
-| PKD09 | BO3 | Back Office 3 | PKD | pkd09@nsca.vn | 0989012345 |
-| PKD10 | BO4 | Back Office 4 | PKD | pkd10@nsca.vn | 0990123456 |
 
 ## QUAN LY SAN XUAT (QLSX)
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
@@ -100,6 +93,9 @@
 
 ---
 ## GHI CHU:
-- Tong: 63 nguoi (noi bo + doi tac)
+- Tong: 56 nguoi (noi bo + doi tac)
 - Email anh Son HCNS: sondt@nsca.vn
 - Email cua chi Hong (nsca@nsca.vn) va email cong ty (nsca@nsca.vn) la CUNG MOT email
+- VIP MAPPING (3): dhk@nsca.vn (sep-khanh), nsca@nsca.vn (chi-hong), ndao@nsca.vn (anh-ngoc)
+- PKD TEAM (3 cap duoi anh Ngoc): ducdd@nsca.vn, santiago@nsca.vn, tamntt@nsca.vn
+- Loai bo 2026-05-14: main@nsca.vn (Trúc Mai), pkd05/pkd06/pkd07-10@nsca.vn (PKD Admin/BO khong dung)
