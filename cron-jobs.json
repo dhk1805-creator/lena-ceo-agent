@@ -195,6 +195,19 @@
     "sessionTarget": "isolated"
   },
   {
+    "id": "daily-auto-learn",
+    "name": "Auto-Learn from Conversations - 23h hang ngay (Issue #31)",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 23 * * *"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "AUTO-LEARN TU CONVERSATIONS — 23H HANG NGAY (Issue #31).\n\nMUC DICH: Quet TAT CA session Zalo OA cua 3 VIP trong 24h qua, dung Gemini Flash extract:\n- Contacts moi (nguoi duoc nhac trong hoi thoai)\n- Technical facts/standards moi\n- Customer feedback/preferences\n- Business insights tu VIP\nRoi auto-save vao lena-learned overlay (contacts.md, technical-facts.md, customer-feedback.md, business-insights.md). Lan sau Le Na dung memory_search tra cuu.\n\nBUOC 1: Chay tool auto-learn cho tat ca VIP (24h window):\n`exec: node /app/google-tools/auto-learn.js all 24`\n\nBUOC 2: Parse JSON output. Doc field `totals` va `per_session`.\n\nBUOC 3:\n- Neu totals.contacts + totals.technical_facts + totals.customer_feedback + totals.business_insights > 0:\n  Gui 1 tin Zalo cho Sep Khanh (sep-khanh):\n  `exec: node /app/google-tools/zalo-oa-send.js sep-khanh \"🧠 AUTO-LEARN (24h):\\nContacts moi: <n>\\nTechnical facts: <n>\\nCustomer feedback: <n>\\nBusiness insights: <n>\\nDa luu vao lena-learned overlay. Em se tra cuu lan sau.\"`\n- Neu tat ca = 0 → IM LANG, KHONG gui gi. EXIT.\n\nBUOC 4: Log vao Activity Log:\n`exec: node /app/google-tools/sheets-append.js \"$GOOGLE_SHEET_ID\" \"'Activity Log'!A:H\" '[[\"<ISO timestamp>\", \"Le Na\", \"Auto Learn\", \"Memory\", \"lena-learned overlay\", \"contacts=<n> tech=<n> feedback=<n> insights=<n>\", \"sessions_scanned=<n>\", \"daily-auto-learn\"]]'`\n\nQUY TAC:\n- KHONG gui Zalo cho chi Hong/anh Ngoc (kenh rieng).\n- KHONG retry trong cung lan chay neu Gemini fail.\n- KHONG bia data — chi report so lieu thuc tu output cua auto-learn.js."
+    },
+    "sessionTarget": "isolated"
+  },
+  {
     "id": "zalo-oa-comment-scan",
     "name": "Zalo OA Comment Scan + Auto-Reply - moi 30 phut",
     "schedule": {
