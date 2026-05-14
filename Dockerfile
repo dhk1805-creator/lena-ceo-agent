@@ -15,7 +15,7 @@ RUN cd /app && npm install sharp express http-proxy-middleware
 # Copy agent files to staging area (start.sh syncs to volume at runtime)
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
 COPY AGENTS.md /app/workspace/AGENTS.md
-COPY MEMORY.md /app/workspace/MEMORY.md
+COPY memory/MEMORY.md /app/memory/MEMORY.md
 COPY memory/ /app/workspace/memory/
 COPY skills/ /app/workspace/skills/
 COPY cron-jobs.json /app/cron-jobs.json
