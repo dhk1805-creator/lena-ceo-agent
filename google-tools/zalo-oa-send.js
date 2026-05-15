@@ -19,25 +19,31 @@ require('./_env');
 //   — Đào Thị Lê Na
 
 const fs = require('fs');
-const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+const auth = require('./zalo-oa-auth');
 const DEDUP_LOG = '/root/.openclaw/zalo-send-dedup.json';
 const DEDUP_WINDOW = 60 * 1000; // 60 seconds per target
 
-function getAccessToken() {
-  try {
-    if (fs.existsSync(TOKEN_FILE)) {
-      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
-      if (data.access_token) return data.access_token;
-    }
-  } catch (e) {}
-  return process.env.ZALO_OA_ACCESS_TOKEN;
-}
-
-const ACCESS_TOKEN = getAccessToken();
+let ACCESS_TOKEN = auth.getAccessToken();
 
 if (!ACCESS_TOKEN) {
   console.error(JSON.stringify({ success: false, error: 'No OA access token (file or env var)' }));
   process.exit(1);
+}
+
+// Issue #52: Token Zalo OA expire 25h → -216/-220. Auto-refresh va retry 1 lan.
+async function withTokenRefresh(fn) {
+  let resp = await fn();
+  if (auth.isTokenExpiredError(resp)) {
+    const refreshed = await auth.refreshAccessToken();
+    if (refreshed.success && refreshed.access_token) {
+      ACCESS_TOKEN = refreshed.access_token;
+      resp = await fn();
+      resp = { ...resp, _token_refreshed: true };
+    } else {
+      resp = { ...resp, _refresh_failed: refreshed.error };
+    }
+  }
+  return resp;
 }
 
 // Map VIP alias → env var name
@@ -87,18 +93,20 @@ function formatMessage(message) {
 
 async function listFollowers() {
   const url = 'https://openapi.zalo.me/v3.0/oa/user/getlist?data=' + encodeURIComponent(JSON.stringify({ offset: 0, count: 50 }));
-  const res = await fetch(url, {
-    headers: { 'access_token': ACCESS_TOKEN }
+  const data = await withTokenRefresh(async () => {
+    const res = await fetch(url, { headers: { 'access_token': ACCESS_TOKEN } });
+    return res.json();
   });
-  const data = await res.json();
 
   if (data.error === 0 && data.data?.users) {
     // Get detail của từng user
     const users = await Promise.all(data.data.users.map(async u => {
-      const detailRes = await fetch(`https://openapi.zalo.me/v3.0/oa/user/detail?data=${encodeURIComponent(JSON.stringify({ user_id: u.user_id }))}`, {
-        headers: { 'access_token': ACCESS_TOKEN }
+      const detail = await withTokenRefresh(async () => {
+        const detailRes = await fetch(`https://openapi.zalo.me/v3.0/oa/user/detail?data=${encodeURIComponent(JSON.stringify({ user_id: u.user_id }))}`, {
+          headers: { 'access_token': ACCESS_TOKEN }
+        });
+        return detailRes.json();
       });
-      const detail = await detailRes.json();
       return {
         user_id: u.user_id,
         display_name: detail.data?.display_name || '(unknown)',
@@ -155,19 +163,20 @@ async function sendMessage(target, message) {
 
   const formattedMessage = formatMessage(message);
 
-  const res = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
-    method: 'POST',
-    headers: {
-      'access_token': ACCESS_TOKEN,
-      'Content-Type': 'application/json; charset=UTF-8'
-    },
-    body: JSON.stringify({
-      recipient: { user_id: userId },
-      message: { text: formattedMessage }
-    })
+  const data = await withTokenRefresh(async () => {
+    const res = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
+      method: 'POST',
+      headers: {
+        'access_token': ACCESS_TOKEN,
+        'Content-Type': 'application/json; charset=UTF-8'
+      },
+      body: JSON.stringify({
+        recipient: { user_id: userId },
+        message: { text: formattedMessage }
+      })
+    });
+    return res.json();
   });
-
-  const data = await res.json();
 
   if (data.error === 0) {
     recordSend(userId, target);

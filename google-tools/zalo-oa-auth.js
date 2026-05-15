@@ -85,11 +85,12 @@ async function refreshAccessToken() {
   return { success: true, access_token: data.access_token, expires_in: data.expires_in };
 }
 
-// Zalo tra -220 khi access_token expired/removed.
+// Zalo tra -220 (expired/removed) hoac -216 (invalid) khi access_token loi.
+// Ca hai deu fix duoc bang refresh token.
 function isTokenExpiredError(resp) {
   if (!resp) return false;
   const code = resp.error;
-  return code === -220 || code === '-220';
+  return code === -220 || code === '-220' || code === -216 || code === '-216';
 }
 
 module.exports = {
