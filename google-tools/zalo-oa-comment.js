@@ -14,25 +14,33 @@ require('./_env');
 
 const fs = require('fs');
 const path = require('path');
+const auth = require('./zalo-oa-auth');
 
-const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
 const COMMENT_LOG = '/root/.openclaw/zalo-oa-comments.jsonl';
 const REPLIED_LOG = '/root/.openclaw/zalo-oa-comment-replied.json';
 
-function getAccessToken() {
-  try {
-    if (fs.existsSync(TOKEN_FILE)) {
-      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
-      if (data.access_token) return data.access_token;
-    }
-  } catch (e) {}
-  return process.env.ZALO_OA_ACCESS_TOKEN;
-}
-
-const ACCESS_TOKEN = getAccessToken();
+let ACCESS_TOKEN = auth.getAccessToken();
 if (!ACCESS_TOKEN) {
   console.log(JSON.stringify({ success: false, error: 'No OA access token (file or env)' }));
   process.exit(1);
+}
+
+// Issue #47: Zalo OA token expire sau 25h. Khi gap -220 → goi refreshAccessToken()
+// (dung ZALO_OA_REFRESH_TOKEN) va retry 1 lan. fn() phai dung ACCESS_TOKEN tu
+// closure module → sau refresh, bien duoc reassign nen retry dung token moi.
+async function withTokenRefresh(fn) {
+  let resp = await fn();
+  if (auth.isTokenExpiredError(resp)) {
+    const refreshed = await auth.refreshAccessToken();
+    if (refreshed.success && refreshed.access_token) {
+      ACCESS_TOKEN = refreshed.access_token;
+      resp = await fn();
+      resp = { ...resp, _token_refreshed: true };
+    } else {
+      resp = { ...resp, _refresh_failed: refreshed.error };
+    }
+  }
+  return resp;
 }
 
 // === MODERATION — filter spam, tu nhay cam ===
@@ -86,29 +94,33 @@ function matchTemplate(text) {
 async function getComments(articleId, offset = 0, limit = 20) {
   const params = JSON.stringify({ article_id: articleId, offset, limit });
   const url = `https://openapi.zalo.me/v2.0/article/getcomment?data=${encodeURIComponent(params)}`;
-  try {
-    const res = await fetch(url, { headers: { 'access_token': ACCESS_TOKEN } });
-    const data = await res.json();
-    return { http: res.status, ...data };
-  } catch (e) {
-    return { error: -1, message: e.message };
-  }
+  return withTokenRefresh(async () => {
+    try {
+      const res = await fetch(url, { headers: { 'access_token': ACCESS_TOKEN } });
+      const data = await res.json();
+      return { http: res.status, ...data };
+    } catch (e) {
+      return { error: -1, message: e.message };
+    }
+  });
 }
 
 async function replyComment(commentId, message, articleId) {
   const body = { comment_id: commentId, message };
   if (articleId) body.article_id = articleId;
-  try {
-    const res = await fetch('https://openapi.zalo.me/v2.0/article/replycomment', {
-      method: 'POST',
-      headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    return { http: res.status, ...data };
-  } catch (e) {
-    return { error: -1, message: e.message };
-  }
+  return withTokenRefresh(async () => {
+    try {
+      const res = await fetch('https://openapi.zalo.me/v2.0/article/replycomment', {
+        method: 'POST',
+        headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      return { http: res.status, ...data };
+    } catch (e) {
+      return { error: -1, message: e.message };
+    }
+  });
 }
 
 // === REPLIED DEDUP — khong reply 2 lan cung 1 comment ===
@@ -195,8 +207,12 @@ async function listArticles(limit = 10) {
   let bestEmpty = null;
   for (const v of variants) {
     try {
-      const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
-      const data = await res.json();
+      const data = await withTokenRefresh(async () => {
+        const res = await fetch(v.url, { headers: { 'access_token': ACCESS_TOKEN } });
+        const json = await res.json();
+        return { _http: res.status, ...json };
+      });
+      const res = { status: data._http };
       const found = findArticleArray(data.data);
       const articles = found.items;
       const total = data.data?.total ?? data.data?.total_count ?? null;
