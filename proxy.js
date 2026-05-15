@@ -954,10 +954,11 @@ ${isFreshSession
 
 NGUYÊN TẮC:
 - NGÔN NGỮ: VIP nhắn bằng ngôn ngữ nào thì trả lời bằng đúng ngôn ngữ đó (mặc định Tiếng Việt).
+- HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Viết câu đầy đủ, đúng ngữ pháp văn viết.
 - Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc / anh/chị)
 - NGẮN GỌN, chính xác, có số liệu
 - KHÔNG tâm sự, gossip, viết dài
-- KHÔNG ký tên (proxy tự thêm "— Lê Na")
+- KHÔNG ký tên (proxy tự thêm chữ ký "Lê Na")
 - Tin nhắn trả lời tối đa 500 ký tự
 - Nếu cần phân tích dài → tạo gdoc rồi gửi link
 - CHẠY TOOL IM LẶNG → chỉ trả lời KẾT QUẢ CUỐI CÙNG. KHÔNG narrate "em đang đọc...", "bước 1..."
@@ -1034,6 +1035,11 @@ LONG-TERM MEMORY (memory_search + memory_update + auto_learn):
 ✅ TRƯỚC khi reply VIP về 1 người/khách/topic đã gặp → memory_search keyword="<tên>" để check đã biết gì về họ trước đó.
 ⚙️ Cron 23h hàng ngày TỰ ĐỘNG chạy auto_learn quét toàn bộ session 24h — Lê Na KHÔNG cần lo backup. Chỉ gọi auto_learn manual khi VIP yêu cầu "rút kinh nghiệm session này".
 ❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
+
+PHÁP LUẬT / NHÂN SỰ / THUẾ / KẾ TOÁN / HẢI QUAN / DOANH NGHIỆP:
+- Khi VIP hỏi về luật lao động, BHXH, thuế TNCN, kế toán, hải quan, luật doanh nghiệp, chính sách Nhà nước → memory_search file="legal-sources" để lấy danh sách nguồn chính thống (thuvienphapluat.vn, chinhphu.vn...).
+- Sau đó web_read đúng link luật/văn bản liên quan để tra chính xác — KHÔNG trả lời từ trí nhớ chung.
+- LUÔN trích dẫn LINK NGUỒN cụ thể trong câu trả lời. KHÔNG bịa số điều luật, ngày ban hành, hay số nghị định.
 
 GOOGLE SHEET: Sheet ID ĐÃ CÓ SẴN trong hệ thống — KHÔNG BAO GIỜ hỏi Sheet ID.
 Khi dùng sheets_read / sheets_write / sheets_append: CHỈ CẦN truyền range (vd: "'KPI Tracker'!A:Z"). Hệ thống TỰ ĐỘNG điền Sheet ID.
@@ -1169,7 +1175,8 @@ NGÔN NGỮ: Tự phát hiện ngôn ngữ của khách và trả lời CÙNG ng
 - Tiếng Việt → xưng "em", gọi "anh/chị" (hoặc tên nếu biết).
 - English → trả lời bằng English.
 
-PHONG CÁCH: Thân thiện, chuyên nghiệp, NGẮN GỌN (tối đa 3-4 câu). KHÔNG ký tên (hệ thống tự thêm "— Lê Na").
+PHONG CÁCH: Thân thiện, chuyên nghiệp, NGẮN GỌN (tối đa 3-4 câu). KHÔNG ký tên (hệ thống tự thêm chữ ký "Lê Na").
+HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Viết câu đầy đủ, đúng ngữ pháp văn viết.
 
 CÔNG CỤ:
 - web_search / web_read: tra thông tin cập nhật ngoài KB.
@@ -1271,7 +1278,7 @@ async function handleStaffRegistration(senderId, messageText) {
     registerStaffZaloId(senderId, staff.email);
     console.log(`[staff-reg] matched ${staff.name} (${staff.email})`);
     await sendZaloMessage(senderId,
-      `✅ Em nhận diện được rồi ạ!\n${staff.name} — ${staff.pos} — ${staff.dept}\n\n` +
+      `✅ Em nhận diện được rồi ạ!\n${staff.name}, ${staff.pos}, ${staff.dept}\n\n` +
       `Từ giờ ${staff.name} nhắn vào đây là em nhận ra ngay. Anh/chị cần hỏi về công việc, ` +
       `lịch họp, hay kỹ thuật STARDUCT cứ nhắn em nhé!`);
     // Nếu trong tin còn nội dung thực sự (ngoài email) → xử lý luôn như nhân viên.
@@ -1286,7 +1293,7 @@ async function handleStaffRegistration(senderId, messageText) {
   // Có email @nsca.vn nhưng không khớp danh bạ
   await sendZaloMessage(senderId,
     `Em chưa tìm thấy email ${email || 'này'} trong danh bạ NSCA ạ. Anh/chị kiểm tra lại email ` +
-    `nội bộ @nsca.vn, hoặc liên hệ HCNS (anh Sơn — sondt@nsca.vn) để được bổ sung vào danh bạ nhé.`);
+    `nội bộ @nsca.vn, hoặc liên hệ HCNS (anh Sơn, sondt@nsca.vn) để được bổ sung vào danh bạ nhé.`);
 }
 
 // === STAFF HANDLER — Haiku + tool CHỈ-ĐỌC, trợ lý nội bộ đầy đủ ===========
@@ -1313,7 +1320,8 @@ VAI TRÒ: Trợ lý nội bộ cho CBCNV — hỗ trợ về công việc, lịc
 
 NGÔN NGỮ: Tự phát hiện ngôn ngữ trong tin nhắn và trả lời CÙNG ngôn ngữ đó (Tiếng Việt → Tiếng Việt, English → English...).
 
-GIAO TIẾP: Xưng "em", gọi anh/chị kèm tên. Thân thiện, ngắn gọn, thực tế. KHÔNG ký tên (hệ thống tự thêm "— Lê Na").
+GIAO TIẾP: Xưng "em", gọi anh/chị kèm tên. Thân thiện, ngắn gọn, thực tế. KHÔNG ký tên (hệ thống tự thêm chữ ký "Lê Na").
+HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Viết câu đầy đủ, đúng ngữ pháp văn viết.
 
 CÔNG CỤ (chỉ-đọc):
 - task_status / task_overdue — xem tình hình công việc.
@@ -1323,10 +1331,12 @@ CÔNG CỤ (chỉ-đọc):
 - web_search / web_read — tra thông tin ngoài.
 BẮT BUỘC dùng memory_search để tra tài liệu TRƯỚC khi trả lời câu hỏi kỹ thuật / quy trình — KHÔNG bịa.
 
+PHÁP LUẬT: Khi nhân viên hỏi về luật lao động, BHXH, thuế TNCN, kế toán, hải quan, luật doanh nghiệp → memory_search file="legal-sources" lấy nguồn chính thống → web_read link luật liên quan để tra đúng → LUÔN trích dẫn link nguồn. KHÔNG bịa số điều luật.
+
 GIỚI HẠN:
 ❌ KHÔNG xem/sửa lương, tài chính, hay dữ liệu riêng của người khác.
 ❌ KHÔNG thay mặt công ty gửi email, tạo task cho người khác, hay ra quyết định.
-❌ Việc vượt thẩm quyền → hướng dẫn ${staff.name} liên hệ trưởng bộ phận hoặc HCNS (anh Sơn — sondt@nsca.vn).`;
+❌ Việc vượt thẩm quyền → hướng dẫn ${staff.name} liên hệ trưởng bộ phận hoặc HCNS (anh Sơn, sondt@nsca.vn).`;
 
   let reply = '';
   let iterations = 0;
@@ -1416,7 +1426,7 @@ async function sendZaloMessage(userId, message) {
   }
   _zaloSendCache.set(userId, now);
 
-  const formatted = `${message.trim()}\n\n— Lê Na`;
+  const formatted = `${message.trim()}\n\nLê Na`;
   const token = getOAToken();
   if (!token) throw new Error('No OA access token available');
   const res = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
