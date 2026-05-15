@@ -49,10 +49,10 @@
 ## R&D
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
 |----|--------|---------|-----|-------|-----|
-| RD01 | Phạm Hoài Nam | TP R&D | R&D | namph@nsca.vn | 0967321098 |
-| RD02 | Abhishek Dewangan | KS Tính toán/Mô phỏng (Abi) | R&D | dewangana@nsca.vn | 0978432109 |
-| RD03 | Nguyễn Trọng Tuấn | KS Chuẩn hóa SX | R&D | tuannt@nsca.vn | 0989543210 |
-| RD04 | Trần Quang Huy | KS Cơ điện tử | R&D | huytq@nsca.vn | 0990654321 |
+| RD01 | Phạm Hoài Nam | TP R&D | R&D | namph@nsca.vn | 0938052192 |
+| RD02 | Abhishek Dewangan | KS Tính toán/Mô phỏng (Abi) | R&D | Abhishek@nsca.vn | 0961229140 |
+| RD03 | Nguyễn Trọng Tuấn | KS Chuẩn hóa SX | R&D | rd03@nsca.vn | 0968018318 |
+| RD04 | Trần Quang Huy | KS Cơ điện tử | R&D | rd01@nsca.vn | 0397610797 |
 
 ## HANH CHINH NHAN SU (HCNS)
 | ID | Ho ten | Chuc vu | BP | Email | SDT |
