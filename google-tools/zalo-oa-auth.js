@@ -100,3 +100,30 @@ module.exports = {
   refreshAccessToken,
   isTokenExpiredError
 };
+
+// Issue #63: Le Na hay chay `node zalo-oa-auth.js refresh` truc tiep — file la
+// module nen khong co output. Add CLI khi require.main === module de hanh vi
+// giong zalo-oa-refresh.js / zalo-oa-refresh-token.js (alias pattern Issue
+// #55/#57). Khong anh huong import tu comment.js/send.js.
+if (require.main === module) {
+  require('./_env');
+  const cmd = process.argv[2] || 'refresh';
+  if (cmd === 'refresh') {
+    refreshAccessToken()
+      .then(result => {
+        console.log(JSON.stringify(result, null, 2));
+        process.exit(result.success ? 0 : 1);
+      })
+      .catch(e => {
+        console.error(JSON.stringify({ success: false, error: e.message }));
+        process.exit(1);
+      });
+  } else {
+    console.log(JSON.stringify({
+      success: false,
+      error: `Unknown cmd: ${cmd}`,
+      usage: 'node zalo-oa-auth.js refresh'
+    }));
+    process.exit(1);
+  }
+}
