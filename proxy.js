@@ -919,6 +919,40 @@ async function handleArticleComment(event) {
   }
 }
 
+// === FORCE FINAL ANSWER — khi vòng lặp agent hết lượt mà chưa ra câu trả lời:
+// gọi Claude thêm 1 lần cuối, KHÓA tool (tool_choice none), ép Lê Na trả lời
+// bằng những gì đã thu thập được. Tránh trả về câu từ chối cứng khiến người
+// dùng phải hỏi lại (tốn thời gian, context, token).
+async function forceFinalAnswer(model, systemPrompt, tools, session, maxTokens) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt + '\n\nLƯU Ý CUỐI: đã hết lượt gọi công cụ. Trả lời NGAY bằng thông tin đã tra được, dù chưa đầy đủ. Nói rõ phần nào chắc chắn, phần nào cần kiểm tra thêm. TUYỆT ĐỐI KHÔNG từ chối hay bảo người dùng hỏi đơn giản hơn.',
+        tools,
+        tool_choice: { type: 'none' },
+        messages: session
+      })
+    });
+    if (!res.ok) {
+      console.error(`[force-answer] API ${res.status}`);
+      return '';
+    }
+    const data = await res.json();
+    return data.content.find(c => c.type === 'text')?.text || '';
+  } catch (e) {
+    console.error(`[force-answer] ${e.message}`);
+    return '';
+  }
+}
+
 // === LÊ NA AGENT — TOOL CALLING LOOP ===
 async function handleUserMessage(event) {
   const senderId = event.sender?.id;
@@ -1009,6 +1043,7 @@ ${isFreshSession
 NGUYÊN TẮC:
 - NGÔN NGỮ: VIP nhắn bằng ngôn ngữ nào thì trả lời bằng đúng ngôn ngữ đó (mặc định Tiếng Việt).
 - HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Không dùng dấu ** (markdown in đậm) bao quanh chữ hay link, vì Zalo hiển thị nguyên ký tự ** nên trông rối. Khi liệt kê nhiều chủ đề thì đánh số "1-", "2-", "3-", "4-" cho từng chủ đề. Viết câu đầy đủ, đúng ngữ pháp văn viết.
+THÁI ĐỘ: KHÔNG từ chối câu hỏi. Tuyệt đối không trả lời kiểu "yêu cầu này nhiều bước quá" hay bảo người hỏi đơn giản hơn. Mới có thông tin một phần thì trả lời phần đó và nói rõ phần nào cần kiểm tra thêm. KHÔNG hỏi vòng vo "anh/chị muốn em tìm gì" khi đã đủ dữ kiện để trả lời. Gọi công cụ gọn, đủ thông tin thì trả lời ngay, không tra lan man.
 - Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc / anh/chị)
 - NGẮN GỌN, chính xác, có số liệu
 - KHÔNG tâm sự, gossip, viết dài
@@ -1121,11 +1156,12 @@ LƯU Ý: 3 VIP độc lập, KHÔNG tự ý forward thông tin giữa họ.
 Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check email/data rồi trả lời. KHÔNG hỏi "check Zalo hay Gmail?".`;
 
   // Agent loop with tool calling
-  // MAX_ITER 15: chain phức tạp (drive_list → gemini_write → zalo_oa_article → verify retry)
-  // có thể tốn 7-10 tool calls + retry. Tăng từ 10 → 15 để tránh fallback sớm.
+  // MAX_ITER 20: chain phức tạp (drive_list → gemini_write → zalo_oa_article → verify retry)
+  // hoặc tra luật nhiều nguồn (memory_search → web_read nhiều văn bản) có thể tốn
+  // nhiều lượt. Tăng 15 → 20; hết lượt thì forceFinalAnswer ép trả lời, KHÔNG từ chối.
   let reply = '';
   let iterations = 0;
-  const MAX_ITER = 15;
+  const MAX_ITER = 20;
 
   try {
     while (iterations++ < MAX_ITER) {
@@ -1189,8 +1225,10 @@ Khi Sếp hỏi về VIP khác (vd: "chị Hồng nhắn gì?") → TỰ check e
   }
 
   if (!reply) {
-    console.error(`[lena] NO REPLY after ${iterations - 1} iterations for ${vip.name}`);
-    reply = 'Em xin lỗi, yêu cầu này cần nhiều bước xử lý quá. Anh/chị thử yêu cầu đơn giản hơn nhé.';
+    console.error(`[lena] NO REPLY after ${iterations - 1} iterations for ${vip.name} — ép trả lời cuối`);
+    reply = await forceFinalAnswer(model, systemPrompt, TOOLS, session, 2000)
+      || `Dạ ${vip.name}, em đã tra nhưng chưa gom đủ thông tin trong giới hạn lượt cho phép. Anh/chị chờ em chút rồi hỏi lại giúp em nhé.`;
+    session.push({ role: 'assistant', content: reply });
   }
 
   saveSession(senderId, session);
@@ -1237,6 +1275,7 @@ NGÔN NGỮ: Tự phát hiện ngôn ngữ của khách và trả lời CÙNG ng
 
 PHONG CÁCH: Thân thiện, chuyên nghiệp, NGẮN GỌN (tối đa 3-4 câu). KHÔNG ký tên (hệ thống tự thêm chữ ký "Lê Na").
 HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Không dùng dấu ** (markdown in đậm) bao quanh chữ hay link, vì Zalo hiển thị nguyên ký tự ** nên trông rối. Khi liệt kê nhiều chủ đề thì đánh số "1-", "2-", "3-", "4-" cho từng chủ đề. Viết câu đầy đủ, đúng ngữ pháp văn viết.
+THÁI ĐỘ: KHÔNG từ chối câu hỏi. Tuyệt đối không trả lời kiểu "yêu cầu này nhiều bước quá" hay bảo người hỏi đơn giản hơn. Mới có thông tin một phần thì trả lời phần đó và nói rõ phần nào cần kiểm tra thêm. KHÔNG hỏi vòng vo "anh/chị muốn em tìm gì" khi đã đủ dữ kiện để trả lời. Gọi công cụ gọn, đủ thông tin thì trả lời ngay, không tra lan man.
 
 TƯ DUY THEO LUỒNG: bám theo câu hỏi của khách qua các tin nhắn, KHÔNG hỏi lại điều khách đã nói. Nếu chưa tra được thì nói rõ, không hỏi mơ hồ.
 
@@ -1255,7 +1294,7 @@ NHÂN VIÊN NỘI BỘ: Nếu người nhắn cho biết họ là nhân viên / 
 
   let reply = '';
   let iterations = 0;
-  const MAX_ITER = 5;
+  const MAX_ITER = 8;
 
   try {
     while (iterations++ < MAX_ITER) {
@@ -1315,7 +1354,10 @@ NHÂN VIÊN NỘI BỘ: Nếu người nhắn cho biết họ là nhân viên / 
   }
 
   if (!reply) {
-    reply = 'Dạ anh/chị cần STARDUCT hỗ trợ thêm thông tin gì không ạ? Anh/chị có thể liên hệ info@nsca.vn.';
+    console.error(`[follower] NO REPLY after ${iterations - 1} iterations — ép trả lời cuối`);
+    reply = await forceFinalAnswer(CLAUDE_MODEL_FAST, systemPrompt, FOLLOWER_TOOLS, session, 600)
+      || 'Dạ anh/chị cần STARDUCT hỗ trợ thêm thông tin gì không ạ? Anh/chị có thể liên hệ info@nsca.vn.';
+    session.push({ role: 'assistant', content: reply });
   }
 
   saveSession(sessionKey, session);
@@ -1384,6 +1426,7 @@ NGÔN NGỮ: Tự phát hiện ngôn ngữ trong tin nhắn và trả lời CÙN
 
 GIAO TIẾP: Xưng "em", gọi anh/chị kèm tên. Thân thiện, ngắn gọn, thực tế. KHÔNG ký tên (hệ thống tự thêm chữ ký "Lê Na").
 HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Không dùng dấu ** (markdown in đậm) bao quanh chữ hay link, vì Zalo hiển thị nguyên ký tự ** nên trông rối. Khi liệt kê nhiều chủ đề thì đánh số "1-", "2-", "3-", "4-" cho từng chủ đề. Viết câu đầy đủ, đúng ngữ pháp văn viết.
+THÁI ĐỘ: KHÔNG từ chối câu hỏi. Tuyệt đối không trả lời kiểu "yêu cầu này nhiều bước quá" hay bảo người hỏi đơn giản hơn. Mới có thông tin một phần thì trả lời phần đó và nói rõ phần nào cần kiểm tra thêm. KHÔNG hỏi vòng vo "anh/chị muốn em tìm gì" khi đã đủ dữ kiện để trả lời. Gọi công cụ gọn, đủ thông tin thì trả lời ngay, không tra lan man.
 
 TƯ DUY THEO LUỒNG: bám theo câu hỏi gốc của nhân viên qua các lượt cho tới khi giải quyết xong. KHÔNG hỏi lại điều họ đã nói. Nếu bị chặn thì nói rõ vướng gì, không hỏi mơ hồ.
 
@@ -1395,7 +1438,7 @@ CÔNG CỤ (chỉ-đọc):
 - web_search / web_read — tra thông tin ngoài.
 BẮT BUỘC dùng memory_search để tra tài liệu TRƯỚC khi trả lời câu hỏi kỹ thuật / quy trình — KHÔNG bịa.
 
-PHÁP LUẬT: Khi nhân viên hỏi về luật lao động, BHXH, thuế TNCN, kế toán, hải quan, luật doanh nghiệp → memory_search file="legal-sources" lấy nguồn chính thống → web_read link luật liên quan để tra đúng → LUÔN trích dẫn link nguồn. KHÔNG bịa số điều luật.
+PHÁP LUẬT: Câu hỏi pháp luật (luật lao động, BHXH, thuế TNCN, kế toán, hải quan, luật doanh nghiệp) KHÔNG tra cứu chi tiết cho nhân viên. Chỉ memory_search file="legal-sources" để lấy đúng link bộ luật liên quan, gửi link đó cho nhân viên và đề nghị họ tự đọc. KHÔNG web_read, KHÔNG diễn giải điều luật, KHÔNG bịa số điều. Tư vấn pháp luật chi tiết chỉ dành cho cấp VIP.
 
 GIỚI HẠN:
 ❌ KHÔNG xem/sửa lương, tài chính, hay dữ liệu riêng của người khác.
@@ -1404,7 +1447,7 @@ GIỚI HẠN:
 
   let reply = '';
   let iterations = 0;
-  const MAX_ITER = 6;
+  const MAX_ITER = 8;
 
   try {
     while (iterations++ < MAX_ITER) {
@@ -1464,7 +1507,10 @@ GIỚI HẠN:
   }
 
   if (!reply) {
-    reply = `Dạ ${staff.name}, em chưa xử lý được yêu cầu này. Anh/chị thử hỏi lại đơn giản hơn, hoặc liên hệ trưởng bộ phận giúp em nhé.`;
+    console.error(`[staff] NO REPLY after ${iterations - 1} iterations for ${staff.name} — ép trả lời cuối`);
+    reply = await forceFinalAnswer(CLAUDE_MODEL_FAST, systemPrompt, STAFF_TOOLS, session, 800)
+      || `Dạ ${staff.name}, em đã tra nhưng chưa gom đủ thông tin. Anh/chị cho em thêm chút thời gian rồi hỏi lại, hoặc liên hệ trưởng bộ phận giúp em nhé.`;
+    session.push({ role: 'assistant', content: reply });
   }
 
   saveSession(sessionKey, session);
