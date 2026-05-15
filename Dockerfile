@@ -2,8 +2,13 @@ FROM node:24-slim
 
 WORKDIR /app
 
-# Install git + Vietnamese fonts (required for image-overlay text rendering)
-RUN apt-get update && apt-get install -y git fonts-noto-core fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/* && fc-cache -fv
+# Install git + Vietnamese fonts (required for image-overlay text rendering) + curl (for yt-dlp download)
+RUN apt-get update && apt-get install -y git curl ca-certificates fonts-noto-core fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/* && fc-cache -fv
+
+# Install yt-dlp (standalone binary, khong can Python) — web-read.js dung de lay transcript video YouTube
+RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp \
+    && chmod a+rx /usr/local/bin/yt-dlp \
+    && /usr/local/bin/yt-dlp --version
 
 # Install OpenClaw globally — PINNED version (no @latest gambling)
 # To upgrade: change version here, test, push.
