@@ -89,7 +89,7 @@ async function refreshOAToken() {
 // để VIP luôn được nhận diện kể cả khi env var ZALO_OA_USER_* không tới được tiến trình.
 // Thứ tự ưu tiên: process.env (Railway) → giá trị hardcode bên dưới.
 const VIP_IDS = {
-  SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH || '686983494944296385',
+  SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH || '6869834949444296385',
   CHI_HONG:  process.env.ZALO_OA_USER_CHI_HONG  || '9076345556107321186',
   ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  || '219363256978038684',
 };
@@ -500,6 +500,99 @@ const TOOLS = [
 const FOLLOWER_TOOL_NAMES = ['web_search', 'web_read', 'memory_search'];
 const FOLLOWER_TOOLS = TOOLS.filter(t => FOLLOWER_TOOL_NAMES.includes(t.name));
 
+// Nhân viên nội bộ được dùng tool CHỈ-ĐỌC: tra cứu công việc, lịch, kỹ thuật.
+// KHÔNG có quyền ghi (gửi mail / tạo task / ghi sheet / đăng bài / tạo issue).
+const STAFF_TOOL_NAMES = ['web_search', 'web_read', 'memory_search', 'hvac_lookup',
+  'task_status', 'task_overdue', 'calendar_read', 'sheets_read'];
+const STAFF_TOOLS = TOOLS.filter(t => STAFF_TOOL_NAMES.includes(t.name));
+
+// ============================================================
+// === STAFF / CBCNV — đăng ký + nhận diện qua Zalo ID
+// === Danh bạ nguồn: memory/directory.md (nhân viên nội bộ @nsca.vn).
+// === Zalo ID ghi nhận tức thì vào file trên volume; có thể đồng bộ vào
+// === directory.md sau (thêm cột "Zalo ID") để làm trí nhớ lâu dài.
+// ============================================================
+const DIRECTORY_FILE = '/app/workspace/memory/directory.md';
+const STAFF_ZALO_FILE = '/root/.openclaw/staff-zalo-ids.json';
+
+// Parse danh bạ nội bộ từ directory.md. Chỉ lấy nhân viên @nsca.vn
+// (bỏ qua NPP/đối tác @partner.nsca.vn). Nếu bảng có cột thứ 7 = Zalo ID
+// thì đọc luôn (directory.md trở thành nguồn lưu trữ lâu dài).
+function parseStaffFromDirectory() {
+  const staff = [];
+  const seen = new Set();
+  try {
+    if (!fs.existsSync(DIRECTORY_FILE)) {
+      console.error(`[staff] directory not found: ${DIRECTORY_FILE}`);
+      return staff;
+    }
+    const lines = fs.readFileSync(DIRECTORY_FILE, 'utf-8').split('\n');
+    let section = '';
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (line.startsWith('#')) { section = line.replace(/^#+\s*/, '').trim(); continue; }
+      if (!line.startsWith('|') || !line.includes('@nsca.vn')) continue;
+      const cells = line.split('|').map(c => c.trim());
+      // cells: ['', ID, Họ tên, Chức vụ, BP, Email, SĐT, (Zalo ID), '']
+      const id    = cells[1] || '';
+      const name  = cells[2] || '';
+      const pos   = cells[3] || '';
+      const bp    = cells[4] || '';
+      const email = (cells[5] || '').replace(/[<>\s]/g, '').toLowerCase();
+      const phone = cells[6] || '';
+      const zaloFromDir = (cells[7] || '').replace(/[<>\s]/g, '');
+      if (!email.endsWith('@nsca.vn')) continue;   // chỉ nhân viên nội bộ
+      if (seen.has(email)) continue;
+      seen.add(email);
+      staff.push({ id, name, pos, dept: bp || section, email, phone,
+        zaloId: /^\d{6,}$/.test(zaloFromDir) ? zaloFromDir : null });
+    }
+  } catch (e) {
+    console.error(`[staff] parse error: ${e.message}`);
+  }
+  console.log(`[staff] parsed ${staff.length} internal staff from directory.md`);
+  return staff;
+}
+
+let NSCA_STAFF = parseStaffFromDirectory();
+let STAFF_BY_EMAIL = {};
+let STAFF_BY_ZALO_DIR = {};   // Zalo ID lấy sẵn từ directory.md (nếu đã đồng bộ)
+function rebuildStaffIndex() {
+  STAFF_BY_EMAIL = {};
+  STAFF_BY_ZALO_DIR = {};
+  NSCA_STAFF.forEach(s => {
+    STAFF_BY_EMAIL[s.email] = s;
+    if (s.zaloId) STAFF_BY_ZALO_DIR[s.zaloId] = s;
+  });
+}
+rebuildStaffIndex();
+// Tự nạp lại directory.md mỗi 10 phút (phòng khi danh bạ được cập nhật)
+setInterval(() => { NSCA_STAFF = parseStaffFromDirectory(); rebuildStaffIndex(); }, 10 * 60 * 1000);
+
+// Bản đồ Zalo ID → email, ghi nhận tức thì khi nhân viên đăng ký.
+function loadStaffZaloMap() {
+  try {
+    if (fs.existsSync(STAFF_ZALO_FILE)) return JSON.parse(fs.readFileSync(STAFF_ZALO_FILE, 'utf-8'));
+  } catch (e) {}
+  return {};
+}
+function saveStaffZaloMap(map) {
+  try { fs.writeFileSync(STAFF_ZALO_FILE, JSON.stringify(map, null, 2)); } catch (e) {}
+}
+function registerStaffZaloId(zaloId, email) {
+  const map = loadStaffZaloMap();
+  map[String(zaloId)] = String(email).toLowerCase();
+  saveStaffZaloMap(map);
+  console.log(`[staff-reg] ${zaloId} → ${email}`);
+}
+// Tìm nhân viên theo Zalo ID: ưu tiên file volume, fallback sang directory.md.
+function lookupStaffByZaloId(zaloId) {
+  const id = String(zaloId);
+  const email = loadStaffZaloMap()[id];
+  if (email && STAFF_BY_EMAIL[email.toLowerCase()]) return STAFF_BY_EMAIL[email.toLowerCase()];
+  return STAFF_BY_ZALO_DIR[id] || null;
+}
+
 async function runTool(name, input) {
   const GTOOL = '/app/google-tools';
   const sheetId = process.env.GOOGLE_SHEET_ID || '';
@@ -735,8 +828,9 @@ async function handleImageMessage(event) {
   const senderId = event.sender?.id;
   if (!senderId) return;
   const vip = VIP_USERS[senderId];
-  const follower = !vip ? lookupFollower(senderId) : null;
-  const name = vip ? vip.name : (follower?.display_name || 'anh/chị');
+  const staff = !vip ? lookupStaffByZaloId(senderId) : null;
+  const follower = (!vip && !staff) ? lookupFollower(senderId) : null;
+  const name = vip ? vip.name : (staff?.name || follower?.display_name || 'anh/chị');
   const att = event.message?.attachments?.[0];
   const imageUrl = att?.payload?.url || att?.payload?.thumbnail || '';
   console.log(`[zalo] image from ${name} (${senderId}): ${imageUrl.substring(0, 80)}`);
@@ -792,10 +886,23 @@ async function handleUserMessage(event) {
 
   const vip = VIP_USERS[senderId];
 
-  // Non-VIP (follower / người lạ) → Lê Na trả lời thật, phạm vi giới hạn.
-  // Trước đây non-VIP chỉ nhận 1 câu chào mẫu rồi dừng — đây là phần "thêm follower"
-  // được yêu cầu. VIP path bên dưới giữ NGUYÊN như bản 8c371bf.
+  // Không phải VIP → phân tầng: nhân viên đã đăng ký → đăng ký nhân viên → follower.
+  // VIP path bên dưới giữ NGUYÊN như bản 8c371bf.
   if (!vip) {
+    // 1. Đã đăng ký là nhân viên nội bộ?
+    const staff = lookupStaffByZaloId(senderId);
+    if (staff) {
+      await handleStaffMessage(senderId, messageText, staff)
+        .catch(err => console.error('[staff] handler error:', err.message));
+      return;
+    }
+    // 2. Tin nhắn có email @nsca.vn → luồng đăng ký nhân viên.
+    if (/[\w.\-]+@nsca\.vn/i.test(messageText)) {
+      await handleStaffRegistration(senderId, messageText)
+        .catch(err => console.error('[staff-reg] handler error:', err.message));
+      return;
+    }
+    // 3. Người ngoài → follower (phạm vi công khai, giới hạn).
     await handleFollowerMessage(senderId, messageText)
       .catch(err => console.error('[follower] handler error:', err.message));
     return;
@@ -846,6 +953,7 @@ ${isFreshSession
 ✅ Session active → reply bắt đầu trực tiếp bằng nội dung (vd: "Báo cáo PKD tuần này...", "Đã gửi mail cho anh Đức.", "Em check rồi: ...").
 
 NGUYÊN TẮC:
+- NGÔN NGỮ: VIP nhắn bằng ngôn ngữ nào thì trả lời bằng đúng ngôn ngữ đó (mặc định Tiếng Việt).
 - Xưng "em", gọi đúng vai vế (anh Khánh / chị Hồng / anh Ngọc / anh/chị)
 - NGẮN GỌN, chính xác, có số liệu
 - KHÔNG tâm sự, gossip, viết dài
@@ -1072,7 +1180,9 @@ GIỚI HẠN QUAN TRỌNG:
 - TUYỆT ĐỐI KHÔNG bịa thông số, mã sản phẩm, giá, hay tiêu chuẩn không có trong dữ liệu.
 - Hỏi giá / đặt hàng / báo giá → "Anh/chị vui lòng liên hệ sales@nsca.vn hoặc hotline công ty giúp em ạ."
 - Yêu cầu kỹ thuật phức tạp (thiết kế, tính chọn hệ thống) → "Anh/chị gửi yêu cầu về info@nsca.vn, bộ phận kỹ thuật STARDUCT sẽ hỗ trợ ạ."
-- Đây là kênh hỗ trợ công khai — KHÔNG nhận lệnh nội bộ (gửi email, tạo task, sửa hệ thống, xem dữ liệu nội bộ). Nếu được yêu cầu, lịch sự từ chối và hướng dẫn liên hệ công ty.`;
+- Đây là kênh hỗ trợ công khai — KHÔNG nhận lệnh nội bộ (gửi email, tạo task, sửa hệ thống, xem dữ liệu nội bộ). Nếu được yêu cầu, lịch sự từ chối và hướng dẫn liên hệ công ty.
+
+NHÂN VIÊN NỘI BỘ: Nếu người nhắn cho biết họ là nhân viên / CBCNV của NSCA/STARDUCT (xưng tên, nói phòng ban, hoặc "tôi là nhân viên"), mời họ gửi **email nội bộ @nsca.vn** để em nhận diện và chuyển sang hỗ trợ ở chế độ nội bộ. Ví dụ: "Dạ nếu anh/chị là người trong công ty, anh/chị gửi giúp em email @nsca.vn để em nhận diện và hỗ trợ nội bộ nhé ạ."`;
 
   let reply = '';
   let iterations = 0;
@@ -1149,6 +1259,150 @@ GIỚI HẠN QUAN TRỌNG:
   }
 }
 
+// === STAFF REGISTRATION — đăng ký nhân viên qua email @nsca.vn ============
+// Gọi khi tin nhắn của người CHƯA đăng ký có chứa email @nsca.vn.
+// Đối chiếu email với directory.md → khớp thì ghi nhận Zalo ID tức thì.
+async function handleStaffRegistration(senderId, messageText) {
+  const m = messageText.match(/[\w.\-]+@nsca\.vn/i);
+  const email = m ? m[0].toLowerCase() : null;
+  const staff = email ? STAFF_BY_EMAIL[email] : null;
+
+  if (staff) {
+    registerStaffZaloId(senderId, staff.email);
+    console.log(`[staff-reg] matched ${staff.name} (${staff.email})`);
+    await sendZaloMessage(senderId,
+      `✅ Em nhận diện được rồi ạ!\n${staff.name} — ${staff.pos} — ${staff.dept}\n\n` +
+      `Từ giờ ${staff.name} nhắn vào đây là em nhận ra ngay. Anh/chị cần hỏi về công việc, ` +
+      `lịch họp, hay kỹ thuật STARDUCT cứ nhắn em nhé!`);
+    // Nếu trong tin còn nội dung thực sự (ngoài email) → xử lý luôn như nhân viên.
+    const rest = messageText.replace(m[0], '').trim();
+    if (rest.length > 8) {
+      await handleStaffMessage(senderId, messageText, staff)
+        .catch(e => console.error('[staff] handler error:', e.message));
+    }
+    return;
+  }
+
+  // Có email @nsca.vn nhưng không khớp danh bạ
+  await sendZaloMessage(senderId,
+    `Em chưa tìm thấy email ${email || 'này'} trong danh bạ NSCA ạ. Anh/chị kiểm tra lại email ` +
+    `nội bộ @nsca.vn, hoặc liên hệ HCNS (anh Sơn — sondt@nsca.vn) để được bổ sung vào danh bạ nhé.`);
+}
+
+// === STAFF HANDLER — Haiku + tool CHỈ-ĐỌC, trợ lý nội bộ đầy đủ ===========
+// Nhân viên đã đăng ký: hỏi được về công việc, lịch họp, kỹ thuật nội bộ.
+async function handleStaffMessage(senderId, messageText, staff) {
+  console.log(`[staff] ${staff.name} (${staff.dept}): ${messageText.substring(0, 60)}`);
+
+  const sessionKey = `staff_${senderId}`;
+  let session = loadSession(sessionKey);
+  if (!Array.isArray(session)) session = [];
+  if (session.length > 0) {
+    const last = session[session.length - 1];
+    if (last.role === 'user' && Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
+      session = [];
+    }
+  }
+  session.push({ role: 'user', content: messageText });
+
+  const today = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const systemPrompt = `Bạn là **Đào Thị Lê Na** — trợ lý AI nội bộ của NSCA/STARDUCT.
+Đang chat với nhân viên: **${staff.name}** | Chức vụ: ${staff.pos} | Bộ phận: ${staff.dept} | Email: ${staff.email} | ${today}
+
+VAI TRÒ: Trợ lý nội bộ cho CBCNV — hỗ trợ về công việc, lịch họp, kỹ thuật HVAC/STARDUCT, quy trình nội bộ.
+
+NGÔN NGỮ: Tự phát hiện ngôn ngữ trong tin nhắn và trả lời CÙNG ngôn ngữ đó (Tiếng Việt → Tiếng Việt, English → English...).
+
+GIAO TIẾP: Xưng "em", gọi anh/chị kèm tên. Thân thiện, ngắn gọn, thực tế. KHÔNG ký tên (hệ thống tự thêm "— Lê Na").
+
+CÔNG CỤ (chỉ-đọc):
+- task_status / task_overdue — xem tình hình công việc.
+- calendar_read — xem lịch họp.
+- memory_search / hvac_lookup — tra kiến thức HVAC/STARDUCT, quy trình nội bộ, danh bạ.
+- sheets_read — tra dữ liệu trên Google Sheet.
+- web_search / web_read — tra thông tin ngoài.
+BẮT BUỘC dùng memory_search để tra tài liệu TRƯỚC khi trả lời câu hỏi kỹ thuật / quy trình — KHÔNG bịa.
+
+GIỚI HẠN:
+❌ KHÔNG xem/sửa lương, tài chính, hay dữ liệu riêng của người khác.
+❌ KHÔNG thay mặt công ty gửi email, tạo task cho người khác, hay ra quyết định.
+❌ Việc vượt thẩm quyền → hướng dẫn ${staff.name} liên hệ trưởng bộ phận hoặc HCNS (anh Sơn — sondt@nsca.vn).`;
+
+  let reply = '';
+  let iterations = 0;
+  const MAX_ITER = 6;
+
+  try {
+    while (iterations++ < MAX_ITER) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL_FAST,
+          max_tokens: 800,
+          system: systemPrompt,
+          tools: STAFF_TOOLS,
+          messages: session
+        })
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[staff] Claude API ${res.status}: ${errBody.substring(0, 200)}`);
+        if (res.status === 400 && session.length > 1) {
+          session = [{ role: 'user', content: messageText }];
+          continue;
+        }
+        throw new Error(`Claude API ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data.stop_reason === 'tool_use') {
+        session.push({ role: 'assistant', content: data.content });
+        const toolResults = [];
+        for (const block of data.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[staff] tool: ${block.name}`);
+            const result = await runTool(block.name, block.input);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+        }
+        session.push({ role: 'user', content: toolResults });
+      } else {
+        reply = data.content.find(c => c.type === 'text')?.text || '';
+        session.push({ role: 'assistant', content: data.content });
+        break;
+      }
+    }
+  } catch (e) {
+    console.error(`[staff] CRITICAL: ${e.message}`);
+    reply = `Dạ ${staff.name}, em đang gặp chút trục trặc kỹ thuật. Anh/chị thử lại sau 1 phút nhé.`;
+    session = [{ role: 'user', content: messageText }];
+  }
+
+  if (!reply) {
+    reply = `Dạ ${staff.name}, em chưa xử lý được yêu cầu này. Anh/chị thử hỏi lại đơn giản hơn, hoặc liên hệ trưởng bộ phận giúp em nhé.`;
+  }
+
+  saveSession(sessionKey, session);
+
+  try {
+    await sendZaloMessage(senderId, reply);
+    console.log(`[staff] replied to ${staff.name}: ${reply.substring(0, 60)}...`);
+  } catch (e) {
+    console.error(`[staff] send FAILED to ${staff.name}: ${e.message}`);
+  }
+}
+
 const _zaloSendCache = new Map();
 const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
 const _webhookDedup = new Set();
@@ -1195,7 +1449,9 @@ app.get('/health', (req, res) => {
     status: 'ok',
     uptime: Math.floor(process.uptime()),
     tools: TOOLS.length,
-    vips: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length
+    vips: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length,
+    staff_in_directory: NSCA_STAFF.length,
+    staff_registered: Object.keys(loadStaffZaloMap()).length
   });
 });
 
@@ -1263,6 +1519,23 @@ app.get('/env-check', (req, res) => {
   });
 });
 
+// === STAFF LIST — xem ai đã đăng ký Zalo ID (để đồng bộ vào directory.md) ===
+app.get('/staff-list', (req, res) => {
+  const map = loadStaffZaloMap();
+  const zaloByEmail = {};
+  Object.entries(map).forEach(([zid, email]) => { zaloByEmail[String(email).toLowerCase()] = zid; });
+  const list = NSCA_STAFF.map(s => {
+    const zalo = zaloByEmail[s.email.toLowerCase()] || s.zaloId || null;
+    return { id: s.id, name: s.name, dept: s.dept, pos: s.pos, email: s.email,
+      zalo_id: zalo, registered: !!zalo };
+  });
+  res.json({
+    total_in_directory: NSCA_STAFF.length,
+    registered: list.filter(s => s.registered).length,
+    staff: list
+  });
+});
+
 // === PROXY TO OPENCLAW ===
 const ocProxy = createProxyMiddleware({
   target: `http://127.0.0.1:${OPENCLAW_PORT}`,
@@ -1287,6 +1560,7 @@ const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
   console.log(`[proxy] Zalo OA 2-way bridge: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
   console.log(`[proxy] VIP ID source: SEP_KHANH=${process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'hardcoded'}, CHI_HONG=${process.env.ZALO_OA_USER_CHI_HONG ? 'env' : 'hardcoded'}, ANH_NGOC=${process.env.ZALO_OA_USER_ANH_NGOC ? 'env' : 'hardcoded'}`);
   console.log(`[proxy] Follower handler: ON (${FOLLOWER_TOOLS.length} read-only tools)`);
+  console.log(`[proxy] Staff handler: ON — ${NSCA_STAFF.length} in directory, ${Object.keys(loadStaffZaloMap()).length} registered`);
 
   // Refresh OA token IMMEDIATELY on startup, then every 20h
   const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20h
