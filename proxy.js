@@ -824,17 +824,71 @@ async function handleUnfollow(event) {
   }
 }
 
+// Lê Na ĐỌC được ảnh: tải ảnh → dùng vision mô tả thành text → đưa text đó qua
+// handleUserMessage để có đầy đủ ngữ cảnh hội thoại + định tuyến VIP/nhân viên/follower.
 async function handleImageMessage(event) {
   const senderId = event.sender?.id;
   if (!senderId) return;
   const vip = VIP_USERS[senderId];
   const staff = !vip ? lookupStaffByZaloId(senderId) : null;
-  const follower = (!vip && !staff) ? lookupFollower(senderId) : null;
-  const name = vip ? vip.name : (staff?.name || follower?.display_name || 'anh/chị');
-  const att = event.message?.attachments?.[0];
-  const imageUrl = att?.payload?.url || att?.payload?.thumbnail || '';
-  console.log(`[zalo] image from ${name} (${senderId}): ${imageUrl.substring(0, 80)}`);
-  await sendZaloMessage(senderId, `Dạ ${name}, em đã nhận ảnh.${vip ? ' Anh/chị cho em biết muốn em làm gì với ảnh này ạ (vd: đăng bài OA, tạo ảnh bìa...)?' : ''}`);
+  const name = vip ? vip.name : (staff?.name || lookupFollower(senderId)?.display_name || 'anh/chị');
+
+  const atts = event.message?.attachments || [];
+  const imageUrls = atts.map(a => a?.payload?.url || a?.payload?.thumbnail).filter(Boolean);
+  const caption = (event.message?.text || '').trim();
+  console.log(`[image] from ${name} (${senderId}): ${imageUrls.length} ảnh`);
+
+  // Bước 1: tải ảnh về (base64) để không phụ thuộc URL Zalo có hết hạn hay không.
+  const imageBlocks = [];
+  for (const url of imageUrls.slice(0, 5)) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) { console.error(`[image] tải ảnh lỗi ${r.status}`); continue; }
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 4500000) { console.error('[image] ảnh quá lớn, bỏ qua'); continue; }
+      let mt = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim().toLowerCase();
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mt)) mt = 'image/jpeg';
+      imageBlocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: buf.toString('base64') } });
+    } catch (e) {
+      console.error(`[image] tải ảnh lỗi: ${e.message}`);
+    }
+  }
+
+  // Bước 2: dùng vision đọc nội dung ảnh thành text.
+  let visionText = '';
+  if (imageBlocks.length > 0) {
+    try {
+      const content = [...imageBlocks, { type: 'text', text: 'Mô tả CHI TIẾT, chính xác nội dung (các) ảnh này bằng tiếng Việt: mọi chữ, số, mã sản phẩm, thông số kỹ thuật, bảng biểu, giao diện phần mềm. Ghi lại nguyên văn text và số nhìn thấy được. Chỉ mô tả, không bình luận.' }];
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': CLAUDE_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: CLAUDE_MODEL_FAST, max_tokens: 1200, messages: [{ role: 'user', content }] })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        visionText = data.content?.find(c => c.type === 'text')?.text || '';
+      } else {
+        console.error(`[image] vision API ${res.status}: ${(await res.text()).substring(0, 200)}`);
+      }
+    } catch (e) {
+      console.error(`[image] vision error: ${e.message}`);
+    }
+  }
+
+  // Bước 3: ghép nội dung ảnh thành 1 tin text rồi đưa qua handleUserMessage —
+  // để Lê Na vừa "thấy" ảnh, vừa có ngữ cảnh hội thoại cho các tin nhắn tiếp theo.
+  let combined;
+  if (visionText) {
+    combined = `(Người dùng vừa gửi ${imageBlocks.length} ảnh.${caption ? ` Lời nhắn kèm: "${caption}".` : ''} Nội dung ảnh hệ thống đọc được: ${visionText})`;
+  } else {
+    combined = `(Người dùng vừa gửi ảnh nhưng hệ thống chưa đọc được nội dung.${caption ? ` Lời nhắn kèm: "${caption}".` : ''} Hãy nói rõ em chưa đọc được ảnh, và nhờ anh/chị mô tả hoặc gõ lại thông tin chính giúp em.)`;
+  }
+
+  await handleUserMessage({
+    event_name: 'user_send_text',
+    sender: { id: senderId },
+    message: { text: combined }
+  }).catch(e => console.error('[image] handler error:', e.message));
 }
 
 // Auto-reply tu dong cho comment cua follower tren bai viet OA.
@@ -990,6 +1044,12 @@ TUYỆT ĐỐI CẤM (vi phạm = lỗi nghiêm trọng):
 ✅ CHỈ được hỏi DUY NHẤT khi thiếu 1 thông tin KHÔNG THỂ suy ra (vd: email người lạ chưa từng gặp).
 ✅ Nếu thiếu 1 chi tiết nhỏ → TỰ chọn giá trị hợp lý, LÀM, rồi báo kết quả.
 ✅ Em là TRỢ LÝ HÀNH ĐỘNG, không phải chatbot hỏi-đáp.
+
+⛔ TƯ DUY THEO LUỒNG HỘI THOẠI (LUẬT QUAN TRỌNG):
+- Câu hỏi gốc của VIP vẫn là mục tiêu ĐANG CHỜ cho tới khi giải quyết xong. VIP nói thêm (vd chỉ chỗ tìm) thì đừng quên họ đang hỏi gì.
+- TUYỆT ĐỐI KHÔNG hỏi lại điều VIP đã nói. VIP đã cho biết cần gì và đã chỉ nguồn thì ĐI TÌM NGAY, không hỏi "anh cần gì cụ thể".
+- Tự nối thông tin qua các lượt: VIP hỏi 1 sản phẩm, bạn thấy nguồn có mục liên quan (vd hỏi van ngăn cháy mà nguồn có module Fire Damper) thì TỰ đi sâu vào mục đó, đừng chỉ liệt kê rồi hỏi.
+- Nếu thực sự bị chặn (không đọc được nguồn, dữ liệu không có) thì nói RÕ đã thử gì và vướng ở đâu, KHÔNG thay bằng câu hỏi mơ hồ.
 
 TOOLS có sẵn:
 - email_send / email_read / email_reply
@@ -1178,6 +1238,8 @@ NGÔN NGỮ: Tự phát hiện ngôn ngữ của khách và trả lời CÙNG ng
 PHONG CÁCH: Thân thiện, chuyên nghiệp, NGẮN GỌN (tối đa 3-4 câu). KHÔNG ký tên (hệ thống tự thêm chữ ký "Lê Na").
 HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Viết câu đầy đủ, đúng ngữ pháp văn viết.
 
+TƯ DUY THEO LUỒNG: bám theo câu hỏi của khách qua các tin nhắn, KHÔNG hỏi lại điều khách đã nói. Nếu chưa tra được thì nói rõ, không hỏi mơ hồ.
+
 CÔNG CỤ:
 - web_search / web_read: tra thông tin cập nhật ngoài KB.
 - memory_search: tra kiến thức HVAC/STARDUCT đã lưu (hvac-knowledge, hvac-standards, brand-guide, directory...).
@@ -1322,6 +1384,8 @@ NGÔN NGỮ: Tự phát hiện ngôn ngữ trong tin nhắn và trả lời CÙN
 
 GIAO TIẾP: Xưng "em", gọi anh/chị kèm tên. Thân thiện, ngắn gọn, thực tế. KHÔNG ký tên (hệ thống tự thêm chữ ký "Lê Na").
 HÀNH VĂN: không dùng dấu gạch ngang dài (—) trong câu trả lời. Không dùng dấu "-" để nối vế câu thay cho dấu phẩy hoặc dấu chấm. Viết câu đầy đủ, đúng ngữ pháp văn viết.
+
+TƯ DUY THEO LUỒNG: bám theo câu hỏi gốc của nhân viên qua các lượt cho tới khi giải quyết xong. KHÔNG hỏi lại điều họ đã nói. Nếu bị chặn thì nói rõ vướng gì, không hỏi mơ hồ.
 
 CÔNG CỤ (chỉ-đọc):
 - task_status / task_overdue — xem tình hình công việc.
