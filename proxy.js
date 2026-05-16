@@ -556,6 +556,7 @@ const TOOLS = [
         prompt: { type: 'string', description: 'Cau hoi/yeu cau cu the (vd: "Doc so lieu tren hoa don", "Mo ta san pham trong anh")' }
       },
       required: ['file_path']
+    }
   },
   {
     name: 'report_archive',
