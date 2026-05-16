@@ -535,7 +535,7 @@ const TOOLS = [
   },
   {
     name: 'file_read',
-    description: 'Doc file Word (.doc/.docx), Excel (.xlsx/.xls), PDF, CSV, TXT tu local path. Dung sau khi gmail_attachment download file ve /tmp/attachments/. Tra ve noi dung text de phan tich.',
+    description: 'Doc file Word (.doc/.docx), PowerPoint (.ppt/.pptx), Excel (.xlsx/.xls), PDF, CSV, TXT tu local path. Dung sau khi gmail_attachment download file ve /tmp/attachments/. Tra ve noi dung text de phan tich.',
     input_schema: {
       type: 'object',
       properties: {

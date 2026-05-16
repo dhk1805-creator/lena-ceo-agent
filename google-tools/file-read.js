@@ -160,6 +160,67 @@ async function readDoc() {
     console.log(JSON.stringify({ error: 'Khong doc duoc .doc: ' + e.message, file: path.basename(filePath) }));
   }
 }
+
+async function readPptx() {
+  const AdmZip = require('adm-zip');
+  const zip = new AdmZip(filePath);
+  const entries = zip.getEntries();
+
+  let content = '';
+  const slideEntries = entries
+    .filter(e => /ppt\/slides\/slide\d+\.xml$/.test(e.entryName))
+    .sort((a, b) => {
+      const na = parseInt(a.entryName.match(/slide(\d+)/)[1]);
+      const nb = parseInt(b.entryName.match(/slide(\d+)/)[1]);
+      return na - nb;
+    });
+
+  for (const entry of slideEntries) {
+    const xml = entry.getData().toString('utf8');
+    const texts = xml.match(/<a:t>([^<]*)<\/a:t>/g) || [];
+    const slideText = texts.map(t => t.replace(/<\/?a:t>/g, '')).join(' ');
+    if (slideText.trim()) {
+      const slideNum = entry.entryName.match(/slide(\d+)/)[1];
+      content += `=== Slide ${slideNum} ===\n${slideText}\n\n`;
+    }
+  }
+
+  const fullLen = content.length;
+  if (content.length > maxChars) {
+    content = content.substring(0, maxChars) + `\n... [cat ngan: ${fullLen} -> ${maxChars} ky tu]`;
+  }
+
+  console.log(JSON.stringify({
+    success: true,
+    type: 'pptx',
+    file: path.basename(filePath),
+    slides: slideEntries.length,
+    charCount: fullLen,
+    content
+  }, null, 2));
+}
+
+async function readPpt() {
+  const { execFileSync } = require('child_process');
+  try {
+    let content = execFileSync('catppt', [filePath], { encoding: 'utf-8', timeout: 30000 });
+    const fullLen = content.length;
+
+    if (content.length > maxChars) {
+      content = content.substring(0, maxChars) + `\n... [cat ngan: ${fullLen} -> ${maxChars} ky tu]`;
+    }
+
+    console.log(JSON.stringify({
+      success: true,
+      type: 'ppt',
+      file: path.basename(filePath),
+      charCount: fullLen,
+      content
+    }, null, 2));
+  } catch (e) {
+    console.log(JSON.stringify({ error: 'Khong doc duoc .ppt: ' + e.message, file: path.basename(filePath) }));
+  }
+}
 async function main() {
   if (['.xlsx', '.xls', '.xlsm'].includes(ext)) {
     await readExcel();
@@ -167,13 +228,17 @@ async function main() {
     await readDocx();
   } else if (ext === '.doc') {
     await readDoc();
+  } else if (ext === '.pptx') {
+    await readPptx();
+  } else if (ext === '.ppt') {
+    await readPpt();
   } else if (ext === '.pdf') {
     await readPDF();
   } else if (['.csv', '.txt', '.md', '.json', '.html', '.xml'].includes(ext)) {
     await readText();
   } else {
     console.log(JSON.stringify({
-      error: `Dinh dang "${ext}" chua ho tro. Ho tro: doc, docx, xlsx, xls, pdf, csv, txt, md, json`,
+      error: `Dinh dang "${ext}" chua ho tro. Ho tro: doc, docx, ppt, pptx, xlsx, xls, pdf, csv, txt, md, json`,
       file: path.basename(filePath)
     }));
   }
