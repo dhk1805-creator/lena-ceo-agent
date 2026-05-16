@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 require('./_env');
 // Web Search — Le Na CEO Agent
-// Tim kiem web qua DuckDuckGo HTML (khong can API key).
+// Auto-detect engine:
+//   - Neu co GOOGLE_SEARCH_API_KEY + GOOGLE_CSE_ID -> Google Custom Search API (coverage tot hon)
+//   - Nguoc lai -> DuckDuckGo HTML (khong can API key, fallback)
 // Usage: node web-search.js "<query>" [max_results]
-// Output: JSON { query, count, results: [{title, url, snippet}] }
+// Output: JSON { source, query, count, results: [{title, url, snippet}] }
 
 const query = (process.argv[2] || '').trim();
 const maxResults = Math.max(1, Math.min(20, parseInt(process.argv[3] || '10', 10)));
@@ -53,26 +55,49 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 15000) {
   }
 }
 
-async function main() {
-  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  let html;
-  try {
-    const res = await fetchWithTimeout(url, {
-      headers: {
-        'User-Agent': UA,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'vi,en;q=0.8'
-      }
-    });
+async function searchGoogle() {
+  const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const cseId = process.env.GOOGLE_CSE_ID;
+  // Google CSE tra ve toi da 10 results / request, can phan trang qua param `start`
+  const results = [];
+  const pages = Math.ceil(maxResults / 10);
+  for (let p = 0; p < pages && results.length < maxResults; p++) {
+    const start = p * 10 + 1;
+    const num = Math.min(10, maxResults - results.length);
+    const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(apiKey)}&cx=${encodeURIComponent(cseId)}&q=${encodeURIComponent(query)}&num=${num}&start=${start}`;
+    const res = await fetchWithTimeout(url, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) {
-      console.log(JSON.stringify({ error: `DuckDuckGo HTTP ${res.status}`, query }));
-      process.exit(1);
+      const body = await res.text().catch(() => '');
+      throw new Error(`Google CSE HTTP ${res.status}: ${body.substring(0, 200)}`);
     }
-    html = await res.text();
-  } catch (e) {
-    console.log(JSON.stringify({ error: `Fetch failed: ${e.message}`, query }));
-    process.exit(1);
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    for (const it of items) {
+      if (results.length >= maxResults) break;
+      results.push({
+        title: stripTags(it.title || '').substring(0, 200),
+        url: it.link || '',
+        snippet: stripTags(it.snippet || '').substring(0, 300)
+      });
+    }
+    if (items.length < num) break; // het ket qua
   }
+  return { source: 'Google', query, count: results.length, results };
+}
+
+async function searchDuckDuckGo() {
+  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+  const res = await fetchWithTimeout(url, {
+    headers: {
+      'User-Agent': UA,
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'vi,en;q=0.8'
+    }
+  });
+  if (!res.ok) {
+    throw new Error(`DuckDuckGo HTTP ${res.status}`);
+  }
+  const html = await res.text();
 
   // Match each result block (title link + snippet)
   const results = [];
@@ -104,12 +129,22 @@ async function main() {
     }
   }
 
-  console.log(JSON.stringify({
-    source: 'DuckDuckGo',
-    query,
-    count: results.length,
-    results
-  }, null, 2));
+  return { source: 'DuckDuckGo', query, count: results.length, results };
+}
+
+async function main() {
+  const hasGoogle = !!(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_CSE_ID);
+  try {
+    const out = hasGoogle ? await searchGoogle() : await searchDuckDuckGo();
+    console.log(JSON.stringify(out, null, 2));
+  } catch (e) {
+    console.log(JSON.stringify({
+      error: e.message,
+      source: hasGoogle ? 'Google' : 'DuckDuckGo',
+      query
+    }));
+    process.exit(1);
+  }
 }
 
 main().catch(e => {
