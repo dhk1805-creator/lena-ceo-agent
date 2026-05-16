@@ -182,6 +182,26 @@ function findArticleArray(d) {
   return { items: [], key: null };
 }
 
+async function deleteArticle(articleId) {
+  if (!articleId) {
+    return { success: false, error: 'Thiếu article_id. Truyền ID bài cần xóa (lấy từ list).' };
+  }
+
+  // Zalo OA: POST /v2.0/article/remove với body { id: <article_id> }
+  const res = await fetch('https://openapi.zalo.me/v2.0/article/remove', {
+    method: 'POST',
+    headers: { 'access_token': ACCESS_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: articleId })
+  });
+  const data = await res.json();
+  console.error(`[article] remove response: ${JSON.stringify(data)}`);
+
+  if (data.error !== 0) {
+    return { success: false, step: 'remove', error: data.message, detail: data };
+  }
+  return { success: true, article_id: articleId, status: 'deleted' };
+}
+
 async function listArticles() {
   const variants = [
     { name: 'v2_data_normal', url: `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 10, type: 'normal' }))}` },
@@ -252,7 +272,8 @@ async function main() {
     console.log(JSON.stringify({
       usage: {
         create: 'node zalo-oa-article.js create "<title>" "<body>" "[cover_image_path_or_url]"',
-        list: 'node zalo-oa-article.js list'
+        list: 'node zalo-oa-article.js list',
+        delete: 'node zalo-oa-article.js delete "<article_id>"'
       },
       notes: 'body = plain text, auto-converted to HTML. cover = local path or URL.'
     }));
@@ -262,6 +283,14 @@ async function main() {
   if (cmd === 'list') {
     const result = await listArticles();
     console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (cmd === 'delete' || cmd === 'remove') {
+    const articleId = process.argv[3];
+    const result = await deleteArticle(articleId);
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.success) process.exit(1);
     return;
   }
 
@@ -281,7 +310,7 @@ async function main() {
     return;
   }
 
-  console.log(JSON.stringify({ error: `Unknown command: ${cmd}. Use: create, list` }));
+  console.log(JSON.stringify({ error: `Unknown command: ${cmd}. Use: create, list, delete` }));
   process.exit(1);
 }
 

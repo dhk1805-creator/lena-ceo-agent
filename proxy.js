@@ -370,16 +370,16 @@ const TOOLS = [
   },
   {
     name: 'zalo_oa_article',
-    description: 'ĐĂNG BÀI VIẾT lên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → dùng tool NÀY. KHÔNG dùng zalo_oa_send_to_vip.',
+    description: 'ĐĂNG/LIỆT KÊ/XÓA BÀI VIẾT trên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → action=create. "gỡ bài/xóa bài OA" → action=delete (cần article_id, lấy từ list).',
     input_schema: {
       type: 'object',
       properties: {
-        action: { type: 'string', description: 'create hoặc list', default: 'create' },
-        title: { type: 'string', description: 'Tiêu đề bài viết' },
-        body: { type: 'string', description: 'Nội dung bài viết (plain text, tự convert HTML)' },
-        cover: { type: 'string', description: 'URL ảnh bìa hoặc local path (VD: ảnh VIP gửi qua Zalo)' }
-      },
-      required: ['title', 'body']
+        action: { type: 'string', description: 'create | list | delete', default: 'create' },
+        title: { type: 'string', description: 'Tiêu đề bài viết (cần khi action=create)' },
+        body: { type: 'string', description: 'Nội dung bài viết (plain text, tự convert HTML) (cần khi action=create)' },
+        cover: { type: 'string', description: 'URL ảnh bìa hoặc local path (VD: ảnh VIP gửi qua Zalo) (cần khi action=create)' },
+        article_id: { type: 'string', description: 'ID bài viết (cần khi action=delete, lấy từ action=list)' }
+      }
     }
   },
   {
@@ -656,9 +656,17 @@ async function runTool(name, input) {
     case 'kpi_update':
       cmd = 'node'; args = [`${GTOOL}/kpi-update.js`];
       break;
-    case 'zalo_oa_article':
-      cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, input.action || 'create', input.title || '', input.body || '', input.cover || ''];
+    case 'zalo_oa_article': {
+      const action = input.action || 'create';
+      if (action === 'delete' || action === 'remove') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, 'delete', input.article_id || ''];
+      } else if (action === 'list') {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, 'list'];
+      } else {
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, 'create', input.title || '', input.body || '', input.cover || ''];
+      }
       break;
+    }
     case 'github_create_issue':
       cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
       break;
