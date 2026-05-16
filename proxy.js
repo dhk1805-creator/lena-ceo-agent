@@ -708,12 +708,12 @@ async function runTool(name, input) {
     if (stderr) console.log(`[tool:${name}] ${stderr.trim()}`);
     const raw = stdout || '';
     // Giới hạn output theo từng tool. web_read trả về cả 1 trang web thật (web-read.js
-    // đã tự cap nội dung ở 8000 ký tự rồi) nên cần ngưỡng rộng, nếu không phần nội
-    // dung chính của trang, ví dụ danh sách sản phẩm starduct.vn nằm dưới menu và
-    // form đăng nhập, sẽ bị cắt mất và Lê Na tưởng là không có. web_search và
-    // memory_search cũng cần rộng hơn 3000 để đủ danh sách kết quả / nội dung file.
-    const OUTPUT_CAP = (name === 'web_read') ? 15000
-                     : (name === 'web_search' || name === 'memory_search') ? 6000
+    // đã tự cap nội dung ở 8000 ký tự rồi) và memory_search có thể gom content từ
+    // nhiều section trong 1 file dài (vd starduct-products-key.md ~10KB) — cả 2 cần
+    // ngưỡng rộng để fact quan trọng (Intertek cert, link catalogue) không bị cắt
+    // trước khi tới Lê Na. web_search vừa đủ cho danh sách kết quả.
+    const OUTPUT_CAP = (name === 'web_read' || name === 'memory_search') ? 15000
+                     : (name === 'web_search') ? 6000
                      : 3000;
     if (raw.length > OUTPUT_CAP) {
       return { output: raw.substring(0, OUTPUT_CAP) + `\n⚠️ [Cắt ngắn — vượt ${OUTPUT_CAP} ký tự]` };
