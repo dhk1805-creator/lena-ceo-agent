@@ -479,6 +479,21 @@ const TOOLS = [
     }
   },
   {
+    name: 'training_capture',
+    description: 'Luu kien thuc Sep Khanh dang training/huong dan truc tiep vao long-term memory CO CAU TRUC (category + examples + cross-ref). Khac voi memory_update: BAT BUOC chon category, ho tro vi du ap dung, lien ket topic, sinh recap de Sep confirm. Dung khi Sep noi "anh day em", "em hoc nay", "ghi nho luat...", "lan sau gap case X thi Y", hoac dat cau hoi de em thuoc kien thuc moi. Sau khi luu, BAT BUOC gui recap (truong "recap" trong output) cho Sep xac nhan dung hieu y chua.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'technical | business | process | customer-insight (BAT BUOC).', enum: ['technical', 'business', 'process', 'customer-insight'] },
+        lesson: { type: 'string', description: 'Noi dung kien thuc cot loi Sep day (1 paragraph, co data/spec/quy trinh cu the).' },
+        examples: { type: 'string', description: 'Vi du ap dung / case study Sep neu (optional, markdown, co the multi-line).' },
+        related_topics: { type: 'string', description: 'Cac topic memory lien quan, comma-separated (vd: "hvac-standards,brand-guide,competitor-intel"). De Le Na cross-ref khi tra cuu.' },
+        section: { type: 'string', description: 'Heading phu (optional, vd: "Bai 1 — Fire damper EI rating"). De trong = auto timestamp.' }
+      },
+      required: ['category', 'lesson']
+    }
+  },
+  {
     name: 'zalo_oa_comment',
     description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
     input_schema: {
@@ -685,6 +700,14 @@ async function runTool(name, input) {
       break;
     case 'auto_learn':
       cmd = 'node'; args = [`${GTOOL}/auto-learn.js`, input.target || 'all', String(input.hours || 24)];
+      break;
+    case 'training_capture':
+      cmd = 'node'; args = [`${GTOOL}/training-capture.js`,
+        input.category || '',
+        input.lesson || '',
+        input.examples || '',
+        input.related_topics || '',
+        input.section || ''];
       break;
     case 'zalo_oa_comment': {
       const action = input.action || 'scan';
@@ -1102,6 +1125,7 @@ TOOLS có sẵn:
 - memory_search (tra cứu long-term memory: hvac-standards, hvac-knowledge, brand-guide, contacts... — BẮT BUỘC gọi TRƯỚC khi viết content kỹ thuật có tiêu chuẩn)
 - memory_update (lưu kiến thức mới vào lena-learned overlay — dùng khi VIP dạy fact mới hoặc cần nhớ cho lần sau)
 - auto_learn (quét session VIP, Gemini extract contacts/technical/feedback/insights → auto save vào lena-learned. Chạy cron 23h hàng ngày. Chỉ gọi manual khi VIP yêu cầu "rút kinh nghiệm session" hoặc "ghi nhớ hội thoại này")
+- training_capture (chế độ TRAINING — Sếp đang dạy em kiến thức mới có cấu trúc: lesson + examples + cross-ref. Khác memory_update vì BẮT BUỘC chọn category technical/business/process/customer-insight và sinh recap để Sếp confirm)
 - gdoc_create
 - task_add / task_overdue / task_status / task_update
 - zalo_oa_send_to_vip (gửi cho VIP khác qua OA)
@@ -1140,6 +1164,14 @@ LONG-TERM MEMORY (memory_search + memory_update + auto_learn):
 ✅ TRƯỚC khi reply VIP về 1 người/khách/topic đã gặp → memory_search keyword="<tên>" để check đã biết gì về họ trước đó.
 ⚙️ Cron 23h hàng ngày TỰ ĐỘNG chạy auto_learn quét toàn bộ session 24h — Lê Na KHÔNG cần lo backup. Chỉ gọi auto_learn manual khi VIP yêu cầu "rút kinh nghiệm session này".
 ❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
+
+🎓 TRAINING MODE — Sếp Khánh đang DẠY em kiến thức có cấu trúc:
+✅ Tín hiệu nhận diện: Sếp nói "anh dạy em...", "em học cái này...", "lần sau gặp case X thì làm Y", "ghi nhớ luật/quy trình...", hoặc Sếp giải thích 1 chuỗi fact + ví dụ áp dụng.
+✅ Khi đó: dùng training_capture (KHÔNG dùng memory_update đơn lẻ) — vì cần category + examples + cross-ref để sau này em tra cứu được context đầy đủ.
+✅ Chọn category đúng: technical (HVAC spec/tiêu chuẩn), business (chiến lược/quyết định kinh doanh), process (quy trình nội bộ), customer-insight (insight khách hàng/NPP).
+✅ SAU khi gọi training_capture, BẮT BUỘC đọc trường "recap" trong output và gửi nguyên văn cho Sếp để Sếp confirm em hiểu đúng — nếu Sếp sửa, gọi lại training_capture với nội dung đã sửa.
+✅ Nếu lesson Sếp dạy CONFLICT với memory cũ (đã memory_search và thấy trái nhau) → flag rõ cho Sếp: "Em đang có ghi nhớ cũ là A, Sếp dạy mới là B — Sếp confirm dùng B nhé?" trước khi save.
+✅ Khi gặp case tương tự sau này, TỰ động memory_search rồi áp dụng đúng lesson Sếp đã dạy — nhắc lại nguồn ("Theo training Sếp dạy hôm ...").
 
 PHÁP LUẬT / NHÂN SỰ / THUẾ / KẾ TOÁN / HẢI QUAN / DOANH NGHIỆP:
 - Khi VIP hỏi về luật lao động, BHXH, thuế TNCN, kế toán, hải quan, luật doanh nghiệp, chính sách Nhà nước → memory_search file="legal-sources" để lấy danh sách nguồn chính thống (thuvienphapluat.vn, chinhphu.vn...).

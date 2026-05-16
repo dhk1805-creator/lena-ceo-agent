@@ -19,11 +19,19 @@ if (!keyword) {
   process.exit(1);
 }
 
-function listMdFiles(dir) {
+function listMdFiles(dir, prefix = '') {
   try {
-    return fs.readdirSync(dir)
-      .filter(f => f.endsWith('.md'))
-      .map(f => ({ name: f.replace(/\.md$/, ''), path: path.join(dir, f) }));
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        // Quet 1 cap subdir (vd: lena-learned/training/<category>.md) de tra cuu training-capture.
+        out.push(...listMdFiles(full, `${prefix}${entry.name}/`));
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        out.push({ name: `${prefix}${entry.name.replace(/\.md$/, '')}`, path: full });
+      }
+    }
+    return out;
   } catch (e) {
     return [];
   }
@@ -59,7 +67,16 @@ function main() {
   const baked = listMdFiles(BAKED_DIR).map(f => ({ ...f, source: 'baked' }));
   const learned = listMdFiles(LEARNED_DIR).map(f => ({ ...f, source: 'learned' }));
   const all = [...baked, ...learned];
-  const targets = fileFilter ? all.filter(f => f.name.toLowerCase() === fileFilter) : all;
+  // File filter chap nhan: exact match ("training/technical"), basename match ("technical"
+  // se match ca "technical-facts" va "training/technical"), hoac prefix match ("training/"
+  // se quet tat ca file trong thu muc training/).
+  const targets = fileFilter
+    ? all.filter(f => {
+        const n = f.name.toLowerCase();
+        const base = n.split('/').pop();
+        return n === fileFilter || base === fileFilter || n.startsWith(fileFilter);
+      })
+    : all;
 
   const results = [];
   let totalMatches = 0;
