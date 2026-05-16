@@ -56,7 +56,7 @@ function textToArticleBody(text) {
   }));
 }
 
-async function createArticle(title, bodyText, coverSource) {
+async function createArticle(title, bodyText, coverSource, autoCleanup) {
   // [2026-05-12] SCHEMA CHUẨN đã xác minh runtime cho /v2.0/article/create:
   //   cover: { cover_type: 'photo', photo_url: <URL>, status: 'show' }
   // Field `status: 'show'` BẮT BUỘC — thiếu sẽ fail "create media fail".
@@ -98,15 +98,41 @@ async function createArticle(title, bodyText, coverSource) {
   };
 
   console.error(`[article] creating with cover URL: ${coverSource}`);
-  const createData = await postArticle(article);
+  let createData = await postArticle(article);
+
+  // [2026-05-16 — Issue #70] -223 = OA đạt quota tạo bài viết (gói Nâng cao
+  // ~15 bài/tháng). Nếu bật --auto-cleanup → xóa bài cũ nhất rồi retry create
+  // 1 lần. Dùng cho cron auto-post để duy trì rolling window bài mới nhất.
+  let cleanupInfo = null;
+  if (createData.error === -223 && autoCleanup) {
+    console.error('[article] -223 quota hit → auto-cleanup: tìm bài cũ nhất để xóa');
+    const oldest = await findOldestArticleId();
+    if (oldest.id) {
+      const delResult = await deleteArticle(oldest.id);
+      cleanupInfo = { deleted_id: oldest.id, deleted_title: oldest.title || null, delete_ok: !!delResult.success };
+      console.error(`[article] auto-cleanup deleted oldest: ${JSON.stringify(cleanupInfo)}`);
+      if (delResult.success) {
+        createData = await postArticle(article);
+      }
+    } else {
+      cleanupInfo = { deleted_id: null, reason: oldest.reason || 'no oldest found' };
+      console.error(`[article] auto-cleanup không tìm được bài để xóa: ${oldest.reason}`);
+    }
+  }
 
   if (createData.error !== 0) {
-    return {
+    const result = {
       success: false,
       step: 'create',
       error: createData.message,
       detail: createData
     };
+    if (createData.error === -223) {
+      result.quota_exceeded = true;
+      result.suggestion = 'OA đạt quota tạo bài tháng (gói Nâng cao ~15 bài). Cần: (a) gọi list để lấy article_id của bài cũ nhất → gọi delete để giải phóng quota, hoặc (b) Sếp nâng gói OA trên Zalo OA admin. Có thể truyền auto_cleanup=true để Lê Na tự xóa bài cũ nhất và retry.';
+    }
+    if (cleanupInfo) result.auto_cleanup = cleanupInfo;
+    return result;
   }
 
   const articleToken = createData.data?.token;
@@ -180,6 +206,37 @@ function findArticleArray(d) {
     if (Array.isArray(v)) return { items: v, key: k };
   }
   return { items: [], key: null };
+}
+
+// [2026-05-16 — Issue #70] Tìm article cũ nhất để auto-cleanup khi -223 quota
+// hit. Probe các variant getslice giống listArticles nhưng giữ raw created_date
+// để sort. Trả về { id, title, created_date } hoặc { id: null, reason }.
+async function findOldestArticleId() {
+  const variants = [
+    `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 50, type: 'normal' }))}`,
+    `https://openapi.zalo.me/v2.0/article/getslice?data=${encodeURIComponent(JSON.stringify({ offset: 0, limit: 50 }))}`,
+    `https://openapi.zalo.me/v2.0/article/getslice?offset=0&limit=50&type=normal`,
+  ];
+  let lastError = null;
+  for (const url of variants) {
+    try {
+      const res = await fetch(url, { headers: { 'access_token': ACCESS_TOKEN } });
+      const data = await res.json();
+      if (data.error !== 0) { lastError = data.message; continue; }
+      const found = findArticleArray(data.data);
+      if (found.items.length === 0) { lastError = 'empty list'; continue; }
+      const withDate = found.items.filter(a => typeof a.created_date === 'number');
+      const sorted = withDate.length > 0
+        ? withDate.slice().sort((a, b) => a.created_date - b.created_date)
+        : found.items;
+      const oldest = sorted[0];
+      const id = oldest.id || oldest.article_id || oldest.media_id || oldest.token;
+      if (id) {
+        return { id, title: oldest.title || null, created_date: oldest.created_date || null };
+      }
+    } catch (e) { lastError = e.message; }
+  }
+  return { id: null, reason: lastError || 'list_failed' };
 }
 
 async function deleteArticle(articleId) {
@@ -271,11 +328,11 @@ async function main() {
   if (!cmd || cmd === 'help') {
     console.log(JSON.stringify({
       usage: {
-        create: 'node zalo-oa-article.js create "<title>" "<body>" "[cover_image_path_or_url]"',
+        create: 'node zalo-oa-article.js create "<title>" "<body>" "[cover_image_path_or_url]" [--auto-cleanup]',
         list: 'node zalo-oa-article.js list',
         delete: 'node zalo-oa-article.js delete "<article_id>"'
       },
-      notes: 'body = plain text, auto-converted to HTML. cover = local path or URL.'
+      notes: 'body = plain text, auto-converted to HTML. cover = local path or URL. --auto-cleanup: nếu -223 quota, tự xóa bài cũ nhất và retry 1 lần.'
     }));
     process.exit(0);
   }
@@ -295,16 +352,19 @@ async function main() {
   }
 
   if (cmd === 'create') {
-    const title = process.argv[3];
-    const body = process.argv[4];
-    const cover = process.argv[5] || null;
+    const autoCleanup = process.argv.includes('--auto-cleanup');
+    // Loại flag khỏi positional để --auto-cleanup có thể đứng ở vị trí bất kỳ
+    const positional = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    const title = positional[0];
+    const body = positional[1];
+    const cover = positional[2] || null;
 
     if (!title || !body) {
-      console.log(JSON.stringify({ error: 'Missing title or body', usage: 'create "<title>" "<body>" "[cover]"' }));
+      console.log(JSON.stringify({ error: 'Missing title or body', usage: 'create "<title>" "<body>" "[cover]" [--auto-cleanup]' }));
       process.exit(1);
     }
 
-    const result = await createArticle(title, body, cover);
+    const result = await createArticle(title, body, cover, autoCleanup);
     console.log(JSON.stringify(result, null, 2));
     if (!result.success) process.exit(1);
     return;

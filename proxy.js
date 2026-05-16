@@ -370,7 +370,7 @@ const TOOLS = [
   },
   {
     name: 'zalo_oa_article',
-    description: 'ĐĂNG/LIỆT KÊ/XÓA BÀI VIẾT trên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → action=create. "gỡ bài/xóa bài OA" → action=delete (cần article_id, lấy từ list).',
+    description: 'ĐĂNG/LIỆT KÊ/XÓA BÀI VIẾT trên TRANG Zalo OA Starasia JSC (public, mọi người thấy). Khi VIP nói "đăng bài/đăng lên OA" → action=create. "gỡ bài/xóa bài OA" → action=delete (cần article_id, lấy từ list). Nếu output trả về quota_exceeded=true (-223) → OA hết quota tháng, đề xuất Sếp xóa bài cũ (auto_cleanup=true) hoặc nâng gói OA.',
     input_schema: {
       type: 'object',
       properties: {
@@ -378,7 +378,8 @@ const TOOLS = [
         title: { type: 'string', description: 'Tiêu đề bài viết (cần khi action=create)' },
         body: { type: 'string', description: 'Nội dung bài viết (plain text, tự convert HTML) (cần khi action=create)' },
         cover: { type: 'string', description: 'URL ảnh bìa hoặc local path (VD: ảnh VIP gửi qua Zalo) (cần khi action=create)' },
-        article_id: { type: 'string', description: 'ID bài viết (cần khi action=delete, lấy từ action=list)' }
+        article_id: { type: 'string', description: 'ID bài viết (cần khi action=delete, lấy từ action=list)' },
+        auto_cleanup: { type: 'boolean', description: 'Chỉ khi action=create: nếu OA đạt quota -223, tự động xóa bài cũ nhất và retry 1 lần. Default false. Hỏi Sếp trước khi bật cho post thủ công; cron auto-post bật mặc định.' }
       }
     }
   },
@@ -664,6 +665,7 @@ async function runTool(name, input) {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, 'list'];
       } else {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-article.js`, 'create', input.title || '', input.body || '', input.cover || ''];
+        if (input.auto_cleanup) args.push('--auto-cleanup');
       }
       break;
     }
