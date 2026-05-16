@@ -1146,6 +1146,7 @@ LONG-TERM MEMORY (memory_search + memory_update + auto_learn):
 ⚙️ Cron 23h hàng ngày TỰ ĐỘNG chạy auto_learn quét toàn bộ session 24h — Lê Na KHÔNG cần lo backup. Chỉ gọi auto_learn manual khi VIP yêu cầu "rút kinh nghiệm session này".
 ❌ KHÔNG bịa tiêu chuẩn. ASHRAE 55/62.1/62.2 là chuẩn MÔI TRƯỜNG, KHÔNG phải spec sản phẩm — đừng gán vào van/VAV.
 ❌ KHÔNG BAO GIỜ bịa thông tin về dự án / sản phẩm NỘI BỘ NSCA-STARDUCT (ClimaNexus, Tool Hub, SVAV-S, Hub 100, Lê Na AI, KHKD, các project R&D nội bộ, v.v.) nếu chưa memory_search và xác minh có trong trí nhớ. memory_search KHÔNG ra → trả lời "Em chưa có thông tin về [X] trong trí nhớ, Sếp cho em chi tiết để em ghi nhớ và trả lời chính xác." TUYỆT ĐỐI KHÔNG tự suy đoán đặc điểm kỹ thuật, mục tiêu, benchmark, số liệu, hay phân loại bảo mật của dự án nội bộ. ĐÂY LÀ LỖI NẶNG vì nội dung bịa rồi gửi đi / đăng public không thu hồi được.
+✅ TRƯỚC khi trả lời câu hỏi về SẢN PHẨM hay DỰ ÁN của NSCA-STARDUCT: BẮT BUỘC memory_search file="nsca-domains" để biết domain phù hợp, rồi web_read trang đó để lấy THÔNG TIN THẬT (không chỉ trả lời từ trí nhớ chung). Vd: hỏi "miệng gió khuếch tán vuông" → web_read starduct.vn/mieng-gio-khuech-tan-vuong123-c-92. Hỏi "ClimaNexus làm gì" → web_read climanexusvn.com. LUÔN trích nguồn URL cụ thể ở cuối câu trả lời (vd "Nguồn: starduct.vn/...").
 
 PHÁP LUẬT / NHÂN SỰ / THUẾ / KẾ TOÁN / HẢI QUAN / DOANH NGHIỆP:
 - Khi VIP hỏi về luật lao động, BHXH, thuế TNCN, kế toán, hải quan, luật doanh nghiệp, chính sách Nhà nước → memory_search file="legal-sources" để lấy danh sách nguồn chính thống (thuvienphapluat.vn, chinhphu.vn...).
@@ -1544,6 +1545,17 @@ const _zaloSendCache = new Map();
 const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
 const _webhookDedup = new Set();
 
+// Sanitize cuoi cung truoc khi gui ra Zalo: Sonnet thuong drift ve markdown
+// dau **, ma Zalo OA khong render markdown nen hien thi nguyen ky tu **.
+// Strip ** o tang code de dam bao 100%, khong phu thuoc vao prompt rule.
+function sanitizeForZalo(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')  // **bold** -> bold
+    .replace(/\*\*/g, '')                  // lone ** roi rac
+    .replace(/\n{4,}/g, '\n\n\n');         // gioi han line trong qua nhieu
+}
+
 async function sendZaloMessage(userId, message) {
   const now = Date.now();
   const lastSend = _zaloSendCache.get(userId);
@@ -1553,7 +1565,7 @@ async function sendZaloMessage(userId, message) {
   }
   _zaloSendCache.set(userId, now);
 
-  const formatted = `${message.trim()}\n\nLê Na`;
+  const formatted = `${sanitizeForZalo(message).trim()}\n\nLê Na`;
   const token = getOAToken();
   if (!token) throw new Error('No OA access token available');
   const res = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
