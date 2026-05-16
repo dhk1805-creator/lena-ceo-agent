@@ -234,7 +234,7 @@ async function main() {
     await readPpt();
   } else if (ext === '.pdf') {
     await readPDF();
-  } else if (['.csv', '.txt', '.md', '.json', '.html', '.xml'].includes(ext)) {
+  } else if (['.csv', '.txt', '.md', '.json', '.html', '.xml', '.svg'].includes(ext)) {
     await readText();
   } else {
     console.log(JSON.stringify({

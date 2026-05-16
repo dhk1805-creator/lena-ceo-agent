@@ -545,6 +545,18 @@ const TOOLS = [
       },
       required: ['file_path']
     }
+  },
+  {
+    name: 'gemini_analyze',
+    description: 'Phan tich hinh anh (JPG/PNG/GIF/WEBP) va PDF bang Gemini AI multimodal. Doc hoa don, bang gia, screenshot, bieu do, anh chup san pham. Tra ve phan tich tieng Viet.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_path: { type: 'string', description: 'Duong dan file hinh anh hoac PDF (vd: /tmp/attachments/hoadon.jpg)' },
+        prompt: { type: 'string', description: 'Cau hoi/yeu cau cu the (vd: "Doc so lieu tren hoa don", "Mo ta san pham trong anh")' }
+      },
+      required: ['file_path']
+    }
   }
 ];
 
@@ -783,6 +795,9 @@ async function runTool(name, input) {
       break;
     case 'file_read':
       cmd = 'node'; args = [`${GTOOL}/file-read.js`, input.file_path, String(input.max_chars || 8000), input.sheet_name || ''];
+      break;
+    case 'gemini_analyze':
+      cmd = 'node'; args = [`${GTOOL}/gemini-analyze.js`, input.file_path, input.prompt || ''];
       break;
     default:
       return { error: `Unknown tool: ${name}` };
