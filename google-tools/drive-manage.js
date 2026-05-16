@@ -184,8 +184,33 @@ async function main() {
       break;
     }
 
+    case 'copy-file': {
+      if (!arg2) { console.log(JSON.stringify({ error: 'Need: copy-file <fileId> <targetFolderId>' })); return; }
+      // Copy file to target folder (keeps original intact)
+      const copyRes = await driveAPI('files/' + arg1 + '/copy', token, {
+        method: 'POST',
+        body: { parents: [arg2] }
+      });
+      if (copyRes.id) {
+        // Get full info
+        const info = await driveAPI('files/' + copyRes.id + '?fields=id,name,webViewLink,mimeType', token);
+        console.log(JSON.stringify({
+          success: true,
+          originalId: arg1,
+          copyId: info.id,
+          name: info.name,
+          type: info.mimeType,
+          url: info.webViewLink,
+          copiedTo: arg2
+        }, null, 2));
+      } else {
+        console.log(JSON.stringify({ success: false, error: copyRes }));
+      }
+      break;
+    }
+
     default:
-      console.log(JSON.stringify({ error: `Unknown action: ${action}`, actions: ['create-folder', 'move-file', 'ensure-path'] }));
+      console.log(JSON.stringify({ error: `Unknown action: ${action}`, actions: ['create-folder', 'move-file', 'copy-file', 'ensure-path'] }));
   }
 }
 

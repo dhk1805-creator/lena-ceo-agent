@@ -506,11 +506,11 @@ const TOOLS = [
   },
   {
     name: 'drive_manage',
-    description: 'Quan ly Google Drive: tao folder, di chuyen file, tao duong dan folder lon (ensure-path). Dung de to chuc bao cao theo cau truc: "Le Na Reports/2026/W20/", "Le Na Reports/2026/M05/".',
+    description: 'Quan ly Google Drive: tao folder, di chuyen/copy file, tao duong dan folder lon (ensure-path). copy-file giu nguyen file goc (dung cho BC nhan vien share link). Dung de to chuc bao cao theo cau truc: "Le Na Reports/2026/W20/", "Le Na Reports/2026/M05/".',
     input_schema: {
       type: 'object',
       properties: {
-        action: { type: 'string', description: 'create-folder | move-file | ensure-path' },
+        action: { type: 'string', description: 'create-folder | move-file | copy-file | ensure-path' },
         parent_id: { type: 'string', description: 'Folder cha (cho create-folder, ensure-path). Mac dinh: Le Na Reports root folder' },
         name: { type: 'string', description: 'Ten folder moi (cho create-folder)' },
         file_id: { type: 'string', description: 'ID file can di chuyen (cho move-file)' },
@@ -518,6 +518,18 @@ const TOOLS = [
         path: { type: 'string', description: 'Duong dan folder can tao (cho ensure-path, vd: "2026/W20" hoac "2026/M05")' }
       },
       required: ['action']
+    }
+  },
+  {
+    name: 'gdoc_read',
+    description: 'Doc noi dung Google Doc hoac Sheet bat ky bang ID. Dung khi nhan vien share link Doc/Sheet trong email bao cao. Tra ve noi dung text.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        doc_id: { type: 'string', description: 'Google Doc/Sheet ID (lay tu URL: docs.google.com/document/d/DOC_ID/...)' },
+        max_chars: { type: 'number', description: 'Gioi han ky tu tra ve (default 8000)' }
+      },
+      required: ['doc_id']
     }
   }
 ];
@@ -743,13 +755,18 @@ async function runTool(name, input) {
         cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'create-folder', input.parent_id || '', input.name || ''];
       } else if (dmAction === 'move-file') {
         cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'move-file', input.file_id || '', input.target_folder_id || ''];
+      } else if (dmAction === 'copy-file') {
+        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'copy-file', input.file_id || '', input.target_folder_id || ''];
       } else if (dmAction === 'ensure-path') {
         cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'ensure-path', input.parent_id || '', input.path || ''];
       } else {
-        return { error: `drive_manage: unknown action "${dmAction}". Use: create-folder, move-file, ensure-path` };
+        return { error: `drive_manage: unknown action "${dmAction}". Use: create-folder, move-file, copy-file, ensure-path` };
       }
       break;
     }
+    case 'gdoc_read':
+      cmd = 'node'; args = [`${GTOOL}/gdoc-read.js`, input.doc_id, String(input.max_chars || 8000)];
+      break;
     default:
       return { error: `Unknown tool: ${name}` };
   }
