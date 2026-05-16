@@ -556,6 +556,20 @@ const TOOLS = [
         prompt: { type: 'string', description: 'Cau hoi/yeu cau cu the (vd: "Doc so lieu tren hoa don", "Mo ta san pham trong anh")' }
       },
       required: ['file_path']
+  },
+  {
+    name: 'report_archive',
+    description: 'Luu tru bao cao vao Lena_Reports (Google Drive) theo cau truc thoi gian phang: 2026-W20/, 2026-M05/, 2026-Q2/, 2026-Year/. TU DONG tao folder neu chua co. 4 action: archive (copy Google Doc/Sheet vao folder), upload (upload file local), init (tao folder), list (xem file trong folder).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'archive | upload | init | list' },
+        file_id: { type: 'string', description: 'Google Drive file ID (cho archive — copy file vao folder)' },
+        file_path: { type: 'string', description: 'Duong dan file local (cho upload — upload file vao folder)' },
+        period: { type: 'string', description: 'Ky bao cao: W20, M05, Q2, Year (default: tuan hien tai)' },
+        label: { type: 'string', description: 'Ten file moi khi luu (vd: "R&D - BC tuan 20")' }
+      },
+      required: ['action']
     }
   }
 ];
@@ -799,6 +813,21 @@ async function runTool(name, input) {
     case 'gemini_analyze':
       cmd = 'node'; args = [`${GTOOL}/gemini-analyze.js`, input.file_path, input.prompt || ''];
       break;
+    case 'report_archive': {
+      const raAction = input.action || 'init';
+      if (raAction === 'archive') {
+        cmd = 'node'; args = [`${GTOOL}/report-archive.js`, 'archive', input.file_id || '', input.period || '', input.label || ''];
+      } else if (raAction === 'upload') {
+        cmd = 'node'; args = [`${GTOOL}/report-archive.js`, 'upload', input.file_path || '', input.period || '', input.label || ''];
+      } else if (raAction === 'init') {
+        cmd = 'node'; args = [`${GTOOL}/report-archive.js`, 'init', input.period || ''];
+      } else if (raAction === 'list') {
+        cmd = 'node'; args = [`${GTOOL}/report-archive.js`, 'list', input.period || ''];
+      } else {
+        return { error: `report_archive: unknown action "${raAction}". Use: archive, upload, init, list` };
+      }
+      break;
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
