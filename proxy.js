@@ -585,6 +585,19 @@ const TOOLS = [
       },
       required: ['action']
     }
+  },
+  {
+    name: 'bulk_report_scan',
+    description: 'Quet HANG LOAT bao cao tu 14 BP truong qua nhieu tuan ISO. Voi MOI email co attachment trong khoang tuan -> download tat ca file -> upload vao Lena_Reports/<year>-W<XX>/. KHONG dung filter "subject:bao cao" — chi loc theo "has:attachment" de khong bo sot. Tra ve JSON tom tat: tong email/file/upload/error theo tung BP va tung tuan. Dung khi: (1) backfill nhieu tuan (vd 15-20), (2) bao dam 100% bao cao da scan sau khi cron T7 chay, (3) Sep yeu cau scan lai 1 tuan cu the. Tool nay co the chay 2-5 phut neu quet nhieu tuan.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        start_week: { type: 'number', description: 'Tuan ISO bat dau (vd: 18). Bo trong = tuan hien tai.' },
+        end_week: { type: 'number', description: 'Tuan ISO ket thuc (vd: 20). Bo trong = bang start_week (chi quet 1 tuan).' },
+        year: { type: 'number', description: 'Nam (default: nam hien tai)' },
+        dryrun: { type: 'boolean', description: 'true = chi quet va dem, KHONG download/upload. Dung de preview truoc khi scan that.' }
+      }
+    }
   }
 ];
 
@@ -845,12 +858,23 @@ async function runTool(name, input) {
       }
       break;
     }
+    case 'bulk_report_scan': {
+      const bulkArgs = [`${GTOOL}/bulk-report-scan.js`];
+      if (input.start_week) bulkArgs.push(String(input.start_week));
+      if (input.end_week) bulkArgs.push(String(input.end_week));
+      if (input.year) bulkArgs.push(String(input.year));
+      if (input.dryrun) bulkArgs.push('dryrun');
+      cmd = 'node'; args = bulkArgs;
+      break;
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
 
   try {
-    const { stdout, stderr } = await execFileAsync(cmd, args, { encoding: 'utf-8', timeout: 60000 });
+    // bulk_report_scan co the chay 2-5 phut khi quet nhieu tuan x 14 BP — cho phep timeout dai hon.
+    const toolTimeout = (name === 'bulk_report_scan') ? 600000 : 60000;
+    const { stdout, stderr } = await execFileAsync(cmd, args, { encoding: 'utf-8', timeout: toolTimeout, maxBuffer: 20 * 1024 * 1024 });
     if (stderr) console.log(`[tool:${name}] ${stderr.trim()}`);
     const raw = stdout || '';
     // Giới hạn output theo từng tool. web_read trả về cả 1 trang web thật (web-read.js
@@ -860,6 +884,7 @@ async function runTool(name, input) {
     // trước khi tới Lê Na. web_search vừa đủ cho danh sách kết quả.
     const OUTPUT_CAP = (name === 'web_read' || name === 'memory_search') ? 15000
                      : (name === 'web_search') ? 6000
+                     : (name === 'bulk_report_scan') ? 15000
                      : 3000;
     if (raw.length > OUTPUT_CAP) {
       return { output: raw.substring(0, OUTPUT_CAP) + `\n⚠️ [Cắt ngắn — vượt ${OUTPUT_CAP} ký tự]` };
@@ -1264,6 +1289,7 @@ TOOLS có sẵn:
 - gemini_analyze (phân tích hình ảnh JPG/PNG/WEBP/GIF và PDF bằng Gemini AI multimodal)
 - drive_manage (quản lý Google Drive: create-folder, move-file, copy-file, ensure-path)
 - report_archive (LƯU TRỮ báo cáo vào Lena_Reports — TỰ ĐỘNG tạo folder tuần/tháng/quí/năm. actions: archive|upload|init|list. BẮT BUỘC gọi sau khi download attachment hoặc tạo báo cáo)
+- bulk_report_scan (QUÉT HÀNG LOẠT báo cáo: 14 BP × N tuần × has:attachment → tự động download + archive vào Lena_Reports/YYYY-Wxx/. Dùng khi Sếp yêu cầu "scan lại tuần X", "backfill từ tuần A đến tuần B", hoặc cần đảm bảo 100% không bỏ sót. Tool tự chạy 2-5 phút.)
 - list_cron_jobs (liệt kê tất cả cron jobs đang chạy — schedule, mô tả, trạng thái)
 
 📋 WORKFLOW LƯU TRỮ BÁO CÁO (BẮT BUỘC khi nhận file từ email/Drive/OneDrive):
