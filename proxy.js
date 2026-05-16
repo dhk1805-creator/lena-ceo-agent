@@ -21,6 +21,7 @@ const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // Proven working —
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
+const LENA_REPORTS_FOLDER = '11G7dpJX552jZFt37ou_m5ocz2sRZ2p5p'; // Google Drive: Lena_Reports root folder
 
 function getOAToken() {
   try {
@@ -752,13 +753,13 @@ async function runTool(name, input) {
     case 'drive_manage': {
       const dmAction = input.action || 'create-folder';
       if (dmAction === 'create-folder') {
-        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'create-folder', input.parent_id || '', input.name || ''];
+        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'create-folder', input.parent_id || LENA_REPORTS_FOLDER, input.name || ''];
       } else if (dmAction === 'move-file') {
         cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'move-file', input.file_id || '', input.target_folder_id || ''];
       } else if (dmAction === 'copy-file') {
         cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'copy-file', input.file_id || '', input.target_folder_id || ''];
       } else if (dmAction === 'ensure-path') {
-        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'ensure-path', input.parent_id || '', input.path || ''];
+        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'ensure-path', input.parent_id || LENA_REPORTS_FOLDER, input.path || ''];
       } else {
         return { error: `drive_manage: unknown action "${dmAction}". Use: create-folder, move-file, copy-file, ensure-path` };
       }
