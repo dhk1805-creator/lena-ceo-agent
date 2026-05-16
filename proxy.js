@@ -482,6 +482,15 @@ const TOOLS = [
       },
       required: ['action']
     }
+  },
+  {
+    name: 'list_cron_jobs',
+    description: 'Liệt kê tất cả cron jobs của Lê Na. Trả về danh sách đầy đủ với ID, tên, lịch chạy, và mô tả ngắn.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -688,6 +697,14 @@ async function runTool(name, input) {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan', String(input.hours || 24)];
       }
       break;
+    }
+    case 'list_cron_jobs': {
+      try {
+        const cronPath = require('path').join(__dirname, 'cron-jobs.json');
+        const jobs = JSON.parse(fs.readFileSync(cronPath, 'utf8'));
+        const lines = jobs.map((j, i) => `${i+1}. [${j.id}] ${j.name} - cron: ${j.schedule.expr}`);
+        return { result: `Le Na co ${jobs.length} cron jobs:\n${lines.join('\n')}` };
+      } catch (e) { return { error: 'Khong doc duoc cron-jobs.json: ' + e.message }; }
     }
     default:
       return { error: `Unknown tool: ${name}` };
