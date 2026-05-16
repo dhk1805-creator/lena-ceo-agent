@@ -2,7 +2,7 @@
 require('./_env');
 // Web Search — Le Na CEO Agent
 // Auto-detect engine:
-//   - Neu co GOOGLE_SEARCH_API_KEY + GOOGLE_CSE_ID -> Google Custom Search API (coverage tot hon)
+//   - Neu co GOOGLE_CSE_API_KEY (hoac GOOGLE_SEARCH_API_KEY) + GOOGLE_CSE_ID -> Google Custom Search API (coverage tot hon)
 //   - Nguoc lai -> DuckDuckGo HTML (khong can API key, fallback)
 // Usage: node web-search.js "<query>" [max_results]
 // Output: JSON { source, query, count, results: [{title, url, snippet}] }
@@ -56,7 +56,7 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 15000) {
 }
 
 async function searchGoogle() {
-  const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const apiKey = process.env.GOOGLE_CSE_API_KEY || process.env.GOOGLE_SEARCH_API_KEY;
   const cseId = process.env.GOOGLE_CSE_ID;
   // Google CSE tra ve toi da 10 results / request, can phan trang qua param `start`
   const results = [];
@@ -133,7 +133,7 @@ async function searchDuckDuckGo() {
 }
 
 async function main() {
-  const hasGoogle = !!(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_CSE_ID);
+  const hasGoogle = !!((process.env.GOOGLE_CSE_API_KEY || process.env.GOOGLE_SEARCH_API_KEY) && process.env.GOOGLE_CSE_ID);
   try {
     const out = hasGoogle ? await searchGoogle() : await searchDuckDuckGo();
     console.log(JSON.stringify(out, null, 2));
