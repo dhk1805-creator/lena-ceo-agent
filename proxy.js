@@ -506,6 +506,19 @@ const TOOLS = [
     }
   },
   {
+    name: 'onedrive_download',
+    description: 'Download file tu link OneDrive/SharePoint shared (nhan vien gui qua email/Teams). Khong can dang nhap — dung redeem token trong URL. Tra ve file path local de dung voi report_archive upload.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'Link OneDrive (onedrive.live.com hoac 1drv.ms)' },
+        output_dir: { type: 'string', description: 'Thu muc luu file (default: /tmp/attachments)' },
+        filename: { type: 'string', description: 'Ten file tuy chon (neu muon dat ten khac)' }
+      },
+      required: ['url']
+    }
+  },
+  {
     name: 'drive_manage',
     description: 'Quan ly Google Drive: tao folder, di chuyen/copy file, tao duong dan folder lon (ensure-path). copy-file giu nguyen file goc (dung cho BC nhan vien share link). Dung de to chuc bao cao theo cau truc: "Le Na Reports/2026/W20/", "Le Na Reports/2026/M05/".',
     input_schema: {
@@ -801,6 +814,9 @@ async function runTool(name, input) {
     }
     case 'gmail_attachment':
       cmd = 'node'; args = [`${GTOOL}/gmail-attachment.js`, input.message_id, input.output_dir || '/tmp/attachments'];
+      break;
+    case 'onedrive_download':
+      cmd = 'node'; args = [`${GTOOL}/onedrive-download.js`, input.url, input.output_dir || '/tmp/attachments', input.filename || ''];
       break;
     case 'drive_manage': {
       const dmAction = input.action || 'create-folder';
@@ -1256,6 +1272,7 @@ TOOLS có sẵn:
 - image_overlay (ghép logo STARDUCT lên ảnh tạo cover chuyên nghiệp — layouts: hero, banner-bottom)
 - gemini_write (Gemini Flash soạn nội dung dài: bài viết, báo cáo — FREE)
 - gmail_attachment (download tệp đính kèm từ email — Excel/PDF/Doc/PPT. Dùng messageId + attachmentId)
+- onedrive_download (download file từ link OneDrive/SharePoint nhân viên gửi qua email. Tự xử lý redeem token, không cần đăng nhập)
 - file_read (đọc file local: doc/docx/ppt/pptx/xlsx/xls/pdf/csv/txt/md/json/html/xml)
 - onedrive_download (tải file từ link OneDrive/SharePoint về /tmp/onedrive/ — chỉ với share "Anyone with link can view". Sau khi tải, chain với file_read)
 - gdoc_read (đọc nội dung Google Doc/Sheet bằng ID hoặc link — export text/csv)
@@ -1264,14 +1281,13 @@ TOOLS có sẵn:
 - report_archive (LƯU TRỮ báo cáo vào Lena_Reports — TỰ ĐỘNG tạo folder tuần/tháng/quí/năm. actions: archive|upload|init|list. BẮT BUỘC gọi sau khi download attachment hoặc tạo báo cáo)
 - list_cron_jobs (liệt kê tất cả cron jobs đang chạy — schedule, mô tả, trạng thái)
 
-📋 WORKFLOW LƯU TRỮ BÁO CÁO (BẮT BUỘC khi nhận file từ email/Drive):
-1. gmail_attachment hoặc gdoc_read → lấy file/nội dung
-   • Nếu email có link OneDrive/SharePoint (1drv.ms, onedrive.live.com, *.sharepoint.com) → onedrive_download trước rồi mới file_read
+📋 WORKFLOW LƯU TRỮ BÁO CÁO (BẮT BUỘC khi nhận file từ email/Drive/OneDrive):
+1. Kiểm tra email có attachment → gmail_attachment | Có link OneDrive → onedrive_download | Có link Google Doc → gdoc_read
 2. file_read hoặc gemini_analyze → đọc/phân tích nội dung
-3. report_archive (action:"archive" hoặc "upload") → lưu vào Lena_Reports/2026-Wxx/
+3. report_archive (action:"upload") → lưu vào Lena_Reports/2026-Wxx/
 4. Báo VIP: "✅ Đã lưu [tên file] vào Lena_Reports/[folder]"
 ⚠️ KHÔNG BAO GIỜ chỉ scan email mà không lưu file. Đã scan = PHẢI archive.
-⚠️ Link OneDrive lỗi 401/403 = share chưa public. Bảo nhân viên đổi sang "Anyone with the link can view".
+⚠️ Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → LUÔN dùng onedrive_download, KHÔNG dùng gmail_attachment.
 
 ⚠️ PHÂN BIỆT 2 TOOL ZALO:
 - "đăng bài OA" / "đăng lên trang" → zalo_oa_article (bài viết PUBLIC trên trang Starasia JSC)
