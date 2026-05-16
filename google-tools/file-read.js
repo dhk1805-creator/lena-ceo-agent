@@ -119,16 +119,61 @@ async function readText() {
   }, null, 2));
 }
 
+
+async function readDocx() {
+  const mammoth = require('mammoth');
+  const result = await mammoth.extractRawText({ path: filePath });
+  let content = result.value || '';
+  const fullLen = content.length;
+
+  if (content.length > maxChars) {
+    content = content.substring(0, maxChars) + `\n... [cat ngan: ${fullLen} -> ${maxChars} ky tu]`;
+  }
+
+  console.log(JSON.stringify({
+    success: true,
+    type: 'docx',
+    file: path.basename(filePath),
+    charCount: fullLen,
+    content
+  }, null, 2));
+}
+
+async function readDoc() {
+  const { execFileSync } = require('child_process');
+  try {
+    let content = execFileSync('antiword', [filePath], { encoding: 'utf-8', timeout: 30000 });
+    const fullLen = content.length;
+
+    if (content.length > maxChars) {
+      content = content.substring(0, maxChars) + `\n... [cat ngan: ${fullLen} -> ${maxChars} ky tu]`;
+    }
+
+    console.log(JSON.stringify({
+      success: true,
+      type: 'doc',
+      file: path.basename(filePath),
+      charCount: fullLen,
+      content
+    }, null, 2));
+  } catch (e) {
+    console.log(JSON.stringify({ error: 'Khong doc duoc .doc: ' + e.message, file: path.basename(filePath) }));
+  }
+}
 async function main() {
   if (['.xlsx', '.xls', '.xlsm'].includes(ext)) {
     await readExcel();
+  } else if (ext === '.docx') {
+    await readDocx();
+  } else if (ext === '.doc') {
+    await readDoc();
   } else if (ext === '.pdf') {
     await readPDF();
   } else if (['.csv', '.txt', '.md', '.json', '.html', '.xml'].includes(ext)) {
     await readText();
   } else {
     console.log(JSON.stringify({
-      error: `Dinh dang "${ext}" chua ho tro. Ho tro: xlsx, xls, pdf, csv, txt, md, json`,
+      error: `Dinh dang "${ext}" chua ho tro. Ho tro: doc, docx, xlsx, xls, pdf, csv, txt, md, json`,
       file: path.basename(filePath)
     }));
   }

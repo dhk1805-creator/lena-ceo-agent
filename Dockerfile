@@ -3,7 +3,7 @@ FROM node:24-slim
 WORKDIR /app
 
 # Install git + Vietnamese fonts (required for image-overlay text rendering) + curl
-RUN apt-get update && apt-get install -y git curl ca-certificates fonts-noto-core fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/* && fc-cache -fv
+RUN apt-get update && apt-get install -y git curl ca-certificates fonts-noto-core fonts-noto-cjk fontconfig antiword && rm -rf /var/lib/apt/lists/* && fc-cache -fv
 
 # Install yt-dlp (standalone binary) — web-read.js uses to get YouTube transcripts
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp \
@@ -11,7 +11,7 @@ RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_
     && /usr/local/bin/yt-dlp --version
 
 # Install dependencies: sharp (image), express (server), node-cron (scheduler)
-RUN cd /app && npm install sharp express node-cron xlsx pdf-parse
+RUN cd /app && npm install sharp express node-cron xlsx pdf-parse mammoth
 
 # Copy workspace files
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
