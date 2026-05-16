@@ -532,6 +532,19 @@ const TOOLS = [
       },
       required: ['doc_id']
     }
+  },
+  {
+    name: 'file_read',
+    description: 'Doc file Excel (.xlsx/.xls), PDF, CSV, TXT tu local path. Dung sau khi gmail_attachment download file ve /tmp/attachments/. Tra ve noi dung text de phan tich.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_path: { type: 'string', description: 'Duong dan file local (vd: /tmp/attachments/report.xlsx)' },
+        max_chars: { type: 'number', description: 'Gioi han ky tu (default 8000)' },
+        sheet_name: { type: 'string', description: 'Ten sheet cu the (chi cho Excel, default: sheet dau tien)' }
+      },
+      required: ['file_path']
+    }
   }
 ];
 
@@ -767,6 +780,9 @@ async function runTool(name, input) {
     }
     case 'gdoc_read':
       cmd = 'node'; args = [`${GTOOL}/gdoc-read.js`, input.doc_id, String(input.max_chars || 8000)];
+      break;
+    case 'file_read':
+      cmd = 'node'; args = [`${GTOOL}/file-read.js`, input.file_path, String(input.max_chars || 8000), input.sheet_name || ''];
       break;
     default:
       return { error: `Unknown tool: ${name}` };
