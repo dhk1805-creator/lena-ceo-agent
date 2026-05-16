@@ -123,7 +123,7 @@ Neu email KHONG PHAI don hang/dat hang/bao gia → tra ve {"is_order": false}
 Don hang bao gom: dat hang, order, PO, bao gia, yeu cau gia, request quotation, mua hang`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
