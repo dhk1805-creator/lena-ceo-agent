@@ -491,6 +491,34 @@ const TOOLS = [
       properties: {},
       required: []
     }
+  },
+  {
+    name: 'gmail_attachment',
+    description: 'Download tep dinh kem tu email. Can messageId (lay tu gmail_read). Tra ve danh sach files da tai ve local (/tmp/attachments/).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        message_id: { type: 'string', description: 'Gmail message ID (lay tu ket qua gmail_read)' },
+        output_dir: { type: 'string', description: 'Thu muc luu file (default: /tmp/attachments)' }
+      },
+      required: ['message_id']
+    }
+  },
+  {
+    name: 'drive_manage',
+    description: 'Quan ly Google Drive: tao folder, di chuyen file, tao duong dan folder lon (ensure-path). Dung de to chuc bao cao theo cau truc: "Le Na Reports/2026/W20/", "Le Na Reports/2026/M05/".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'create-folder | move-file | ensure-path' },
+        parent_id: { type: 'string', description: 'Folder cha (cho create-folder, ensure-path). Mac dinh: Le Na Reports root folder' },
+        name: { type: 'string', description: 'Ten folder moi (cho create-folder)' },
+        file_id: { type: 'string', description: 'ID file can di chuyen (cho move-file)' },
+        target_folder_id: { type: 'string', description: 'Folder dich (cho move-file)' },
+        path: { type: 'string', description: 'Duong dan folder can tao (cho ensure-path, vd: "2026/W20" hoac "2026/M05")' }
+      },
+      required: ['action']
+    }
   }
 ];
 
@@ -705,6 +733,22 @@ async function runTool(name, input) {
         const lines = jobs.map((j, i) => `${i+1}. [${j.id}] ${j.name} - cron: ${j.schedule.expr}`);
         return { result: `Le Na co ${jobs.length} cron jobs:\n${lines.join('\n')}` };
       } catch (e) { return { error: 'Khong doc duoc cron-jobs.json: ' + e.message }; }
+    }
+    case 'gmail_attachment':
+      cmd = 'node'; args = [`${GTOOL}/gmail-attachment.js`, input.message_id, input.output_dir || '/tmp/attachments'];
+      break;
+    case 'drive_manage': {
+      const dmAction = input.action || 'create-folder';
+      if (dmAction === 'create-folder') {
+        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'create-folder', input.parent_id || '', input.name || ''];
+      } else if (dmAction === 'move-file') {
+        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'move-file', input.file_id || '', input.target_folder_id || ''];
+      } else if (dmAction === 'ensure-path') {
+        cmd = 'node'; args = [`${GTOOL}/drive-manage.js`, 'ensure-path', input.parent_id || '', input.path || ''];
+      } else {
+        return { error: `drive_manage: unknown action "${dmAction}". Use: create-folder, move-file, ensure-path` };
+      }
+      break;
     }
     default:
       return { error: `Unknown tool: ${name}` };
