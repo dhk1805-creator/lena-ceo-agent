@@ -1,20 +1,11 @@
 #!/usr/bin/env node
-// Express proxy + Zalo OA 2-way bridge with TOOL CALLING
+// Lê Na CEO Agent — Express server + Zalo OA webhook + Cron scheduler
 // - Serves /public/* (Zalo domain verification)
-// - Proxies / -> OpenClaw on internal port
-// - Receives Zalo OA webhook → Lê Na (Claude) with tools → replies via Zalo OA API
-//
-// RESTORED to commit 8c371bf (last working version before the 14/05 rewrite),
-// with 2 deliberate keepers + 1 minimal addition:
-//   [keeper]   VIP_IDS hardcoded fallback — VIP recognition no longer breaks if
-//              the ZALO_OA_USER_* env vars fail to reach the process.
-//   [keeper]   /env-check endpoint — quick diagnostic for env var delivery.
-//   [addition] handleFollowerMessage — followers/strangers now get a real Lê Na
-//              reply (limited, read-only scope) instead of a canned brush-off.
-// The VIP path and all other behaviour are untouched from 8c371bf.
+// - Zalo OA webhook → Claude tool calling → reply
+// - Built-in cron scheduler (node-cron) replaces OpenClaw
 
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const cron = require('node-cron');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
@@ -22,7 +13,6 @@ const path = require('path');
 const fs = require('fs');
 
 const FRONT_PORT = parseInt(process.env.PORT || '8080', 10);
-const OPENCLAW_PORT = parseInt(process.env.OPENCLAW_INTERNAL_PORT || '8090', 10);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
@@ -1728,44 +1718,175 @@ app.get('/staff-list', (req, res) => {
   });
 });
 
-// === PROXY TO OPENCLAW ===
-const ocProxy = createProxyMiddleware({
-  target: `http://127.0.0.1:${OPENCLAW_PORT}`,
-  changeOrigin: true,
-  ws: true,
-  xfwd: true,
-  logLevel: 'warn',
-  onError: (err, req, res) => {
-    console.error('[proxy] error:', err.message);
-    if (res && !res.headersSent) {
-      res.writeHead(502, { 'Content-Type': 'text/plain' });
-      res.end('Upstream not ready: ' + err.message);
+// === CRON JOB SCHEDULER (replaces OpenClaw) ===
+function loadCronJobs() {
+  let jobs;
+  try {
+    jobs = JSON.parse(fs.readFileSync(path.join(__dirname, 'cron-jobs.json'), 'utf-8'));
+  } catch (e) {
+    console.error('[cron] Failed to load cron-jobs.json:', e.message);
+    return 0;
+  }
+  let scheduled = 0;
+  for (const job of jobs) {
+    if (!job.schedule?.expr) continue;
+    cron.schedule(job.schedule.expr, () => {
+      console.log(`[cron] ▶ ${job.id}`);
+      handleCronJob(job).catch(e =>
+        console.error(`[cron] ✗ ${job.id}: ${e.message}`)
+      );
+    }, { timezone: 'Asia/Ho_Chi_Minh' });
+    scheduled++;
+  }
+  return scheduled;
+}
+
+async function handleCronJob(job) {
+  const message = job.payload?.message;
+  if (!message) return;
+
+  const today = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const systemPrompt = `Bạn là Đào Thị Lê Na, trợ lý AI của CEO Đào Huy Khánh (NSCA/STARDUCT).
+Đây là CRON JOB tự động (${job.id}), không phải chat trực tiếp.
+Thời gian: ${today}
+
+NGUYÊN TẮC:
+- Thực hiện ĐÚNG theo hướng dẫn trong message — từng bước, không bỏ bước
+- Khi message nói "exec:" hoặc có lệnh trong backtick → gọi tool exec để chạy
+- KHÔNG hỏi, KHÔNG chờ xác nhận — đây là job tự động
+- Nếu 1 tool fail → log lỗi, tiếp tục bước tiếp theo
+- Google Sheet ID: dùng env var $GOOGLE_SHEET_ID (đã có sẵn trong env)
+- Xưng "em", gọi đúng vai vế
+- KHÔNG ký tên (hệ thống tự thêm "— Lê Na")
+- Tin nhắn Zalo tối đa 500 ký tự`;
+
+  const cronTools = [...TOOLS, {
+    name: 'exec',
+    description: 'Chạy lệnh shell. Dùng khi hướng dẫn nói exec: hoặc có lệnh trong backtick.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'Lệnh shell cần chạy' }
+      },
+      required: ['command']
     }
-  },
+  }];
+
+  let session = [{ role: 'user', content: message }];
+  let reply = '';
+  let iterations = 0;
+  const MAX_ITER = 30;
+
+  try {
+    while (iterations++ < MAX_ITER) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL_FAST,
+          max_tokens: 4000,
+          system: systemPrompt,
+          tools: cronTools,
+          messages: session
+        })
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[cron] ${job.id} API ${res.status}: ${errBody.substring(0, 200)}`);
+        throw new Error(`Claude API ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data.stop_reason === 'tool_use') {
+        session.push({ role: 'assistant', content: data.content });
+        const toolResults = [];
+        for (const block of data.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[cron] tool: ${block.name}(${JSON.stringify(block.input).substring(0, 120)})`);
+            let result;
+            if (block.name === 'exec') {
+              result = await runExec(block.input.command);
+            } else {
+              result = await runTool(block.name, block.input);
+            }
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+        }
+        session.push({ role: 'user', content: toolResults });
+      } else {
+        reply = data.content.find(c => c.type === 'text')?.text || '';
+        break;
+      }
+    }
+  } catch (e) {
+    console.error(`[cron] ${job.id} CRITICAL: ${e.message}`);
+  }
+
+  if (iterations > MAX_ITER) console.error(`[cron] ${job.id} hit MAX_ITER (${MAX_ITER})`);
+  console.log(`[cron] ✓ ${job.id} done (${iterations - 1} iter)${reply ? ': ' + reply.substring(0, 100) : ''}`);
+}
+
+async function runExec(command) {
+  try {
+    const { stdout, stderr } = await execFileAsync('/bin/bash', ['-c', command], {
+      encoding: 'utf-8',
+      timeout: 120000,
+      env: process.env
+    });
+    const output = (stdout || '') + (stderr ? '\nSTDERR: ' + stderr : '');
+    if (output.length > 5000) {
+      return { output: output.substring(0, 5000) + '\n⚠️ [Cắt ngắn]' };
+    }
+    return { output: output || '(no output)' };
+  } catch (e) {
+    return { error: (e.stderr || e.stdout || e.message || 'unknown error').substring(0, 1000) };
+  }
+}
+
+// === ROOT STATUS (replaces OpenClaw dashboard) ===
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Đào Thị Lê Na — CEO Agent',
+    status: 'running',
+    uptime: Math.floor(process.uptime()),
+    tools: TOOLS.length,
+    vips: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length,
+    cron: 'active'
+  });
 });
 
-app.use('/', ocProxy);
-
+// === START SERVER ===
 const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
-  console.log(`[proxy] Public ${FRONT_PORT} -> OpenClaw ${OPENCLAW_PORT}`);
-  console.log(`[proxy] Static: ${PUBLIC_DIR}`);
-  console.log(`[proxy] Zalo OA 2-way bridge: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
-  console.log(`[proxy] VIP ID source: SEP_KHANH=${process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'hardcoded'}, CHI_HONG=${process.env.ZALO_OA_USER_CHI_HONG ? 'env' : 'hardcoded'}, ANH_NGOC=${process.env.ZALO_OA_USER_ANH_NGOC ? 'env' : 'hardcoded'}`);
-  console.log(`[proxy] Follower handler: ON (${FOLLOWER_TOOLS.length} read-only tools)`);
-  console.log(`[proxy] Staff handler: ON — ${NSCA_STAFF.length} in directory, ${Object.keys(loadStaffZaloMap()).length} registered`);
+  console.log(`[server] Lê Na CEO Agent on port ${FRONT_PORT}`);
+  console.log(`[server] Static: ${PUBLIC_DIR}`);
+  console.log(`[server] Zalo OA: ${TOOLS.length} tools, ${Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length} VIP mapped`);
+  console.log(`[server] Follower handler: ON (${FOLLOWER_TOOLS.length} read-only tools)`);
+  console.log(`[server] Staff handler: ON — ${NSCA_STAFF.length} in directory, ${Object.keys(loadStaffZaloMap()).length} registered`);
 
   // Refresh OA token IMMEDIATELY on startup, then every 20h
-  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000; // 20h
+  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000;
   refreshOAToken().then(ok => {
     console.log(`[token] Startup refresh: ${ok ? 'OK' : 'FAILED (using cached/env)'}`);
   }).catch(() => {});
   setInterval(() => refreshOAToken(), REFRESH_INTERVAL);
   console.log(`[token] Auto-refresh scheduled every 20h. Current token: ${getOAToken() ? 'OK' : 'MISSING'}`);
+
+  // Schedule cron jobs
+  const cronCount = loadCronJobs();
+  console.log(`[cron] ${cronCount} jobs loaded from cron-jobs.json`);
 });
 
-server.on('upgrade', ocProxy.upgrade);
-
 process.on('SIGTERM', () => {
-  console.log('[proxy] SIGTERM, closing...');
+  console.log('[server] SIGTERM, closing...');
   server.close(() => process.exit(0));
 });

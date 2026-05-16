@@ -1,17 +1,17 @@
-﻿{
+{
   "name": "lena-ceo-agent",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Dao Thi Le Na - AI Executive Assistant for NSCA/STARDUCT CEO",
+  "description": "Dao Thi Le Na - AI Executive Assistant for NSCA/STARDUCT CEO (standalone, no OpenClaw)",
   "engines": { "node": ">=18.0.0" },
   "scripts": {
-    "email": "node google-tools/gmail-read.js",
-    "calendar": "node google-tools/calendar-read.js",
-    "sheets": "node google-tools/sheets-read.js",
-    "test:env": "node -e \"['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','GOOGLE_REFRESH_TOKEN','GOOGLE_SHEET_ID','CLAUDE_API_KEY'].forEach(k=>console.log(k+': '+(process.env[k]?'OK':'MISSING')))\"",
-    "test:gmail": "node google-tools/gmail-read.js 1 3",
-    "test:sheets": "node google-tools/sheets-read.js \"%GOOGLE_SHEET_ID%\" \"KPI Tracker!A1:E5\""
+    "start": "node proxy.js",
+    "test:env": "node -e \"['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','GOOGLE_REFRESH_TOKEN','GOOGLE_SHEET_ID','CLAUDE_API_KEY'].forEach(k=>console.log(k+': '+(process.env[k]?'OK':'MISSING')))\""
   },
-  "dependencies": { "sharp": "^0.33.0" },
+  "dependencies": {
+    "sharp": "^0.33.0",
+    "express": "^4.18.0",
+    "node-cron": "^3.0.0"
+  },
   "repository": { "type": "git", "url": "https://github.com/dhk1805-creator/lena-ceo-agent.git" }
 }
