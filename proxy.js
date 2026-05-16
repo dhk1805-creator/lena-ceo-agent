@@ -560,18 +560,6 @@ const TOOLS = [
     }
   },
   {
-    name: 'onedrive_download',
-    description: 'Tai file tu link OneDrive / SharePoint ve /tmp/onedrive/. Dung khi nhan vien gui bao cao qua link OneDrive (1drv.ms, onedrive.live.com, *.sharepoint.com). Chi hoat dong voi share "Anyone with the link can view" — neu loi 401/403 thi bao nhan vien dat lai quyen public. Sau khi tai xong, chain voi file_read de doc noi dung (.xlsx/.docx/.pdf/.pptx).',
-    input_schema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string', description: 'Link OneDrive/SharePoint day du (1drv.ms/..., onedrive.live.com/..., hoac *.sharepoint.com/...)' },
-        output_path: { type: 'string', description: 'Duong dan output (optional, default /tmp/onedrive/<ten-file>)' }
-      },
-      required: ['url']
-    }
-  },
-  {
     name: 'gemini_analyze',
     description: 'Phan tich hinh anh (JPG/PNG/GIF/WEBP) va PDF bang Gemini AI multimodal. Doc hoa don, bang gia, screenshot, bieu do, anh chup san pham. Tra ve phan tich tieng Viet.',
     input_schema: {
@@ -838,9 +826,6 @@ async function runTool(name, input) {
       break;
     case 'file_read':
       cmd = 'node'; args = [`${GTOOL}/file-read.js`, input.file_path, String(input.max_chars || 8000), input.sheet_name || ''];
-      break;
-    case 'onedrive_download':
-      cmd = 'node'; args = [`${GTOOL}/onedrive-download.js`, input.url || '', input.output_path || ''];
       break;
     case 'gemini_analyze':
       cmd = 'node'; args = [`${GTOOL}/gemini-analyze.js`, input.file_path, input.prompt || ''];
