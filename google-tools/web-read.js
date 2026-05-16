@@ -155,6 +155,9 @@ async function readYouTube(videoId, originalUrl) {
     '--write-subs', '--write-auto-subs',
     '--sub-langs', 'vi.*,en.*', '--sub-format', 'vtt',
     '--no-warnings', '--retries', '3', '--socket-timeout', '20',
+    // Thu nhieu YouTube player client de giam ti le bi YouTube chan IP datacenter:
+    // tv_embedded va android_vr thuong qua duoc khi IP Railway/AWS bi block bot.
+    '--extractor-args', 'youtube:player_client=tv_embedded,android_vr,web,default',
     '--print', '%(title)s', '--print', '%(duration)s',
     '-o', `${dir}/v`, watchUrl
   ];
@@ -173,13 +176,19 @@ async function readYouTube(videoId, originalUrl) {
   if (vttFiles.length === 0) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
     const ytdlpMissing = res.err && /ENOENT/.test(String(res.err.code || res.err.message || ''));
+    // Trich vai dong loi cuoi cung tu yt-dlp stderr de Le Na hieu ly do that su
+    // (vd: HTTP 429, sign in to confirm, captcha, etc.)
+    const stderrLines = String(res.stderr || '').split('\n')
+      .filter(l => /ERROR|HTTP|429|forbidden|sign in|captcha|bot/i.test(l))
+      .slice(-3).join(' | ').substring(0, 400);
     console.log(JSON.stringify({
       url: originalUrl,
       title,
       content_type: 'youtube/transcript',
       error: ytdlpMissing
         ? 'Server chua cai yt-dlp nen chua doc duoc video YouTube. Bao VIP biet, KHONG tu bia noi dung video.'
-        : 'Khong lay duoc phu de/transcript cua video nay (video co the khong co phu de, hoac YouTube tam chan). Bao VIP biet, KHONG tu bia noi dung video.',
+        : 'Khong lay duoc phu de/transcript cua video nay. Ly do co the: (1) video khong co phu de, hoac (2) YouTube tam chan IP cua server (datacenter IP nhu Railway/AWS thuong bi block). Bao VIP biet ly do, KHONG tu bia noi dung video.',
+      ytdlp_err: stderrLines || null,
       content: '',
       content_length: 0
     }, null, 2));
