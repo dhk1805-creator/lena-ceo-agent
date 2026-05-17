@@ -240,6 +240,136 @@ async function listArticles(limit = 10) {
 }
 
 // Xu ly comment cua 1 article — extract de scan + scan-article dung chung.
+// === CONTACT EXTRACTION — bat SDT VN + email tu comment ===
+function extractContact(text) {
+  // VN phone: +84 or 0 prefix, mobile prefix 3/5/7/8/9, total 10-11 digits
+  const phoneRegex = /(?:\+?84|0)(?:3|5|7|8|9)\d{8}/g;
+  const emailRegex = /[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+  const phones = [...new Set((text.match(phoneRegex) || []))];
+  const emails = [...new Set((text.match(emailRegex) || []))];
+  return { phones, emails, has: phones.length > 0 || emails.length > 0 };
+}
+
+// === CLASSIFICATION — phan loai comment de route ===
+function classifyComment(text, hasContact) {
+  const lower = text.toLowerCase();
+  const ORDER = ['báo giá', 'bao gia', 'mua hàng', 'mua hang', 'đặt hàng', 'dat hang', 'order', 'quote',
+                 'cần mua', 'can mua', 'số lượng', 'so luong', 'có hàng', 'co hang', 'giá bao nhiêu', 'gia bao nhieu',
+                 'bao nhiêu tiền', 'bao nhieu tien', 'muốn mua', 'muon mua', 'mua được', 'mua duoc',
+                 'mua không', 'mua khong', 'bán không', 'ban khong', 'còn hàng', 'con hang', 'hỏi giá', 'hoi gia'];
+  const COMPLAINT = ['không hài lòng', 'khong hai long', 'tệ', 'thất vọng', 'that vong', 'phàn nàn', 'phan nan',
+                     'khiếu nại', 'khieu nai', 'rất tệ', 'rat te', 'bị lỗi', 'bi loi', 'hỏng', 'không được',
+                     'khong duoc', 'lừa', 'lua', 'dở', 'lởm', 'lom'];
+  const TECHNICAL = ['lưu lượng', 'luu luong', 'áp suất', 'ap suat', 'eer', 'cop', 'cfm', 'cmh', 'btu', 'kw',
+                     'tấn lạnh', 'tan lanh', 'thông số', 'thong so', 'dimension', 'kích thước', 'kich thuoc',
+                     'công suất', 'cong suat', 'm2', 'mét vuông', 'met vuong', 'diện tích', 'dien tich',
+                     'tính được', 'tinh duoc', 'có phù hợp', 'co phu hop'];
+
+  const hasOrder = ORDER.some(k => lower.includes(k));
+  const hasComplaint = COMPLAINT.some(k => lower.includes(k));
+  const hasTechnical = TECHNICAL.some(k => lower.includes(k));
+
+  // Priority routing
+  if (hasComplaint) return 'complaint';        // Phan nan: escalate
+  if (hasOrder && hasContact) return 'order_with_contact';  // Don hang co contact: forward kinhdoanh
+  if (hasOrder) return 'order_no_contact';     // Don hang chua contact: AI reply moi cung cap
+  if (hasTechnical) return 'technical_complex'; // Hoi ky thuat phuc tap: escalate + AI tam
+  return 'general';                            // Chung: AI reply hoac template
+}
+
+// === AI REPLY via Gemini Flash (MIEN PHI) ===
+async function aiReply(commentText, articleContext) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) return null;
+  const prompt = `Ban la Le Na - tro ly AI Cong ty NSCA / STARDUCT (chuyen HVAC cua gio, ong gio, dieu hoa cong nghiep, thong gio).
+Khach hang vua comment tren bai viet OA Starasia JSC: "${commentText}"
+${articleContext ? 'Bai viet noi ve: ' + articleContext.substring(0, 200) : ''}
+
+Tra loi NGAN GON (1-3 cau, TOI DA 200 ky tu):
+- Xung "em", goi khach "anh/chi"
+- Cam on quan tam khi phu hop
+- Cung cap thong tin huu ich: link tool.starductselection.com (chon SP HVAC), starduct.vn (catalog), info@nsca.vn (email)
+- Moi inbox rieng OA neu can tu van chi tiet
+- KHONG bia thong tin san pham, KHONG hua gia ca
+- KHONG dung markdown (** * # ", chi text thuan)`;
+
+  try {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.6, maxOutputTokens: 200 }
+      })
+    });
+    const data = await res.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!reply) return null;
+    return reply.replace(/[*#`_]/g, '').substring(0, 280);
+  } catch (e) {
+    console.error('[aiReply] error:', e.message);
+    return null;
+  }
+}
+
+// === FORWARD TO kinhdoanh@nsca.vn — khi co yeu cau dat hang + contact ===
+const { execFileSync } = require('child_process');
+async function forwardToSales(commentText, contact, articleId, commenterName) {
+  try {
+    const phones = contact.phones.join(', ') || '(chua de lai)';
+    const emails = contact.emails.join(', ') || '(chua de lai)';
+    const subject = '[OA Lead] Yeu cau bao gia/dat hang tu comment - ' + (commenterName || 'KH');
+    const body = `Comment moi tren OA Starasia JSC co yeu cau cu the:
+
+Nguoi comment: ${commenterName || '(chua biet ten)'}
+SDT: ${phones}
+Email: ${emails}
+Article ID: ${articleId}
+
+Noi dung comment:
+"${commentText}"
+
+Tin chuyen tu Le Na - OA Comment Auto-Pipeline.
+Vui long lien he khach trong vong 24h.
+
+Tran trong,
+Dao Thi Le Na
+Tro ly AI CEO Dao Huy Khanh
+lena@nsca.vn`;
+
+    execFileSync('node', [
+      __dirname + '/gmail-send.js',
+      'kinhdoanh@nsca.vn',
+      subject,
+      body,
+      'ndao@nsca.vn'
+    ], { encoding: 'utf-8', timeout: 30000 });
+    return true;
+  } catch (e) {
+    console.error('[forwardToSales] error:', e.message);
+    return false;
+  }
+}
+
+// === ESCALATE — bao VIP qua Zalo OA cho phan nan / ky thuat phuc tap ===
+async function escalateToVIP(target, summary, commentText, articleId) {
+  try {
+    const msg = `[OA Comment ${target === 'sep-khanh' ? 'CAN DUYET' : 'PHAN NAN/KY THUAT'}]
+Bai: ${articleId}
+Comment: "${commentText.substring(0, 300)}"
+${summary}`;
+    execFileSync('node', [
+      __dirname + '/zalo-oa-send.js',
+      target,
+      msg
+    ], { encoding: 'utf-8', timeout: 30000 });
+    return true;
+  } catch (e) {
+    console.error('[escalateToVIP] error:', e.message);
+    return false;
+  }
+}
+
 async function processArticleComments(articleId, since, replied, report) {
   const list = await getComments(articleId, 0, 50);
   if (list.error !== 0) {
@@ -267,20 +397,87 @@ async function processArticleComments(articleId, since, replied, report) {
       continue;
     }
 
-    const tplReply = matchTemplate(text);
-    if (!tplReply) {
-      // Khong match template — log de Le Na xu ly tay sau
-      logEvent({ kind: 'no_template', comment_id: cId, article_id: articleId, text: text.substring(0, 200) });
+    // === NEW PIPELINE — extract contact + classify + route ===
+    const contact = extractContact(text);
+    const commenterName = c.from?.name || c.user?.name || c.author || '';
+    const klass = classifyComment(text, contact.has);
+
+    // BRANCH 1 — Phan nan: escalate Sep + anh Ngoc, KHONG auto-reply (cho VIP duyet)
+    if (klass === 'complaint') {
+      await escalateToVIP('anh-ngoc', 'PHAN NAN tu khach — can VIP review reply', text, articleId);
+      await escalateToVIP('sep-khanh', 'PHAN NAN tren OA — anh Ngoc se xu ly', text, articleId);
+      markReplied(cId, { article_id: articleId, escalated: 'complaint' });
+      logEvent({ kind: 'escalate_complaint', comment_id: cId, article_id: articleId, text: text.substring(0, 200) });
+      report.escalated = (report.escalated || 0) + 1;
       continue;
     }
 
-    const reply = await replyComment(cId, tplReply, articleId);
-    if (reply.error === 0) {
-      markReplied(cId, { article_id: articleId, template: true });
-      logEvent({ kind: 'reply_template', comment_id: cId, article_id: articleId, text: text.substring(0, 100), reply: tplReply.substring(0, 100) });
-      report.replied++;
+    // BRANCH 2 — Don hang/bao gia CO contact: forward email kinhdoanh + reply xac nhan
+    if (klass === 'order_with_contact') {
+      const forwarded = await forwardToSales(text, contact, articleId, commenterName);
+      const ackMsg = 'Da em ghi nhan SDT/email. Bo phan Kinh doanh anh Ngoc se lien he trong 24h. Cam on anh/chi quan tam STARDUCT.';
+      const reply = await replyComment(cId, ackMsg, articleId);
+      markReplied(cId, { article_id: articleId, forwarded, ack: reply.error === 0 });
+      logEvent({ kind: 'forward_order', comment_id: cId, article_id: articleId, contact, forwarded, text: text.substring(0, 100) });
+      report.forwarded = (report.forwarded || 0) + 1;
+      if (reply.error === 0) report.replied++;
+      continue;
+    }
+
+    // BRANCH 3 — Hoi ky thuat phuc tap: escalate anh Ngoc + AI reply tam thoi
+    if (klass === 'technical_complex') {
+      await escalateToVIP('anh-ngoc', 'CAU HOI KY THUAT phuc tap — can BPKD tu van chi tiet', text, articleId);
+      const aiAnswer = await aiReply(text, '');
+      const tempReply = aiAnswer || 'Da em ghi nhan cau hoi ky thuat. BPKD se phan hoi chi tiet. Anh/chi co the tham khao tool.starductselection.com de chon SP phu hop.';
+      const reply = await replyComment(cId, tempReply, articleId);
+      markReplied(cId, { article_id: articleId, escalated: 'technical', ai_reply: !!aiAnswer });
+      logEvent({ kind: 'escalate_technical', comment_id: cId, article_id: articleId, text: text.substring(0, 150), reply: tempReply.substring(0, 100) });
+      report.escalated = (report.escalated || 0) + 1;
+      if (reply.error === 0) report.replied++;
+      continue;
+    }
+
+    // BRANCH 4 — Template FAQ match: reply nhanh template (giu logic cu)
+    const tplReply = matchTemplate(text);
+    if (tplReply) {
+      const reply = await replyComment(cId, tplReply, articleId);
+      if (reply.error === 0) {
+        markReplied(cId, { article_id: articleId, template: true });
+        logEvent({ kind: 'reply_template', comment_id: cId, article_id: articleId, text: text.substring(0, 100), reply: tplReply.substring(0, 100) });
+        report.replied++;
+      } else {
+        report.errors.push({ comment_id: cId, error: reply.message || reply.error });
+      }
+      continue;
+    }
+
+    // BRANCH 5 — Don hang CHUA contact: AI reply moi cung cap SDT/email
+    if (klass === 'order_no_contact') {
+      const askContact = 'Da cam on anh/chi quan tam. Anh/chi de lai SDT hoac email gium em, BPKD se lien he bao gia chi tiet (hoac inbox rieng OA cung duoc a).';
+      const reply = await replyComment(cId, askContact, articleId);
+      if (reply.error === 0) {
+        markReplied(cId, { article_id: articleId, ask_contact: true });
+        logEvent({ kind: 'ask_contact', comment_id: cId, article_id: articleId, text: text.substring(0, 100) });
+        report.replied++;
+      }
+      continue;
+    }
+
+    // BRANCH 6 — General comment khong dac biet: AI reply contextual
+    const aiAnswer = await aiReply(text, '');
+    if (aiAnswer) {
+      const reply = await replyComment(cId, aiAnswer, articleId);
+      if (reply.error === 0) {
+        markReplied(cId, { article_id: articleId, ai_reply: true });
+        logEvent({ kind: 'reply_ai', comment_id: cId, article_id: articleId, text: text.substring(0, 100), reply: aiAnswer.substring(0, 100) });
+        report.replied++;
+        report.ai_replied = (report.ai_replied || 0) + 1;
+      } else {
+        report.errors.push({ comment_id: cId, error: reply.message || reply.error });
+      }
     } else {
-      report.errors.push({ comment_id: cId, error: reply.message || reply.error });
+      // Khong co Gemini hoac AI fail — log de Le Na xu ly tay
+      logEvent({ kind: 'no_template_no_ai', comment_id: cId, article_id: articleId, text: text.substring(0, 200) });
     }
   }
 }
