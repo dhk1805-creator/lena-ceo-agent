@@ -44,12 +44,28 @@ function getRefreshToken() {
   return process.env.ZALO_OA_REFRESH_TOKEN;
 }
 
+// Refresh scheduler — dynamic based on expires_in from Zalo response
+let _refreshTimer = null;
+function _scheduleNextRefresh(expiresInSec, reason) {
+  if (_refreshTimer) clearTimeout(_refreshTimer);
+  // Refresh 2h before expiry. Minimum 5 minutes (retry on fail). Maximum 24h cap.
+  const bufferSec = 7200; // 2h buffer
+  let nextInSec = Math.max(300, Math.min(86400, expiresInSec - bufferSec));
+  _refreshTimer = setTimeout(() => {
+    console.log(`[token] Scheduled refresh fired (reason: ${reason})`);
+    refreshOAToken().catch(e => console.error('[token] Scheduled refresh error:', e.message));
+  }, nextInSec * 1000);
+  const nextHours = (nextInSec / 3600).toFixed(1);
+  console.log(`[token] Next refresh in ${nextInSec}s (~${nextHours}h) — reason: ${reason}`);
+}
+
 async function refreshOAToken() {
   const refreshToken = getRefreshToken();
   const appId = process.env.ZALO_OA_APP_ID;
   const secret = process.env.ZALO_OA_SECRET;
   if (!refreshToken || !appId || !secret) {
     console.error('[token] Missing credentials for refresh');
+    _scheduleNextRefresh(300, 'missing-credentials-retry-5min');
     return false;
   }
   try {
@@ -60,19 +76,25 @@ async function refreshOAToken() {
     });
     const data = await res.json();
     if (data.access_token) {
+      const expiresInSec = data.expires_in || 90000; // default 25h if not provided
+      const expiresHours = (expiresInSec / 3600).toFixed(1);
       fs.writeFileSync(TOKEN_FILE, JSON.stringify({
         access_token: data.access_token,
         refresh_token: data.refresh_token,
         refreshed_at: new Date().toISOString(),
-        expires_in: data.expires_in
+        expires_in: expiresInSec
       }, null, 2));
-      console.log(`[token] Refreshed OK at ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Next in 20h.`);
+      console.log(`[token] Refreshed OK at ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Zalo cap expires_in=${expiresInSec}s (~${expiresHours}h).`);
+      _scheduleNextRefresh(expiresInSec, 'normal');
       return true;
     }
     console.error('[token] Refresh failed:', JSON.stringify(data));
+    // Retry sooner on failure (5 minutes) instead of waiting full cycle
+    _scheduleNextRefresh(300, 'refresh-failed-retry-5min');
     return false;
   } catch (e) {
     console.error('[token] Refresh error:', e.message);
+    _scheduleNextRefresh(300, 'refresh-error-retry-5min');
     return false;
   }
 }
@@ -1907,7 +1929,7 @@ function sanitizeForZalo(text) {
     .replace(/\n{4,}/g, '\n\n\n');         // gioi han line trong qua nhieu
 }
 
-async function sendZaloMessage(userId, message) {
+async function sendZaloMessage(userId, message, _retryAfterRefresh = false) {
   const now = Date.now();
   const lastSend = _zaloSendCache.get(userId);
   if (lastSend && now - lastSend < ZALO_CHAT_COOLDOWN) {
@@ -1931,7 +1953,20 @@ async function sendZaloMessage(userId, message) {
     })
   });
   const data = await res.json();
-  if (data.error !== 0) throw new Error(`Zalo: ${data.message} (${data.error})`);
+  if (data.error !== 0) {
+    // Token expired / invalid → trigger immediate refresh + retry once
+    if ((data.error === -155 || data.error === -216) && !_retryAfterRefresh) {
+      console.warn(`[zalo-send] Token error ${data.error}, attempting on-demand refresh + retry...`);
+      const refreshed = await refreshOAToken();
+      if (refreshed) {
+        console.log('[zalo-send] Token refreshed, retrying send...');
+        _zaloSendCache.delete(userId); // clear cooldown for retry
+        return await sendZaloMessage(userId, message, true);
+      }
+      console.error('[zalo-send] On-demand refresh failed, giving up.');
+    }
+    throw new Error(`Zalo: ${data.message} (${data.error})`);
+  }
   return data.data;
 }
 
@@ -2193,13 +2228,13 @@ const server = app.listen(FRONT_PORT, '0.0.0.0', () => {
   console.log(`[server] Follower handler: ON (${FOLLOWER_TOOLS.length} read-only tools)`);
   console.log(`[server] Staff handler: ON — ${NSCA_STAFF.length} in directory, ${Object.keys(loadStaffZaloMap()).length} registered`);
 
-  // Refresh OA token IMMEDIATELY on startup, then every 20h
-  const REFRESH_INTERVAL = 20 * 60 * 60 * 1000;
+  // Refresh OA token IMMEDIATELY on startup. Next refresh self-scheduled via
+  // _scheduleNextRefresh based on Zalo's expires_in response (dynamic, not hardcoded).
+  // On fail: retry in 5 minutes (not 20h).
   refreshOAToken().then(ok => {
     console.log(`[token] Startup refresh: ${ok ? 'OK' : 'FAILED (using cached/env)'}`);
   }).catch(() => {});
-  setInterval(() => refreshOAToken(), REFRESH_INTERVAL);
-  console.log(`[token] Auto-refresh scheduled every 20h. Current token: ${getOAToken() ? 'OK' : 'MISSING'}`);
+  console.log(`[token] Auto-refresh self-scheduling enabled. Current token: ${getOAToken() ? 'OK' : 'MISSING'}`);
 
   // Schedule cron jobs
   const cronCount = loadCronJobs();
