@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 require('./_env');
-// Image Collage — Combine 2-4 images into professional poster
+// Image Collage — Combine 2-5 images into professional poster
 // Usage: node image-collage.js <format> <style> <hero_index> <images_csv> [output_path]
 // Format: landscape (1920x1080), portrait (1080x1920), square (1080x1080)
 // Style: auto, hero-left, hero-right, hero-top, equal
@@ -19,7 +19,7 @@ if (imageArgs.length < 2) {
   console.log(JSON.stringify({ error: 'Can it nhat 2 anh. Usage: node image-collage.js <format> <style> <hero_index> <img1,img2,...> [output]' }));
   process.exit(1);
 }
-if (imageArgs.length > 4) imageArgs.length = 4;
+if (imageArgs.length > 5) imageArgs.length = 5;
 
 const FORMATS = {
   landscape: { w: 1920, h: 1080 },
@@ -32,6 +32,10 @@ const W = canvas.w, H = canvas.h, GAP = 8;
 // Auto-select best style based on format + image count
 function autoStyle(count, fmt) {
   if (count === 2) return 'equal';
+  if (count === 5) {
+    // 5 anh: bat buoc hero layout vi grid 5-cell kho can doi
+    return fmt === 'landscape' ? 'hero-left' : 'hero-top';
+  }
   if (fmt === 'landscape') return 'hero-left';
   if (fmt === 'portrait')  return 'hero-top';
   return count <= 3 ? 'hero-top' : 'equal'; // square
@@ -118,6 +122,45 @@ function getPositions(count, sty) {
     ];
   }
   // count === 4: 2x2 grid
+  if (count === 4) {
+    const cW = Math.floor((W - GAP) / 2);
+    const cH = Math.floor((H - GAP) / 2);
+    return [
+      { x: 0, y: 0, w: cW, h: cH },
+      { x: cW + GAP, y: 0, w: cW, h: cH },
+      { x: 0, y: cH + GAP, w: cW, h: cH },
+      { x: cW + GAP, y: cH + GAP, w: cW, h: cH }
+    ];
+  }
+  // count === 5: fallback to hero layout (equal 5-cell kho can doi)
+  // landscape → hero-left (1 to trai + 4 stacked phai)
+  // portrait/square → hero-top (1 to tren + 4 row duoi)
+  if (count === 5) {
+    if (format === 'landscape') {
+      const heroW = Math.floor(W * 0.6);
+      const rW = W - heroW - GAP;
+      const cH = Math.floor((H - GAP * 3) / 4);
+      return [
+        { x: 0, y: 0, w: heroW, h: H },
+        { x: heroW + GAP, y: 0, w: rW, h: cH },
+        { x: heroW + GAP, y: cH + GAP, w: rW, h: cH },
+        { x: heroW + GAP, y: (cH + GAP) * 2, w: rW, h: cH },
+        { x: heroW + GAP, y: (cH + GAP) * 3, w: rW, h: cH }
+      ];
+    }
+    // portrait + square: 1 hero top + 4 cells row below
+    const heroH = Math.floor(H * 0.6);
+    const bH = H - heroH - GAP;
+    const cW = Math.floor((W - GAP * 3) / 4);
+    return [
+      { x: 0, y: 0, w: W, h: heroH },
+      { x: 0, y: heroH + GAP, w: cW, h: bH },
+      { x: cW + GAP, y: heroH + GAP, w: cW, h: bH },
+      { x: (cW + GAP) * 2, y: heroH + GAP, w: cW, h: bH },
+      { x: (cW + GAP) * 3, y: heroH + GAP, w: cW, h: bH }
+    ];
+  }
+  // fallback (should never reach): return 2x2 grid for safety
   const cW = Math.floor((W - GAP) / 2);
   const cH = Math.floor((H - GAP) / 2);
   return [
