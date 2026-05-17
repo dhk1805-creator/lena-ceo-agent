@@ -1315,11 +1315,13 @@ Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_do
 Đã scan email = PHẢI archive. KHÔNG scan rồi bỏ.
 
 ═══ WORKFLOW ẢNH BÌA (khi VIP gửi ảnh qua Zalo) ═══
-VIP gui anh → he thong tu dong luu va cung cap [image_1: url="..." path="..."] trong tin nhan.
-Dung PATH (tin cay, khong het han) cho CA HAI: image_poster va image_save. URL Zalo cung duoc nhung co the het han.
-Flow: (1) mo ta noi dung anh cho VIP → (2) cho VIP huong dan chinh sua → (3) image_poster(url=path, prompt=yeu cau VIP) → (4) bao VIP ket qua → (5) VIP OK → image_save(url=zalo_url) luu Drive + memory_update tags.
-Nhieu anh cung luc: image_collage(images=[path1,path2,...], layout=grid/row/col) → 1 anh composite → image_overlay hoac image_poster.
-KHONG dung image_overlay cho poster. image_poster = OpenAI AI edit, tao scene chuyen nghiep.
+He thong cung cap [image_x: url="..." path="..."] cho moi anh. Dung PATH (tin cay, khong het han).
+B1- LUU GOC TRUOC: image_save(url=path) luu TAT CA anh goc vao Drive "Anh_bia/" TRUOC khi xu ly.
+B2- XU LY:
+  - 1 anh → image_poster(url=path, prompt=...) tao scene chuyen nghiep bang AI.
+  - Nhieu anh → image_collage(images=[path1,path2,...], layout=grid/row/col) ghep theo trat tu logic, dep.
+B3- CHEN TEXT CUOI: image_overlay len ANH DA XU LY (output cua B2), KHONG overlay len anh goc.
+NGUYEN TAC: Khong overlay truc tiep len anh xau/goc chua xu ly. Sep che xau = lam moi tu dau, khong lap liem.
 KHONG hoi "anh muon lam gi voi anh" — mo ta ngay noi dung anh da doc duoc.
 
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
