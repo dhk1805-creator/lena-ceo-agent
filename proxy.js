@@ -1022,7 +1022,7 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
         }
         console.log(`[image-batch] ${sid}: ${batch.events.length} events → ${merged.message.attachments?.length || 0} attachments`);
         handleImageMessage(merged).catch(err => console.error('[image] error:', err.message));
-      }, 2000);
+      }, 5000); // 5s debounce — du margin cho VIP gui nhieu anh cach nhau ~2-3s
     }
   } else if (
     event.event_name === 'user_send_comment' ||
@@ -1369,6 +1369,28 @@ Tu so nhieu trong caption: "nhung anh", "cac anh", "ca bo anh", "5 anh"/"4 anh"/
 
   TH3 — N ≤ 5 va caption KHOP (hoac khong noi so):
     → Tiep B1.
+
+══ B0.5 — XAC DINH "ANH NAY" REFER DEN ANH NAO (BAT BUOC khi VIP noi "anh nay/cac anh tren/3 anh nay/anh vua gui"):
+
+Quy tac VANG: "anh nay" / "X anh nay" / "cac anh tren" / "anh vua gui" / "nhung anh moi gui"
+= LUON LUON refer den tin nhan GAN NHAT cua VIP co [image_x: path="..."].
+
+DEM so anh trong tin gan nhat (so [image_x:...] trong message gan nhat).
+So sanh voi so VIP yeu cau:
+  - KHOP (vd VIP "ghep 3 anh nay" + tin gan nhat co 3 anh) → DUNG 3 paths do.
+  - LECH (vd VIP "ghep 3 anh nay" + tin gan nhat chi co 1 anh) → DUNG, HOI:
+    "Em chi thay 1 anh trong tin nhan gan nhat cua Sep, nhung Sep noi '3 anh'.
+    Sep co gui 2 anh truoc do nhung Zalo OA co the chi chuyen 1 anh. Sep gui
+    lai du 3 anh trong cung 1 tin (chon 3 anh roi gui) gium em a?"
+
+CAM tuyet doi:
+- KHONG pick paths tu tin nhan CU trong session (vd 5 phut truoc, 30 phut truoc).
+- KHONG ghep anh tu nhieu tin khac nhau tru khi VIP YEU CAU RO ("ghep anh tin 15:48 voi tin 15:51").
+- KHONG suy doan "anh nay" co the la anh nao do em "nho" tu truoc.
+
+Vi du SAI (Test 5 ngay 17/05): Session co 3 anh HVAC (tin 15:48) + 3 anh nha may (tin 15:50).
+VIP noi "Ghep 3 anh nay" sau khi gui anh nha may → Le Na NHAM pick 3 anh HVAC.
+Phai dung: tin gan nhat = anh nha may → DUNG 3 paths anh nha may.
 
 ══ B1 — LUU GOC: image_save(url=path) TAT CA N anh goc vao Drive "Anh_bia/" TRUOC.
 
@@ -1826,7 +1848,7 @@ GIỚI HẠN:
 const _zaloSendCache = new Map();
 const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
 const _webhookDedup = new Set();
-const _imgBatch = {}; // senderId → { events[], timer } — gom image events trong 2s
+const _imgBatch = {}; // senderId → { events[], timer } — gom image events trong 5s (margin cho VIP gui cach nhau)
 
 // Sanitize cuoi cung truoc khi gui ra Zalo: Sonnet thuong drift ve markdown
 // dau **, ma Zalo OA khong render markdown nen hien thi nguyen ky tu **.
