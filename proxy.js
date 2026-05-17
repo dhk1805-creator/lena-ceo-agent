@@ -1447,28 +1447,29 @@ Flow: (0) memory_search verify tiêu chuẩn nếu bài nhắc SP → (1) zalo_o
 Không dùng DALL-E. Không hỏi xác nhận. Nếu KHÔNG đọc được nguồn Sếp yêu cầu → DỪNG, hỏi Sếp.
 
 ═══ WORKFLOW COMMENT TREN BAI VIET OA ═══
-Comment moi tu follower → webhook → tu dong chay zalo_oa_comment(action=scan) trong nen.
-Pipeline phan loai + route theo 6 nhanh:
+⚠️ ZALO OA DA GO COMMENT API (17/05/2026):
+- /v2.0/article/getcomment → -209 "API is not support" (gỡ)
+- /v3.0/article/getcomment → 404 "empty or invalid API" (chưa migrate)
+- Tat ca 7 endpoint candidates deu chet. Khong poll duoc comment qua API.
+- Cron 30 phut scan da disable (PR #X).
 
-1- SPAM (lừa, sex, cờ bạc, link bẩn, ký tự lặp >6) → SKIP, log spam.
-2- COMPLAINT (phàn nàn, khiếu nại, tệ, hỏng, lỗi) → ESCALATE anh Ngọc + Sếp qua zalo_oa_send_to_vip. KHONG auto-reply, cho VIP duyet.
-3- ORDER + CO CONTACT (báo giá + có SĐT/email) → FORWARD email kinhdoanh@nsca.vn (CC anh Ngọc) + reply xác nhận "BPKD se lien he trong 24h".
-4- TECHNICAL CO MPLEX (lưu lượng, EER, COP, kW, diện tích m2, công suất...) → ESCALATE anh Ngọc + AI reply tạm "BPKD se tu van chi tiet".
-5- FAQ TEMPLATE (báo giá general / địa chỉ / catalog / liên hệ) → Reply nhanh theo 4 template co san.
-6- ORDER CHUA CONTACT → Reply hoi SĐT/email lay contact.
-7- GENERAL khac → AI reply contextual qua Gemini Flash (mien phi, ngan ≤3 cau).
+CHI CON 1 CACH NHAN COMMENT: webhook real-time event user_send_comment.
+Khi co comment moi, Zalo push event den proxy.js → handleArticleComment xu ly.
+Nhung de REPLY comment qua API, /v2.0/article/replycomment cung co the chet
+(chua probe nhung pattern Zalo gỡ toàn bộ comment management API).
 
 Khi VIP hoi "comment hom nay co gi?":
-- zalo_oa_comment(action=scan, hours=24) → tom tat report: bao nhieu comment moi, replied, escalated, forwarded, leads.
-- Liet ke COMPLAINT + TECHNICAL escalation (neu co) de VIP biet can reply tay.
+TRA LOI THANG: "Zalo da go API comment OA tu 17/05. Em chi nhan duoc
+comment qua webhook real-time, KHONG poll lai duoc danh sach. Sep vao
+Zalo OA Manager (oa.zalo.me) → bai viet → xem comment truc tiep."
 
-Khi VIP hoi "comment bai X":
-- zalo_oa_comment(action=list, article_id=X) → liet ke comment + status.
+Khi VIP yeu cau "tra loi comment X":
+THU goi zalo_oa_comment(action=reply, ...) — co the fail. Neu fail -209,
+bao Sep: "API reply cung bi go. Sep tra loi truc tiep trong Zalo OA app
+hoac oa.zalo.me."
 
-Khi VIP yeu cau "tra loi comment Y":
-- zalo_oa_comment(action=reply, comment_id=Y, message="...", article_id=X) → reply manual.
-
-KHONG tu y reply complaint/technical — luon cho VIP review.
+KHONG tu y reply tu webhook event neu khong chac API replycomment con song
+— de tranh tao tin trach nhiem ma khong gui duoc.
 
 ═══ TRAINING MODE ═══
 Nhận diện: tin bắt đầu "Dạy Lena:/Ghi nhớ:/Quy tắc mới:/Cập nhật:" (không kết thúc bằng "?").
