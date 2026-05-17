@@ -1,67 +1,130 @@
 #!/usr/bin/env node
 require('./_env');
-// Image Collage — Combine 2-4 images into a single composite
-// Usage: node image-collage.js <layout> <images_comma_separated> [output_path]
-// Layouts: grid (auto), row (horizontal strip), col (vertical stack)
-// Images: comma-separated local paths or URLs
+// Image Collage — Combine 2-4 images into professional poster
+// Usage: node image-collage.js <format> <style> <hero_index> <images_csv> [output_path]
+// Format: landscape (1920x1080), portrait (1080x1920), square (1080x1080)
+// Style: auto, hero-left, hero-right, hero-top, equal
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const layout = process.argv[2] || 'grid';
-const imageArgs = (process.argv[3] || '').split(',').filter(Boolean);
-const outputPath = process.argv[4] || `/tmp/collage-${Date.now()}.png`;
+const format    = process.argv[2] || 'landscape';
+const style     = process.argv[3] || 'auto';
+const heroIndex = parseInt(process.argv[4] || '0', 10);
+const imageArgs = (process.argv[5] || '').split(',').filter(Boolean);
+const outputPath = process.argv[6] || `/tmp/collage-${Date.now()}.png`;
 
 if (imageArgs.length < 2) {
-  console.log(JSON.stringify({ error: 'Can it nhat 2 anh. Usage: node image-collage.js <layout> <img1,img2,...> [output]' }));
+  console.log(JSON.stringify({ error: 'Can it nhat 2 anh. Usage: node image-collage.js <format> <style> <hero_index> <img1,img2,...> [output]' }));
   process.exit(1);
 }
 if (imageArgs.length > 4) imageArgs.length = 4;
 
-const CANVAS_W = 1920;
-const CANVAS_H = 1080;
-const GAP = 6;
+const FORMATS = {
+  landscape: { w: 1920, h: 1080 },
+  portrait:  { w: 1080, h: 1920 },
+  square:    { w: 1080, h: 1080 }
+};
+const canvas = FORMATS[format] || FORMATS.landscape;
+const W = canvas.w, H = canvas.h, GAP = 8;
 
-function getPositions(count, lay) {
-  if (lay === 'row') {
-    const cellW = Math.floor((CANVAS_W - GAP * (count - 1)) / count);
-    return Array.from({ length: count }, (_, i) => ({
-      x: i * (cellW + GAP), y: 0, w: cellW, h: CANVAS_H
-    }));
+// Auto-select best style based on format + image count
+function autoStyle(count, fmt) {
+  if (count === 2) return 'equal';
+  if (fmt === 'landscape') return 'hero-left';
+  if (fmt === 'portrait')  return 'hero-top';
+  return count <= 3 ? 'hero-top' : 'equal'; // square
+}
+
+// Calculate cell positions. Index 0 = hero (largest) position.
+function getPositions(count, sty) {
+  // --- HERO-LEFT: hero full-height left, others stacked right ---
+  if (sty === 'hero-left') {
+    const heroW = Math.floor(W * 0.6);
+    const rW = W - heroW - GAP;
+    const others = count - 1;
+    const cH = Math.floor((H - GAP * (others - 1)) / others);
+    const pos = [{ x: 0, y: 0, w: heroW, h: H }];
+    for (let i = 0; i < others; i++)
+      pos.push({ x: heroW + GAP, y: i * (cH + GAP), w: rW, h: cH });
+    return pos;
   }
-  if (lay === 'col') {
-    const cellH = Math.floor((CANVAS_H - GAP * (count - 1)) / count);
-    return Array.from({ length: count }, (_, i) => ({
-      x: 0, y: i * (cellH + GAP), w: CANVAS_W, h: cellH
-    }));
+
+  // --- HERO-RIGHT: hero full-height right, others stacked left ---
+  if (sty === 'hero-right') {
+    const heroW = Math.floor(W * 0.6);
+    const lW = W - heroW - GAP;
+    const others = count - 1;
+    const cH = Math.floor((H - GAP * (others - 1)) / others);
+    const pos = [{ x: lW + GAP, y: 0, w: heroW, h: H }];
+    for (let i = 0; i < others; i++)
+      pos.push({ x: 0, y: i * (cH + GAP), w: lW, h: cH });
+    return pos;
   }
-  // grid (default)
+
+  // --- HERO-TOP: hero full-width top, others in row below ---
+  if (sty === 'hero-top') {
+    const heroH = Math.floor(H * 0.6);
+    const bH = H - heroH - GAP;
+    const others = count - 1;
+    const cW = Math.floor((W - GAP * (others - 1)) / others);
+    const pos = [{ x: 0, y: 0, w: W, h: heroH }];
+    for (let i = 0; i < others; i++)
+      pos.push({ x: i * (cW + GAP), y: heroH + GAP, w: cW, h: bH });
+    return pos;
+  }
+
+  // --- EQUAL: all cells same size ---
   if (count === 2) {
-    const cellW = Math.floor((CANVAS_W - GAP) / 2);
+    if (format === 'portrait') {
+      const cH = Math.floor((H - GAP) / 2);
+      return [
+        { x: 0, y: 0, w: W, h: cH },
+        { x: 0, y: cH + GAP, w: W, h: cH }
+      ];
+    }
+    const cW = Math.floor((W - GAP) / 2);
     return [
-      { x: 0, y: 0, w: cellW, h: CANVAS_H },
-      { x: cellW + GAP, y: 0, w: cellW, h: CANVAS_H }
+      { x: 0, y: 0, w: cW, h: H },
+      { x: cW + GAP, y: 0, w: cW, h: H }
     ];
   }
   if (count === 3) {
-    const leftW = Math.floor(CANVAS_W * 0.55);
-    const rightW = CANVAS_W - leftW - GAP;
-    const cellH = Math.floor((CANVAS_H - GAP) / 2);
+    if (format === 'portrait') {
+      const cH = Math.floor((H - GAP * 2) / 3);
+      return [
+        { x: 0, y: 0, w: W, h: cH },
+        { x: 0, y: cH + GAP, w: W, h: cH },
+        { x: 0, y: (cH + GAP) * 2, w: W, h: cH }
+      ];
+    }
+    if (format === 'landscape') {
+      const cW = Math.floor((W - GAP * 2) / 3);
+      return [
+        { x: 0, y: 0, w: cW, h: H },
+        { x: cW + GAP, y: 0, w: cW, h: H },
+        { x: (cW + GAP) * 2, y: 0, w: cW, h: H }
+      ];
+    }
+    // square: 1 top full-width + 2 bottom
+    const topH = Math.floor((H - GAP) * 0.55);
+    const botH = H - topH - GAP;
+    const cW = Math.floor((W - GAP) / 2);
     return [
-      { x: 0, y: 0, w: leftW, h: CANVAS_H },
-      { x: leftW + GAP, y: 0, w: rightW, h: cellH },
-      { x: leftW + GAP, y: cellH + GAP, w: rightW, h: cellH }
+      { x: 0, y: 0, w: W, h: topH },
+      { x: 0, y: topH + GAP, w: cW, h: botH },
+      { x: cW + GAP, y: topH + GAP, w: cW, h: botH }
     ];
   }
-  // count === 4: 2x2
-  const cellW = Math.floor((CANVAS_W - GAP) / 2);
-  const cellH = Math.floor((CANVAS_H - GAP) / 2);
+  // count === 4: 2x2 grid
+  const cW = Math.floor((W - GAP) / 2);
+  const cH = Math.floor((H - GAP) / 2);
   return [
-    { x: 0, y: 0, w: cellW, h: cellH },
-    { x: cellW + GAP, y: 0, w: cellW, h: cellH },
-    { x: 0, y: cellH + GAP, w: cellW, h: cellH },
-    { x: cellW + GAP, y: cellH + GAP, w: cellW, h: cellH }
+    { x: 0, y: 0, w: cW, h: cH },
+    { x: cW + GAP, y: 0, w: cW, h: cH },
+    { x: 0, y: cH + GAP, w: cW, h: cH },
+    { x: cW + GAP, y: cH + GAP, w: cW, h: cH }
   ];
 }
 
@@ -83,11 +146,10 @@ async function resolveImage(input) {
 async function main() {
   let sharp;
   try { sharp = require('sharp'); } catch {
-    console.log(JSON.stringify({ success: false, error: 'sharp not installed. Run: npm install sharp' }));
+    console.log(JSON.stringify({ success: false, error: 'sharp not installed' }));
     return;
   }
 
-  // Resolve all images
   const resolved = [];
   for (const img of imageArgs) {
     const r = await resolveImage(img.trim());
@@ -98,32 +160,38 @@ async function main() {
     resolved.push(r);
   }
 
-  const positions = getPositions(resolved.length, layout);
+  const effectiveStyle = style === 'auto' ? autoStyle(resolved.length, format) : style;
+  const positions = getPositions(resolved.length, effectiveStyle);
 
-  // Resize each image to its cell size
-  const composites = [];
+  // Reorder: hero_index image goes to position 0 (largest cell)
+  const hi = Math.min(Math.max(heroIndex, 0), resolved.length - 1);
+  const ordered = [resolved[hi]];
   for (let i = 0; i < resolved.length; i++) {
+    if (i !== hi) ordered.push(resolved[i]);
+  }
+
+  const composites = [];
+  for (let i = 0; i < ordered.length; i++) {
     const pos = positions[i];
     try {
-      const buf = await sharp(resolved[i].path)
+      const buf = await sharp(ordered[i].path)
         .resize(pos.w, pos.h, { fit: 'cover', position: 'centre' })
         .toBuffer();
       composites.push({ input: buf, left: pos.x, top: pos.y });
     } catch (e) {
-      console.log(JSON.stringify({ success: false, error: `Resize failed image ${i + 1}: ${e.message}` }));
+      console.log(JSON.stringify({ success: false, error: `Resize image ${i + 1} failed: ${e.message}` }));
       return;
     }
   }
 
-  // Create canvas and composite
   const outDir = path.dirname(outputPath);
   fs.mkdirSync(outDir, { recursive: true });
 
   await sharp({
-    create: { width: CANVAS_W, height: CANVAS_H, channels: 3, background: { r: 255, g: 255, b: 255 } }
+    create: { width: W, height: H, channels: 3, background: { r: 255, g: 255, b: 255 } }
   })
     .composite(composites)
-    .png({ quality: 90 })
+    .png()
     .toFile(outputPath);
 
   const size = fs.statSync(outputPath).size;
@@ -132,13 +200,11 @@ async function main() {
   console.log(JSON.stringify({
     success: true,
     output: { path: outputPath, size, sizeHuman },
-    layout,
-    imageCount: resolved.length,
-    canvas: `${CANVAS_W}x${CANVAS_H}`,
-    note: 'Dung image_overlay hoac image_poster de them branding/text len anh nay'
+    format, style: effectiveStyle, heroIndex: hi,
+    imageCount: resolved.length, canvas: `${W}x${H}`,
+    next_step: 'TIEP THEO: image_overlay them text/logo len anh nay → roi image_save luu vao Drive Anh_bia/. KHONG gui link /tmp cho Sep.'
   }));
 
-  // Cleanup downloaded files
   for (const r of resolved) {
     if (r.downloaded) try { fs.unlinkSync(r.path); } catch {}
   }

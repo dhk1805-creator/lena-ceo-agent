@@ -517,13 +517,15 @@ const TOOLS = [
   },
   {
     name: 'image_collage',
-    description: 'Ghep 2-4 anh thanh 1 anh composite. Dung khi VIP gui nhieu anh can gop thanh 1 poster/banner.',
+    description: 'Ghep 2-4 anh thanh 1 poster chuyen nghiep. Chon format (ngang/doc/vuong), style bo cuc, anh hero noi bat nhat.',
     input_schema: {
       type: 'object',
       properties: {
-        images: { type: 'array', items: { type: 'string' }, description: 'Danh sach path hoac URL cua 2-4 anh can ghep' },
-        layout: { type: 'string', enum: ['grid', 'row', 'col'], description: 'grid=auto 2x2 (default), row=ngang, col=doc' },
-        output_path: { type: 'string', description: 'Duong dan luu ket qua (default: /tmp/collage-xxx.png)' }
+        images: { type: 'array', items: { type: 'string' }, description: 'Danh sach path hoac URL cua 2-4 anh' },
+        format: { type: 'string', enum: ['landscape', 'portrait', 'square'], description: 'Kho poster: landscape=ngang 1920x1080, portrait=doc 1080x1920, square=vuong 1080x1080' },
+        style: { type: 'string', enum: ['auto', 'hero-left', 'hero-right', 'hero-top', 'equal'], description: 'Bo cuc: auto=thong minh, hero-left/right/top=1 anh chinh to noi bat, equal=chia deu' },
+        hero_index: { type: 'number', description: 'Anh nao la anh chinh/noi bat nhat (0=dau tien, 1=thu 2...). Mac dinh 0.' },
+        output_path: { type: 'string', description: 'Duong dan luu (default: /tmp/collage-xxx.png)' }
       },
       required: ['images']
     }
@@ -870,7 +872,7 @@ async function runTool(name, input) {
       cmd = 'node'; args = [`${GTOOL}/image-poster.js`, input.url, input.prompt, input.output_path || ''];
       break;
     case 'image_collage':
-      cmd = 'node'; args = [`${GTOOL}/image-collage.js`, input.layout || 'grid', (input.images || []).join(','), input.output_path || ''];
+      cmd = 'node'; args = [`${GTOOL}/image-collage.js`, input.format || 'landscape', input.style || 'auto', String(input.hero_index || 0), (input.images || []).join(','), input.output_path || ''];
       break;
     case 'drive_manage': {
       const dmAction = input.action || 'create-folder';
@@ -1306,7 +1308,7 @@ github_create_issue (CHỈ khi Sếp nói "tạo issue" — KHÔNG tự tạo kh
 image_overlay | gemini_write | gemini_analyze
 gmail_attachment | onedrive_download | file_read | drive_manage
 report_archive | bulk_report_scan | list_cron_jobs
-image_save (luu anh vao Drive "Anh_bia/", tag de tim lai) | image_poster (OpenAI edit: dat SP vao scene chuyen nghiep) | image_collage (ghep 2-4 anh thanh 1)
+image_save (luu anh vao Drive "Anh_bia/") | image_poster (OpenAI AI edit 1 anh) | image_collage (ghep 2-4 anh: format ngang/doc/vuong, style hero/equal)
 Sheet tabs: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performance | Task Tracker | NPP Tracker | NPP Orders | KHKD 2026 Baseline | Activity Log | Export Revenue | International Pipeline
 
 ═══ WORKFLOW BÁO CÁO ═══
@@ -1315,14 +1317,14 @@ Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_do
 Đã scan email = PHẢI archive. KHÔNG scan rồi bỏ.
 
 ═══ WORKFLOW ẢNH BÌA (khi VIP gửi ảnh qua Zalo) ═══
-He thong cung cap [image_x: url="..." path="..."] cho moi anh. Dung PATH (tin cay, khong het han).
-B1- LUU GOC TRUOC: image_save(url=path) luu TAT CA anh goc vao Drive "Anh_bia/" TRUOC khi xu ly.
+He thong cung cap [image_x: url="..." path="..."] cho moi anh. Luon dung PATH (tin cay, khong het han).
+B1- LUU GOC: image_save(url=path) luu TAT CA anh goc vao Drive "Anh_bia/" TRUOC khi xu ly.
 B2- XU LY:
-  - 1 anh → image_poster(url=path, prompt=...) tao scene chuyen nghiep bang AI.
-  - Nhieu anh → image_collage(images=[path1,path2,...], layout=grid/row/col) ghep theo trat tu logic, dep.
-B3- CHEN TEXT CUOI: image_overlay len ANH DA XU LY (output cua B2), KHONG overlay len anh goc.
-NGUYEN TAC: Khong overlay truc tiep len anh xau/goc chua xu ly. Sep che xau = lam moi tu dau, khong lap liem.
-KHONG hoi "anh muon lam gi voi anh" — mo ta ngay noi dung anh da doc duoc.
+  1 anh → image_poster(url=path, prompt=yeu cau VIP) tao scene chuyen nghiep.
+  Nhieu anh → image_collage(images=[...], format=landscape/portrait/square, style=auto, hero_index=anh dep nhat).
+B3- CHEN TEXT: image_overlay len output B2. KHONG BAO GIO overlay len anh goc chua xu ly.
+B4- LUU DRIVE: image_save(url=output_path_B3) luu KET QUA CUOI CUNG vao Drive "Anh_bia/". GUI LINK DRIVE cho Sep, KHONG BAO GIO gui link /tmp.
+Sep che xau = lam lai tu B2, khong lap liem. KHONG hoi "muon lam gi" — mo ta noi dung, de xuat format/style.
 
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
 Phân biệt: "đăng bài" → zalo_oa_article | "nhắn tin cho ai" → zalo_oa_send_to_vip.

@@ -116,7 +116,7 @@ IMPORTANT: Keep the original product clearly visible and recognizable. Create a 
     success: true,
     output: { path: outputPath, size, sizeHuman },
     prompt: editPrompt.substring(0, 100),
-    note: 'Dung image_save de luu vao Drive, hoac gui truc tiep qua Zalo'
+    next_step: 'TIEP THEO: image_overlay them text/logo → roi image_save luu vao Drive Anh_bia/. KHONG gui link /tmp cho Sep.'
   }));
 
   // Cleanup input if downloaded
