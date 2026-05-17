@@ -2075,6 +2075,24 @@ app.get('/refresh-token', async (req, res) => {
   res.json({ refreshed: ok, token_exists: !!getOAToken() });
 });
 
+// === ZALO TOKEN HEALTH ENDPOINT — manual trigger health check ===
+// GET /health/zalo-token → run health check ngay, return JSON status
+// Dùng cho monitoring external (vd Uptime Robot) hoặc Sếp test manual.
+app.get('/health/zalo-token', async (req, res) => {
+  const { execFile } = require('child_process');
+  execFile('node', ['/app/google-tools/zalo-oa-token-health.js'], { timeout: 30000 }, (err, stdout, stderr) => {
+    if (err) {
+      return res.status(500).json({ ok: false, error: 'exec_failed', detail: err.message, stderr: (stderr || '').substring(0, 500) });
+    }
+    try {
+      const result = JSON.parse(stdout.trim().split('\n').pop());
+      return res.json(result);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: 'parse_failed', raw: stdout.substring(0, 500) });
+    }
+  });
+});
+
 // === DEBUG — check VIP mapping + Claude API ===
 app.get('/debug', async (req, res) => {
   const vipList = {};
@@ -2091,6 +2109,24 @@ app.get('/debug', async (req, res) => {
     claudeOk = r.ok;
     if (!r.ok) vipList._claude_error = await r.text();
   } catch (e) { vipList._claude_error = e.message; }
+  // Read token file for metadata (refreshed_at, expires_in)
+  let tokenMeta = null;
+  try {
+    const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
+    tokenMeta = {
+      prefix: (data.access_token || '').substring(0, 10) + '...',
+      refreshed_at: data.refreshed_at || data.fetched_at || null,
+      expires_in_sec: data.expires_in || null,
+      source: data.source || null
+    };
+  } catch (e) {}
+
+  // Read fail count for health monitoring
+  let tokenFailState = null;
+  try {
+    tokenFailState = JSON.parse(fs.readFileSync('/root/.openclaw/zalo-token-fail-count.json', 'utf-8'));
+  } catch (e) { tokenFailState = { count: 0 }; }
+
   res.json({
     vips_mapped: Object.keys(VIP_USERS).filter(k => !k.startsWith('_none_')).length,
     vips: vipList,
@@ -2098,7 +2134,11 @@ app.get('/debug', async (req, res) => {
     claude_key: CLAUDE_API_KEY ? CLAUDE_API_KEY.substring(0, 10) + '...' : 'MISSING',
     model_fast: CLAUDE_MODEL_FAST,
     model_vip: CLAUDE_MODEL_VIP,
-    zalo_token: getOAToken() ? 'OK' : 'MISSING'
+    model_vip2: CLAUDE_MODEL_VIP2,
+    zalo_token: getOAToken() ? 'OK' : 'MISSING',
+    zalo_token_meta: tokenMeta,
+    zalo_token_fail_count: tokenFailState.count || 0,
+    zalo_token_last_fail: tokenFailState.last_fail_at || null
   });
 });
 
