@@ -18,7 +18,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
 const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // VIP1 — Proven working — do NOT change without testing
-const CLAUDE_MODEL_VIP2 = 'claude-3-5-sonnet-20241022';    // VIP2 — Sonnet 3.5 for department heads
+const CLAUDE_MODEL_VIP2 = 'claude-sonnet-4-20250514';      // VIP2 — Same as VIP1 (Sonnet 3.5 deprecated 7/2025, Sep chot Option A 17/05).
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
