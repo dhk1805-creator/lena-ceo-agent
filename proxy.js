@@ -506,11 +506,11 @@ const TOOLS = [
   },
   {
     name: 'zalo_oa_comment',
-    description: 'Đọc / trả lời / quét comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể — dùng khi biết article_id, bypass article/getslice).',
+    description: 'Đọc / trả lời / quét / diagnose comment trên bài viết OA Starasia JSC. Actions: list (đọc comment 1 bài), reply (trả lời 1 comment), scan (quét TẤT CẢ article gần đây + auto reply theo template + filter spam), scan-article (quét comment của 1 article cụ thể), diagnose (probe 7 endpoint candidates để xác định endpoint comment còn live khi gặp lỗi -209).',
     input_schema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['list', 'reply', 'scan', 'scan-article'], description: 'list | reply | scan | scan-article' },
+        action: { type: 'string', enum: ['list', 'reply', 'scan', 'scan-article', 'diagnose'], description: 'list | reply | scan | scan-article | diagnose' },
         article_id: { type: 'string', description: 'ID bài viết (cho list, reply, hoặc scan-article)' },
         comment_id: { type: 'string', description: 'ID comment cần reply' },
         message: { type: 'string', description: 'Nội dung reply' },
@@ -876,6 +876,9 @@ async function runTool(name, input) {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'reply', input.comment_id || '', input.message || '', input.article_id || ''];
       } else if (action === 'scan-article') {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan-article', input.article_id || '', String(input.hours || 24 * 30)];
+      } else if (action === 'diagnose') {
+        // Goi zalo-oa-diagnose.js de probe 7 endpoint candidates comment + 12 endpoint khac
+        cmd = 'node'; args = [`${GTOOL}/zalo-oa-diagnose.js`];
       } else {
         cmd = 'node'; args = [`${GTOOL}/zalo-oa-comment.js`, 'scan', String(input.hours || 24)];
       }
