@@ -511,6 +511,19 @@ const TOOLS = [
     }
   },
   {
+    name: 'image_collage',
+    description: 'Ghep 2-4 anh thanh 1 anh composite. Dung khi VIP gui nhieu anh can gop thanh 1 poster/banner.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        images: { type: 'array', items: { type: 'string' }, description: 'Danh sach path hoac URL cua 2-4 anh can ghep' },
+        layout: { type: 'string', enum: ['grid', 'row', 'col'], description: 'grid=auto 2x2 (default), row=ngang, col=doc' },
+        output_path: { type: 'string', description: 'Duong dan luu ket qua (default: /tmp/collage-xxx.png)' }
+      },
+      required: ['images']
+    }
+  },
+  {
     name: 'list_cron_jobs',
     description: 'Liệt kê tất cả cron jobs của Lê Na. Trả về danh sách đầy đủ với ID, tên, lịch chạy, và mô tả ngắn.',
     input_schema: {
@@ -850,6 +863,9 @@ async function runTool(name, input) {
       break;
     case 'image_poster':
       cmd = 'node'; args = [`${GTOOL}/image-poster.js`, input.url, input.prompt, input.output_path || ''];
+      break;
+    case 'image_collage':
+      cmd = 'node'; args = [`${GTOOL}/image-collage.js`, input.layout || 'grid', (input.images || []).join(','), input.output_path || ''];
       break;
     case 'drive_manage': {
       const dmAction = input.action || 'create-folder';
@@ -1285,7 +1301,7 @@ github_create_issue (CHỈ khi Sếp nói "tạo issue" — KHÔNG tự tạo kh
 image_overlay | gemini_write | gemini_analyze
 gmail_attachment | onedrive_download | file_read | drive_manage
 report_archive | bulk_report_scan | list_cron_jobs
-image_save (luu anh vao Drive "Anh_bia/", tag de tim lai) | image_poster (OpenAI edit: dat SP vao scene chuyen nghiep)
+image_save (luu anh vao Drive "Anh_bia/", tag de tim lai) | image_poster (OpenAI edit: dat SP vao scene chuyen nghiep) | image_collage (ghep 2-4 anh thanh 1)
 Sheet tabs: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performance | Task Tracker | NPP Tracker | NPP Orders | KHKD 2026 Baseline | Activity Log | Export Revenue | International Pipeline
 
 ═══ WORKFLOW BÁO CÁO ═══
@@ -1297,6 +1313,7 @@ Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_do
 VIP gui anh → he thong tu dong luu va cung cap [image_1: url="..." path="..."] trong tin nhan.
 Dung PATH (tin cay, khong het han) cho CA HAI: image_poster va image_save. URL Zalo cung duoc nhung co the het han.
 Flow: (1) mo ta noi dung anh cho VIP → (2) cho VIP huong dan chinh sua → (3) image_poster(url=path, prompt=yeu cau VIP) → (4) bao VIP ket qua → (5) VIP OK → image_save(url=zalo_url) luu Drive + memory_update tags.
+Nhieu anh cung luc: image_collage(images=[path1,path2,...], layout=grid/row/col) → 1 anh composite → image_overlay hoac image_poster.
 KHONG dung image_overlay cho poster. image_poster = OpenAI AI edit, tao scene chuyen nghiep.
 KHONG hoi "anh muon lam gi voi anh" — mo ta ngay noi dung anh da doc duoc.
 
