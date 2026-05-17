@@ -485,6 +485,32 @@ const TOOLS = [
     }
   },
   {
+    name: 'image_save',
+    description: 'Download anh tu URL va upload vao Google Drive folder "Anh_bia". Dung khi VIP gui anh can luu de lam content sau.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL anh (tu Zalo, web, hoac local path)' },
+        filename: { type: 'string', description: 'Ten file tuy chon (vd: van-ngan-chay-EI180.jpg)' },
+        tags: { type: 'string', description: 'Tags tim kiem sau nay, cach nhau dau phay (vd: van-ngan-chay, fire-damper, nha-may)' }
+      },
+      required: ['url']
+    }
+  },
+  {
+    name: 'image_poster',
+    description: 'Chinh sua anh san pham thanh poster/cover chuyen nghiep bang OpenAI. Giu nguyen san pham, them background/context theo prompt.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL anh goc (tu Zalo/web) hoac path file local' },
+        prompt: { type: 'string', description: 'Mo ta scene/background mong muon (vd: "Dat van nay trong he thong ong gio toa nha van phong hien dai, studio lighting")' },
+        output_path: { type: 'string', description: 'Duong dan luu ket qua (default: /tmp/poster-xxx.png)' }
+      },
+      required: ['url', 'prompt']
+    }
+  },
+  {
     name: 'list_cron_jobs',
     description: 'Liệt kê tất cả cron jobs của Lê Na. Trả về danh sách đầy đủ với ID, tên, lịch chạy, và mô tả ngắn.',
     input_schema: {
@@ -818,6 +844,12 @@ async function runTool(name, input) {
       break;
     case 'onedrive_download':
       cmd = 'node'; args = [`${GTOOL}/onedrive-download.js`, input.url, input.output_dir || '/tmp/attachments', input.filename || ''];
+      break;
+    case 'image_save':
+      cmd = 'node'; args = [`${GTOOL}/image-save.js`, input.url, input.filename || '', input.tags || ''];
+      break;
+    case 'image_poster':
+      cmd = 'node'; args = [`${GTOOL}/image-poster.js`, input.url, input.prompt, input.output_path || ''];
       break;
     case 'drive_manage': {
       const dmAction = input.action || 'create-folder';
@@ -1241,6 +1273,7 @@ github_create_issue (CHỈ khi Sếp nói "tạo issue" — KHÔNG tự tạo kh
 image_overlay | gemini_write | gemini_analyze
 gmail_attachment | onedrive_download | file_read | drive_manage
 report_archive | bulk_report_scan | list_cron_jobs
+image_save (luu anh vao Drive "Anh_bia/", tag de tim lai) | image_poster (OpenAI edit: dat SP vao scene chuyen nghiep)
 Sheet tabs: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performance | Task Tracker | NPP Tracker | NPP Orders | KHKD 2026 Baseline | Activity Log | Export Revenue | International Pipeline
 
 ═══ WORKFLOW BÁO CÁO ═══
