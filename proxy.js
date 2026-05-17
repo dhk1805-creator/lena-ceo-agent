@@ -411,8 +411,7 @@ const TOOLS = [
         input_image: { type: 'string', description: 'Đường dẫn ảnh đầu vào (VD: /tmp/photo.jpg)' },
         text: { type: 'string', description: 'Text hiển thị trên ảnh (VD: tiêu đề bài viết)' },
         output_path: { type: 'string', description: 'Đường dẫn ảnh đầu ra (VD: /tmp/cover.png)' },
-        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal (mặc định: hero)' },
-        text_size: { type: 'string', description: 'Cỡ chữ: auto (tự co cho vừa khung, default) | small | medium | large | số pixel cụ thể (vd "48")' }
+        layout: { type: 'string', description: 'hero | banner-bottom | banner-left | minimal (mặc định: hero)' }
       },
       required: ['input_image']
     }
@@ -828,7 +827,7 @@ async function runTool(name, input) {
       cmd = 'node'; args = [`${GTOOL}/github-issue.js`, input.title, input.body, input.requester || ''];
       break;
     case 'image_overlay':
-      cmd = 'node'; args = [`${GTOOL}/image-overlay.js`, input.input_image, input.text || '', input.output_path || `/tmp/cover-${Date.now()}.png`, input.layout || 'hero', input.text_size || 'auto'];
+      cmd = 'node'; args = [`${GTOOL}/image-overlay.js`, input.input_image, input.text || '', input.output_path || `/tmp/cover-${Date.now()}.png`, input.layout || 'hero'];
       break;
     case 'gemini_write':
       cmd = 'node'; args = [`${GTOOL}/gemini-write.js`, input.prompt, String(input.max_tokens || 600)];
