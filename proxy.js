@@ -110,9 +110,21 @@ function loadSession(userId) {
 
 function saveSession(userId, messages) {
   const file = path.join(SESSION_DIR, `${userId}.json`);
-  // Keep last 20 messages only
-  const trimmed = messages.slice(-20);
-  try { fs.writeFileSync(file, JSON.stringify(trimmed, null, 2)); } catch (e) {}
+  // Keep last 50 messages (20 was too small — tool-heavy workflows push conversation out)
+  const trimmed = messages.slice(-50);
+  // Compact old tool_result content to save space (keep first 400 chars)
+  const compacted = trimmed.map(msg => {
+    if (msg.role === 'user' && Array.isArray(msg.content)) {
+      return { ...msg, content: msg.content.map(block => {
+        if (block.type === 'tool_result' && typeof block.content === 'string' && block.content.length > 400) {
+          return { ...block, content: block.content.substring(0, 400) + '...(truncated)' };
+        }
+        return block;
+      })};
+    }
+    return msg;
+  });
+  try { fs.writeFileSync(file, JSON.stringify(compacted, null, 2)); } catch (e) {}
 }
 
 // Minutes since last message in this user's session (Infinity if no prior session).
