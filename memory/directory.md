@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | CEO01 | Đào Huy Khánh | CEO — Tổng Giám đốc | Ban GĐ | <dhk@nsca.vn> | 0903232222 |  |
 | BGD02 | Nguyễn Thị Thuý Hồng | GĐ Đại diện Pháp luật | Ban GĐ | <nsca@nsca.vn> | 0903220024 |  |
-| BGD03 | Lê Na AI | Trợ lý CEO | Ban GĐ | <lena@nsca.vn> | 0989407322 |  |
+| BGD03 | Lê Na AI | Trợ lý CEO | Ban GĐ | <lena@nsca.vn> | 0989407322 |  | 6087624912741398764
 
 ## PHONG KINH DOANH (PKD)
 
