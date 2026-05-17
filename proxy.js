@@ -2075,6 +2075,61 @@ app.get('/refresh-token', async (req, res) => {
   res.json({ refreshed: ok, token_exists: !!getOAToken() });
 });
 
+// === ADMIN: FORCE TOKEN RESET — manual override khi token chain die ============
+// Workflow khi Sep paste token MOI vao Railway env va muon force backend dung
+// token do (khong tin file cache cu):
+//   1. Update ZALO_OA_ACCESS_TOKEN + ZALO_OA_REFRESH_TOKEN tren Railway Variables
+//   2. POST /admin/force-token-reset?secret=<ADMIN_SECRET>
+//   3. Backend: delete file cache -> rewrite tu env -> call refreshOAToken -> verify
+// KHONG can container restart. KHONG goi tu code khac (cycle protection).
+// Secret lay tu env ADMIN_SECRET. Neu env trong se reject (404 safety).
+app.post('/admin/force-token-reset', async (req, res) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  const providedSecret = req.query.secret || req.headers['x-admin-secret'];
+  if (!adminSecret) {
+    return res.status(404).json({ ok: false, error: 'admin_disabled', detail: 'ADMIN_SECRET env not set' });
+  }
+  if (providedSecret !== adminSecret) {
+    console.warn(`[admin] force-token-reset BLOCKED — bad secret from ${req.ip}`);
+    return res.status(403).json({ ok: false, error: 'forbidden' });
+  }
+  const envAccess = process.env.ZALO_OA_ACCESS_TOKEN;
+  const envRefresh = process.env.ZALO_OA_REFRESH_TOKEN;
+  if (!envAccess || !envRefresh) {
+    return res.status(400).json({ ok: false, error: 'missing_env', detail: 'ZALO_OA_ACCESS_TOKEN or REFRESH_TOKEN env empty' });
+  }
+  try {
+    // 1. Delete file cache neu co
+    let deleted = false;
+    if (fs.existsSync(TOKEN_FILE)) {
+      fs.unlinkSync(TOKEN_FILE);
+      deleted = true;
+      console.log('[admin] force-token-reset: deleted old file cache');
+    }
+    // 2. Rewrite tu env
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify({
+      access_token: envAccess,
+      refresh_token: envRefresh,
+      fetched_at: new Date().toISOString(),
+      source: 'admin_force_reset'
+    }, null, 2));
+    console.log(`[admin] force-token-reset: wrote new file from env (access prefix: ${envAccess.substring(0, 10)})`);
+    // 3. Verify bang cach refresh ngay
+    const refreshed = await refreshOAToken();
+    return res.json({
+      ok: refreshed,
+      file_deleted: deleted,
+      file_rewritten: true,
+      refresh_verified: refreshed,
+      message: refreshed
+        ? 'Token reset OK. New refresh_token cycle started.'
+        : 'File rewritten but verification refresh FAILED — env token may be invalid. Lay token moi tu Zalo Developer Console.'
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'exec_failed', detail: e.message });
+  }
+});
+
 // === ZALO TOKEN HEALTH ENDPOINT — manual trigger health check ===
 // GET /health/zalo-token → run health check ngay, return JSON status
 // Dùng cho monitoring external (vd Uptime Robot) hoặc Sếp test manual.
