@@ -108,10 +108,28 @@ function loadSession(userId) {
   return [];
 }
 
+// Trim safely: keep last N messages, but skip orphan tool_result at start.
+// Anthropic API requires tool_result block phai co tool_use tuong ung
+// trong message TRUOC do — neu slice cat giua pair → orphan → API 400.
+// Forward-skip messages until first valid 'user' message (khong co tool_result).
+function trimSessionSafe(messages, keepN) {
+  if (messages.length <= keepN) return messages;
+  let startIdx = messages.length - keepN;
+  while (startIdx < messages.length) {
+    const first = messages[startIdx];
+    if (first.role !== 'user') { startIdx++; continue; }
+    if (Array.isArray(first.content) && first.content.some(b => b.type === 'tool_result')) {
+      startIdx++; continue;
+    }
+    break;
+  }
+  return messages.slice(startIdx);
+}
+
 function saveSession(userId, messages) {
   const file = path.join(SESSION_DIR, `${userId}.json`);
   // Keep last 50 messages (20 was too small — tool-heavy workflows push conversation out)
-  const trimmed = messages.slice(-50);
+  const trimmed = trimSessionSafe(messages, 50);
   // Compact old tool_result content to save space (keep first 400 chars)
   const compacted = trimmed.map(msg => {
     if (msg.role === 'user' && Array.isArray(msg.content)) {
