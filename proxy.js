@@ -17,7 +17,8 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_MODEL_FAST = 'claude-haiku-4-5-20251001';   // Default for chat
-const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // Proven working — do NOT change without testing
+const CLAUDE_MODEL_VIP = 'claude-sonnet-4-20250514';       // VIP1 — Proven working — do NOT change without testing
+const CLAUDE_MODEL_VIP2 = 'claude-3-5-sonnet-20241022';    // VIP2 — Sonnet 3.5 for department heads
 
 // === ZALO OA TOKEN — auto-refresh every 20h (expires 25h) ===
 const TOKEN_FILE = '/root/.openclaw/zalo-oa-token.json';
@@ -83,12 +84,16 @@ const VIP_IDS = {
   SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH || '6869834949444296385',
   CHI_HONG:  process.env.ZALO_OA_USER_CHI_HONG  || '9076345556107321186',
   ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  || '219363256978038684',
+  ANH_NAM:   process.env.ZALO_OA_USER_ANH_NAM   || '2579010822012321373',
+  CHI_TAM:   process.env.ZALO_OA_USER_CHI_TAM   || '1688364887415631609',
 };
 
 const VIP_USERS = {
-  [VIP_IDS.SEP_KHANH]: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO', model: CLAUDE_MODEL_VIP },
-  [VIP_IDS.CHI_HONG]:  { name: 'chị Hồng', alias: 'chi-hong', role: 'GĐ Pháp lý + TCKT', model: CLAUDE_MODEL_VIP },
-  [VIP_IDS.ANH_NGOC]:  { name: 'anh Ngọc', alias: 'anh-ngoc', role: 'TP Kinh Doanh', model: CLAUDE_MODEL_VIP },
+  [VIP_IDS.SEP_KHANH]: { name: 'anh Khánh', alias: 'sep-khanh', role: 'CEO', level: 'vip1', model: CLAUDE_MODEL_VIP },
+  [VIP_IDS.CHI_HONG]:  { name: 'chị Hồng', alias: 'chi-hong', role: 'GĐ Pháp lý + TCKT', level: 'vip1', model: CLAUDE_MODEL_VIP },
+  [VIP_IDS.ANH_NGOC]:  { name: 'anh Ngọc', alias: 'anh-ngoc', role: 'TP Kinh Doanh', level: 'vip1', model: CLAUDE_MODEL_VIP },
+  [VIP_IDS.ANH_NAM]:   { name: 'anh Nam', alias: 'anh-nam', role: 'TP R&D', level: 'vip2', model: CLAUDE_MODEL_VIP2 },
+  [VIP_IDS.CHI_TAM]:   { name: 'chị Tâm', alias: 'chi-tam', role: 'TP Back Office', level: 'vip2', model: CLAUDE_MODEL_VIP2 },
 };
 
 // Session memory per VIP (last 10 messages)
@@ -1855,7 +1860,9 @@ app.get('/env-check', (req, res) => {
     VIP_ID_SOURCE: {
       SEP_KHANH: process.env.ZALO_OA_USER_SEP_KHANH ? 'env' : 'hardcoded-fallback',
       CHI_HONG:  process.env.ZALO_OA_USER_CHI_HONG  ? 'env' : 'hardcoded-fallback',
-      ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  ? 'env' : 'hardcoded-fallback'
+      ANH_NGOC:  process.env.ZALO_OA_USER_ANH_NGOC  ? 'env' : 'hardcoded-fallback',
+      ANH_NAM:   process.env.ZALO_OA_USER_ANH_NAM   ? 'env' : 'hardcoded-fallback',
+      CHI_TAM:   process.env.ZALO_OA_USER_CHI_TAM   ? 'env' : 'hardcoded-fallback'
     },
     token_source: (() => {
       try {
