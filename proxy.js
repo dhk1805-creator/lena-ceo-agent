@@ -1281,6 +1281,12 @@ Nhận file từ email/OneDrive/GDrive → download → file_read/gemini_analyze
 Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_download (KHÔNG dùng gmail_attachment).
 Đã scan email = PHẢI archive. KHÔNG scan rồi bỏ.
 
+═══ WORKFLOW ẢNH BÌA (khi VIP gửi ảnh qua Zalo) ═══
+VIP gửi ảnh → em CÓ image_url từ Zalo, KHÔNG cần VIP upload Drive trước.
+Flow: (1) gemini_analyze image_url → mô tả nội dung cho VIP ("Ảnh nhà máy NSCA, 2-3 tầng, cờ VN...") → (2) chờ VIP hướng dẫn chỉnh sửa → (3) image_poster (url=image_url, prompt=yêu cầu VIP) → tạo poster AI → (4) báo VIP kết quả → (5) VIP OK → image_save (lưu Drive "Anh_bia/" + memory_update tags).
+KHÔNG dùng image_overlay cho poster (chỉ ghép logo). image_poster = OpenAI AI edit, tạo scene chuyên nghiệp.
+KHÔNG hỏi "anh muốn làm gì với ảnh" — phân tích ngay bằng gemini_analyze.
+
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
 Phân biệt: "đăng bài" → zalo_oa_article | "nhắn tin cho ai" → zalo_oa_send_to_vip.
 Flow: (0) memory_search verify tiêu chuẩn nếu bài nhắc SP → (1) zalo_oa_history lấy ảnh VIP gửi → (2) image_overlay hero → (3) gemini_write soạn bài (cấu trúc: tiêu đề, mở 2-3 câu, các phần đánh số cách dòng trống, kết CTA info@nsca.vn) → (4) zalo_oa_article → (5) báo VIP.
