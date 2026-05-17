@@ -102,6 +102,35 @@ async function probeForm(url) {
     { type: 'normal', title: 'diag', description: 'diag', body: [{ type: 'text', content: '<p>x</p>' }], status: 'draft' }
   );
 
+  // 6. COMMENT endpoint probes — diagnose -209 17/05/2026
+  // Goal: tim endpoint comment con live de fix zalo-oa-comment.js
+  // Probe READ ONLY voi article_id dummy '0' — chap nhan error param-level (-201) la live
+  const cArticleId = '0';
+  const cParams = JSON.stringify({ article_id: cArticleId, offset: 0, limit: 5 });
+  const cEncoded = encodeURIComponent(cParams);
+
+  report.checks.comment_v2_getcomment = await get(
+    'https://openapi.zalo.me/v2.0/article/getcomment?data=' + cEncoded
+  );
+  report.checks.comment_v2_get_comment_underscore = await get(
+    'https://openapi.zalo.me/v2.0/article/get_comment?data=' + cEncoded
+  );
+  report.checks.comment_v2_comment_list = await get(
+    'https://openapi.zalo.me/v2.0/article/comment/list?data=' + cEncoded
+  );
+  report.checks.comment_v3_getcomment = await get(
+    'https://openapi.zalo.me/v3.0/article/getcomment?data=' + cEncoded
+  );
+  report.checks.comment_v3_comment_list = await get(
+    'https://openapi.zalo.me/v3.0/article/comment/list?data=' + cEncoded
+  );
+  report.checks.comment_v2_oa_comment_list = await get(
+    'https://openapi.zalo.me/v2.0/oa/comment/list?data=' + cEncoded
+  );
+  report.checks.comment_v3_oa_comment_list = await get(
+    'https://openapi.zalo.me/v3.0/oa/comment/list?data=' + cEncoded
+  );
+
   // Verdict heuristics
   report.verdict = {
     permission_article_likely_granted:
@@ -113,7 +142,14 @@ async function probeForm(url) {
       report.checks.article_v2_upload_image.error === -209,
     working_upload_candidates: Object.entries(report.checks)
       .filter(([k, v]) => k.includes('upload') && v.error !== -209 && v.error !== undefined)
-      .map(([k, v]) => ({ endpoint: k, error: v.error, message: v.message }))
+      .map(([k, v]) => ({ endpoint: k, error: v.error, message: v.message })),
+
+    // Comment endpoints — endpoint VAN LIVE neu error !== -209 (vd -201 param invalid = endpoint ton tai)
+    comment_v2_deprecated:
+      report.checks.comment_v2_getcomment.error === -209,
+    comment_alive_candidates: Object.entries(report.checks)
+      .filter(([k, v]) => k.startsWith('comment_') && v.error !== -209 && v.error !== undefined)
+      .map(([k, v]) => ({ endpoint: k, http: v.http, error: v.error, message: v.message }))
   };
 
   console.log(JSON.stringify(report, null, 2));
