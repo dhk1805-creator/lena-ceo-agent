@@ -363,6 +363,43 @@ const TOOLS = [
     input_schema: { type: 'object', properties: {} }
   },
   {
+    name: 'zalo_oa_broadcast',
+    description: 'Phát hành thông báo (broadcast) tới TẤT CẢ followers OA Starasia JSC (~34 người). CHỈ Sếp Khánh được phép trigger. Tốn quota gói OA. Workflow: VIP nhập nội dung → Lê Na hỏi confirm + show preview → VIP xác nhận → gửi.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'Nội dung thông báo gửi đến mọi follower' },
+        dry_run: { type: 'boolean', description: 'true = preview chỉ, không gửi thật. Default false. CHỈ gửi thật khi VIP confirm.' }
+      },
+      required: ['message']
+    }
+  },
+  {
+    name: 'zalo_oa_send_to_staff',
+    description: 'Gửi tin nhắn cho 1 nhân viên cụ thể trong directory NSCA (theo email @nsca.vn hoặc Zalo ID). Nhân viên phải đã pair Zalo với OA Starasia JSC trước. Chỉ VIP1 (Sếp Khánh, chị Hồng, anh Ngọc) trigger được.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', description: 'Email @nsca.vn của nhân viên (vd "namph@nsca.vn") hoặc Zalo ID raw (15+ digit)' },
+        message: { type: 'string', description: 'Nội dung tin nhắn' }
+      },
+      required: ['target', 'message']
+    }
+  },
+  {
+    name: 'zalo_oa_send_to_group',
+    description: 'Gửi tin nhắn cho cả 1 BP (vd "PKD" = 4 người, "QLSX" = 18 người). Lọc theo BP trong directory.md, gửi 1-1 cho mọi nhân viên đã pair Zalo. Chỉ VIP1 trigger được. Dùng dry_run=true để preview ai sẽ nhận.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        bp: { type: 'string', description: 'Tên BP: PKD | QLSX | TCKT | RD | HCNS | NPP | BGD' },
+        message: { type: 'string', description: 'Nội dung gửi đến cả BP' },
+        dry_run: { type: 'boolean', description: 'true = preview danh sách recipient, không gửi thật. Default false.' }
+      },
+      required: ['bp', 'message']
+    }
+  },
+  {
     name: 'zalo_oa_send_to_vip',
     description: 'Gửi TIN NHẮN cá nhân cho VIP (sep-khanh, chi-hong, anh-ngoc). CHỈ dùng để nhắn tin riêng. KHÔNG dùng để đăng bài — dùng zalo_oa_article thay thế.',
     input_schema: {
@@ -851,6 +888,22 @@ async function runTool(name, input) {
     case 'task_update':
       cmd = 'node'; args = [`${GTOOL}/task-tracker.js`, 'update', String(input.row), input.status];
       break;
+    case 'zalo_oa_broadcast': {
+      // Permission check: chỉ Sếp Khánh trigger broadcast (in proxy main handler context via env)
+      const args_arr = [`${GTOOL}/zalo-oa-broadcast.js`, input.message];
+      if (input.dry_run === true) args_arr.push('--dry-run');
+      cmd = 'node'; args = args_arr;
+      break;
+    }
+    case 'zalo_oa_send_to_staff':
+      cmd = 'node'; args = [`${GTOOL}/zalo-oa-send-to-staff.js`, input.target, input.message];
+      break;
+    case 'zalo_oa_send_to_group': {
+      const args_arr = [`${GTOOL}/zalo-oa-send-to-group.js`, input.bp, input.message];
+      if (input.dry_run === true) args_arr.push('--dry-run');
+      cmd = 'node'; args = args_arr;
+      break;
+    }
     case 'zalo_oa_send_to_vip':
       cmd = 'node'; args = [`${GTOOL}/zalo-oa-send.js`, input.target, input.message];
       break;
@@ -1375,7 +1428,9 @@ email_send / email_read / email_reply | calendar_read / calendar_create
 sheets_read / sheets_write / sheets_append (Sheet ID tự động, chỉ cần range)
 hvac_lookup | memory_search | memory_update | auto_learn | gdoc_create / gdoc_read
 task_add / task_overdue / task_status / task_update
-zalo_oa_send_to_vip (tin nhắn RIÊNG) | zalo_oa_article (bài PUBLIC trên OA) | zalo_oa_history
+zalo_oa_send_to_vip (tin RIÊNG 3 VIP1) | zalo_oa_article (bài PUBLIC OA) | zalo_oa_history
+zalo_oa_broadcast (TẤT CẢ followers ~34 — CHỈ Sếp Khánh trigger, BẮT BUỘC confirm trước)
+zalo_oa_send_to_staff (1 nhân viên qua email/Zalo ID) | zalo_oa_send_to_group (cả 1 BP: PKD/QLSX/TCKT/RD/HCNS/NPP)
 github_create_issue (CHỈ khi Sếp nói "tạo issue" — KHÔNG tự tạo khi thiếu tool hoặc bị phàn nàn)
 image_overlay | gemini_write | gemini_analyze
 gmail_attachment | onedrive_download | file_read | drive_manage
@@ -1462,6 +1517,30 @@ Gui LINK DRIVE cho Sep. CAM gui link /tmp.
 - VIP chi gui anh (khong noi gi): mo ta noi dung + image_save luu goc. KHONG hoi "muon lam gi".
 - VIP che xau: lam lai tu B2 (de xuat phuong an moi), KHONG lap liem.
 - VIP doi format/style giua chung: trong session moi, tu B2 lai.
+
+═══ WORKFLOW PHÁT HÀNH TIN ZALO OA (broadcast/group/staff) ═══
+Khi VIP yêu cầu gửi tin nhắn cho người khác qua Zalo OA:
+
+1) GỬI 1 NHÂN VIÊN (vd "nhắn Nam: ABC"):
+   - zalo_oa_send_to_staff(target=namph@nsca.vn, message=ABC)
+   - Báo VIP: "Đã gửi cho anh Nam."
+
+2) GỬI 1 BP (vd "nhắn cả PKD: họp 16h"):
+   - PHẢI dry_run TRƯỚC: zalo_oa_send_to_group(bp=PKD, message=..., dry_run=true)
+   - Show VIP: "Sẽ gửi cho [N người]: ..., có [M người] chưa pair Zalo. Sếp confirm?"
+   - VIP confirm 'ok/gửi' → gọi lại không dry_run.
+
+3) BROADCAST TẤT CẢ (vd "thông báo toàn công ty: ..."):
+   - CHỈ Sếp Khánh trigger được. Nếu VIP khác → đáp "Em chỉ broadcast khi Sếp Khánh yêu cầu."
+   - BẮT BUỘC dry_run TRƯỚC: zalo_oa_broadcast(message=..., dry_run=true)
+   - Show preview + count: "Sẽ broadcast cho [N] followers. Nội dung: '<message>'. Sếp duyệt?"
+   - Sếp Khánh confirm 'ok/duyệt/gửi' → gọi lại không dry_run.
+   - Báo summary: "Đã gửi [sent]/[total]. Lỗi [failed]."
+
+CẤM:
+- KHÔNG broadcast khi VIP chưa confirm rõ ràng (chữ 'ok'/'duyệt'/'gửi đi').
+- KHÔNG dùng zalo_oa_send_to_vip cho người ngoài 3 VIP1.
+- KHÔNG gửi broadcast quá 1 lần/giờ.
 
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
 Phân biệt: "đăng bài" → zalo_oa_article | "nhắn tin cho ai" → zalo_oa_send_to_vip.
