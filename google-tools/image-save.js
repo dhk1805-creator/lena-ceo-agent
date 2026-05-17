@@ -78,20 +78,30 @@ async function main() {
   const tmpDir = '/tmp/cover-images';
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  // Download image
+  // Resolve image: local path OR URL
   const ext = imageUrl.match(/\.(png|jpg|jpeg|webp)/i) ? imageUrl.match(/\.(png|jpg|jpeg|webp)/i)[0] : '.jpg';
   const filename = customName || `cover-${Date.now()}${ext}`;
   const filePath = path.join(tmpDir, filename);
 
-  try {
-    execSync(`curl -sS -L -o "${filePath}" -A "Mozilla/5.0" "${imageUrl}"`, { timeout: 30000 });
-  } catch (e) {
-    console.log(JSON.stringify({ success: false, error: 'Download failed: ' + e.message }));
-    return;
+  if (imageUrl.startsWith('/') || imageUrl.startsWith('C:') || imageUrl.startsWith('D:')) {
+    // Local path — copy to working dir
+    if (!fs.existsSync(imageUrl) || fs.statSync(imageUrl).size < 1000) {
+      console.log(JSON.stringify({ success: false, error: 'Local file missing or too small: ' + imageUrl }));
+      return;
+    }
+    fs.copyFileSync(imageUrl, filePath);
+  } else {
+    // URL — download with curl
+    try {
+      execSync(`curl -sS -L -o "${filePath}" -A "Mozilla/5.0" "${imageUrl}"`, { timeout: 30000 });
+    } catch (e) {
+      console.log(JSON.stringify({ success: false, error: 'Download failed: ' + e.message }));
+      return;
+    }
   }
 
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size < 1000) {
-    console.log(JSON.stringify({ success: false, error: 'Downloaded file too small or missing' }));
+    console.log(JSON.stringify({ success: false, error: 'File too small or missing after download' }));
     return;
   }
 

@@ -1049,8 +1049,10 @@ async function handleImageMessage(event) {
   const caption = (event.message?.text || '').trim();
   console.log(`[image] from ${name} (${senderId}): ${imageUrls.length} ảnh`);
 
-  // Bước 1: tải ảnh về (base64) để không phụ thuộc URL Zalo có hết hạn hay không.
+  // Bước 1: tải ảnh về (base64 + lưu /tmp) để không phụ thuộc URL Zalo hết hạn.
   const imageBlocks = [];
+  const savedPaths = [];
+  fs.mkdirSync('/tmp/zalo-images', { recursive: true });
   for (const url of imageUrls.slice(0, 5)) {
     try {
       const r = await fetch(url);
@@ -1060,6 +1062,11 @@ async function handleImageMessage(event) {
       let mt = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim().toLowerCase();
       if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mt)) mt = 'image/jpeg';
       imageBlocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: buf.toString('base64') } });
+      // Lưu file tạm để Lê Na dùng cho image_poster / image_save
+      const ext = mt === 'image/png' ? '.png' : mt === 'image/webp' ? '.webp' : '.jpg';
+      const tmpPath = `/tmp/zalo-images/${Date.now()}-${savedPaths.length}${ext}`;
+      fs.writeFileSync(tmpPath, buf);
+      savedPaths.push(tmpPath);
     } catch (e) {
       console.error(`[image] tải ảnh lỗi: ${e.message}`);
     }
@@ -1086,13 +1093,18 @@ async function handleImageMessage(event) {
     }
   }
 
-  // Bước 3: ghép nội dung ảnh thành 1 tin text rồi đưa qua handleUserMessage —
-  // để Lê Na vừa "thấy" ảnh, vừa có ngữ cảnh hội thoại cho các tin nhắn tiếp theo.
+  // Bước 3: ghép nội dung ảnh + URL/path thành 1 tin text rồi đưa qua handleUserMessage —
+  // để Lê Na vừa "thấy" ảnh, vừa có URL/path dùng cho image_poster, image_save.
+  const imageRefLines = imageUrls.map((url, i) => {
+    const lp = savedPaths[i] || '';
+    return `[image_${i+1}: url="${url}"${lp ? ` path="${lp}"` : ''}]`;
+  }).join('\n');
+
   let combined;
   if (visionText) {
-    combined = `(Người dùng vừa gửi ${imageBlocks.length} ảnh.${caption ? ` Lời nhắn kèm: "${caption}".` : ''} Nội dung ảnh hệ thống đọc được: ${visionText})`;
+    combined = `(Nguoi dung vua gui ${imageBlocks.length} anh.${caption ? ` Loi nhan kem: "${caption}".` : ''} Noi dung anh: ${visionText}\n${imageRefLines})`;
   } else {
-    combined = `(Người dùng vừa gửi ảnh nhưng hệ thống chưa đọc được nội dung.${caption ? ` Lời nhắn kèm: "${caption}".` : ''} Hãy nói rõ em chưa đọc được ảnh, và nhờ anh/chị mô tả hoặc gõ lại thông tin chính giúp em.)`;
+    combined = `(Nguoi dung vua gui anh nhung he thong chua doc duoc noi dung.${caption ? ` Loi nhan kem: "${caption}".` : ''} Hay noi ro em chua doc duoc anh, va nho anh/chi mo ta hoac go lai thong tin chinh giup em.\n${imageRefLines})`;
   }
 
   await handleUserMessage({
@@ -1282,10 +1294,11 @@ Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_do
 Đã scan email = PHẢI archive. KHÔNG scan rồi bỏ.
 
 ═══ WORKFLOW ẢNH BÌA (khi VIP gửi ảnh qua Zalo) ═══
-VIP gửi ảnh → em CÓ image_url từ Zalo, KHÔNG cần VIP upload Drive trước.
-Flow: (1) gemini_analyze image_url → mô tả nội dung cho VIP ("Ảnh nhà máy NSCA, 2-3 tầng, cờ VN...") → (2) chờ VIP hướng dẫn chỉnh sửa → (3) image_poster (url=image_url, prompt=yêu cầu VIP) → tạo poster AI → (4) báo VIP kết quả → (5) VIP OK → image_save (lưu Drive "Anh_bia/" + memory_update tags).
-KHÔNG dùng image_overlay cho poster (chỉ ghép logo). image_poster = OpenAI AI edit, tạo scene chuyên nghiệp.
-KHÔNG hỏi "anh muốn làm gì với ảnh" — phân tích ngay bằng gemini_analyze.
+VIP gui anh → he thong tu dong luu va cung cap [image_1: url="..." path="..."] trong tin nhan.
+Dung PATH (tin cay, khong het han) cho CA HAI: image_poster va image_save. URL Zalo cung duoc nhung co the het han.
+Flow: (1) mo ta noi dung anh cho VIP → (2) cho VIP huong dan chinh sua → (3) image_poster(url=path, prompt=yeu cau VIP) → (4) bao VIP ket qua → (5) VIP OK → image_save(url=zalo_url) luu Drive + memory_update tags.
+KHONG dung image_overlay cho poster. image_poster = OpenAI AI edit, tao scene chuyen nghiep.
+KHONG hoi "anh muon lam gi voi anh" — mo ta ngay noi dung anh da doc duoc.
 
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
 Phân biệt: "đăng bài" → zalo_oa_article | "nhắn tin cho ai" → zalo_oa_send_to_vip.
