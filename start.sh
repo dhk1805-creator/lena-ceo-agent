@@ -44,6 +44,34 @@ require('fs').writeFileSync('/app/.env.json', JSON.stringify(env));
 console.log('Wrote ' + Object.keys(env).length + ' env vars to /app/.env.json');
 "
 
+# === ZALO OA TOKEN — sync env -> volume file (fix stale cache after env update) ===
+# Khi Sếp update ZALO_OA_ACCESS_TOKEN trên Railway, file /root/.openclaw/zalo-oa-token.json
+# trên volume vẫn giữ token CŨ. getRefreshToken() ưu tiên file → refresh fail vì
+# refresh_token cũ đã expired. Logic dưới detect mismatch và force overwrite từ env.
+if [ -n "$ZALO_OA_ACCESS_TOKEN" ] && [ -n "$ZALO_OA_REFRESH_TOKEN" ]; then
+  mkdir -p /root/.openclaw
+  if [ -f /root/.openclaw/zalo-oa-token.json ]; then
+    FILE_REFRESH=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('/root/.openclaw/zalo-oa-token.json','utf-8')).refresh_token||'')}catch(e){console.log('')}" 2>/dev/null)
+    if [ "$FILE_REFRESH" != "$ZALO_OA_REFRESH_TOKEN" ]; then
+      echo "[token-sync] Env refresh_token khac file cache — overwriting file (force fresh token)."
+      node -e "
+        const fs = require('fs');
+        fs.writeFileSync('/root/.openclaw/zalo-oa-token.json', JSON.stringify({
+          access_token: process.env.ZALO_OA_ACCESS_TOKEN,
+          refresh_token: process.env.ZALO_OA_REFRESH_TOKEN,
+          fetched_at: new Date().toISOString(),
+          source: 'startup_env_force_sync'
+        }, null, 2));
+        console.log('[token-sync] File cache synced from env. access_token prefix: ' + process.env.ZALO_OA_ACCESS_TOKEN.substring(0, 10));
+      "
+    else
+      echo "[token-sync] Env refresh_token khop file cache, khong can overwrite."
+    fi
+  else
+    echo "[token-sync] No file cache yet, will be created on first refresh."
+  fi
+fi
+
 # Start server directly (no OpenClaw, no proxy)
 echo "=== Starting Le Na server on port ${PORT:-8080} ==="
 exec node /app/proxy.js
