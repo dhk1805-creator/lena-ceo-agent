@@ -994,7 +994,24 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
   } else if (event.event_name === 'unfollow') {
     handleUnfollow(event).catch(err => console.error('[unfollow] error:', err.message));
   } else if (event.event_name === 'user_send_image') {
-    handleImageMessage(event).catch(err => console.error('[image] error:', err.message));
+    // Batch image events: Zalo gui 4 anh = 4 events rieng biet.
+    // Gom trong 2 giay de Le Na nhan du tat ca anh cung luc.
+    const sid = event.sender?.id;
+    if (sid) {
+      if (!_imgBatch[sid]) _imgBatch[sid] = { events: [], timer: null };
+      _imgBatch[sid].events.push(event);
+      if (_imgBatch[sid].timer) clearTimeout(_imgBatch[sid].timer);
+      _imgBatch[sid].timer = setTimeout(() => {
+        const batch = _imgBatch[sid];
+        delete _imgBatch[sid];
+        const merged = JSON.parse(JSON.stringify(batch.events[0]));
+        if (batch.events.length > 1) {
+          merged.message.attachments = batch.events.flatMap(e => e.message?.attachments || []);
+        }
+        console.log(`[image-batch] ${sid}: ${batch.events.length} events → ${merged.message.attachments?.length || 0} attachments`);
+        handleImageMessage(merged).catch(err => console.error('[image] error:', err.message));
+      }, 2000);
+    }
   } else if (
     event.event_name === 'user_send_comment' ||
     event.event_name === 'oa_comment' ||
@@ -1324,7 +1341,10 @@ B2- XU LY:
   Nhieu anh → image_collage(images=[...], format=landscape/portrait/square, style=auto, hero_index=anh dep nhat).
 B3- CHEN TEXT: image_overlay len output B2. KHONG BAO GIO overlay len anh goc chua xu ly.
 B4- LUU DRIVE: image_save(url=output_path_B3) luu KET QUA CUOI CUNG vao Drive "Anh_bia/". GUI LINK DRIVE cho Sep, KHONG BAO GIO gui link /tmp.
-Sep che xau = lam lai tu B2, khong lap liem. KHONG hoi "muon lam gi" — mo ta noi dung, de xuat format/style.
+Sep che xau = lam lai tu B2, khong lap liem.
+VIP chi gui anh (khong yeu cau cu the): mo ta noi dung + luu goc Drive. KHONG hoi "muon lam gi".
+VIP yeu cau tao poster/banner: DE XUAT phuong an (format, style, anh hero nao, ly do) → cho VIP duyet → roi moi tao.
+PHAI dung TAT CA anh VIP gui, khong tu y bo anh nao.
 
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
 Phân biệt: "đăng bài" → zalo_oa_article | "nhắn tin cho ai" → zalo_oa_send_to_vip.
@@ -1754,6 +1774,7 @@ GIỚI HẠN:
 const _zaloSendCache = new Map();
 const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
 const _webhookDedup = new Set();
+const _imgBatch = {}; // senderId → { events[], timer } — gom image events trong 2s
 
 // Sanitize cuoi cung truoc khi gui ra Zalo: Sonnet thuong drift ve markdown
 // dau **, ma Zalo OA khong render markdown nen hien thi nguyen ky tu **.
