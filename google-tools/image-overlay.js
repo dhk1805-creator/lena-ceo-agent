@@ -4,7 +4,7 @@ require('./_env');
 // Ghep logo STARDUCT + text tieng Viet len anh voi layout chuyen nghiep
 //
 // Usage:
-//   node image-overlay.js "<input_image>" "<text>" "[output_path]" "[layout]"
+//   node image-overlay.js "<input_image>" "<text>" "[output_path]" "[layout]" "[text_size]"
 //
 // Layouts:
 //   banner-bottom (default) — Thanh gradient duoi, logo trai, text phai
@@ -12,10 +12,13 @@ require('./_env');
 //   minimal      — Logo goc + text nho gon
 //   hero         — Text lon giua, logo tren, gradient toan bo duoi
 //
+// text_size: auto (default, tu co cho vua khung) | small | medium | large | so pixel (vd "48")
+//
 // Examples:
 //   node image-overlay.js "/tmp/bg.png" "Cửa gió chất lượng quốc tế"
 //   node image-overlay.js "/tmp/bg.png" "STARDUCT - Trusted Performance" "/tmp/final.png" "hero"
 //   node image-overlay.js "/tmp/bg.png" "" "/tmp/logo-only.png" "minimal"
+//   node image-overlay.js "/tmp/bg.png" "Tieu de dai..." "/tmp/c.png" "hero" "small"
 
 const fs = require('fs');
 const path = require('path');
@@ -24,6 +27,7 @@ const inputPath = process.argv[2];
 const text = process.argv[3] || '';
 const outputPath = process.argv[4] || `/tmp/overlay-${Date.now()}.png`;
 const layout = process.argv[5] || 'banner-bottom';
+const textSize = process.argv[6] || 'auto';
 
 if (!inputPath) {
   console.log('Usage: node image-overlay.js "<input_image>" "<text>" "[output_path]" "[layout]"');
@@ -145,8 +149,9 @@ async function overlay() {
     // Text (right of logo)
     if (text && text.trim()) {
       const textLeft = logo ? pad + Math.round(W * 0.14) : pad;
-      const fontSize = Math.round(barH * 0.32);
+      const baseFs = Math.round(barH * 0.32);
       const textW = W - textLeft - pad;
+      const fontSize = resolveFontSize(textSize, baseFs, text, textW, Math.round(barH * 0.7));
       const lines = wrapText(text, Math.floor(textW / (fontSize * 0.52)));
       const lineH = Math.round(fontSize * 1.3);
       const textH = lines.length * lineH;
@@ -200,9 +205,10 @@ async function overlay() {
 
     // Text in column
     if (text && text.trim()) {
-      const fontSize = Math.round(H * 0.055);
-      const lineH = Math.round(fontSize * 1.35);
+      const baseFs = Math.round(H * 0.055);
       const textW = colW - pad * 2;
+      const fontSize = resolveFontSize(textSize, baseFs, text, textW, Math.round(H * 0.55));
+      const lineH = Math.round(fontSize * 1.35);
       const lines = wrapText(text, Math.floor(textW / (fontSize * 0.52)));
       const textH = lines.length * lineH + Math.round(fontSize * 2);
       const textY = Math.round(H * 0.35);
@@ -261,9 +267,10 @@ async function overlay() {
 
     // Large centered text
     if (text && text.trim()) {
-      const fontSize = Math.round(H * 0.09);
-      const lineH = Math.round(fontSize * 1.3);
+      const baseFs = Math.round(H * 0.09);
       const textW = W - pad * 2;
+      const fontSize = resolveFontSize(textSize, baseFs, text, textW, Math.round(H * 0.45));
+      const lineH = Math.round(fontSize * 1.3);
       const lines = wrapText(text, Math.floor(textW / (fontSize * 0.52)));
       const textH = lines.length * lineH + Math.round(fontSize * 2);
 
@@ -310,7 +317,8 @@ async function overlay() {
 
     // Small text bottom-right with subtle bg
     if (text && text.trim()) {
-      const fontSize = Math.round(H * 0.035);
+      const baseFs = Math.round(H * 0.035);
+      const fontSize = resolveFontSize(textSize, baseFs, text, Math.round(W * 0.4), baseFs * 2);
       const textW = Math.round(W * 0.4);
       const textH = Math.round(fontSize * 2.5);
 
@@ -340,6 +348,29 @@ async function loadLogo(sharp, primary, fallback, width) {
                fs.existsSync(fallback) ? fallback : null;
   if (!file) return null;
   return sharp(file).resize(width).toBuffer();
+}
+
+// Resolve final font size from text_size param:
+//   "auto" (default) — shrink baseFs so wrapped text fits within maxH
+//   "small" | "medium" | "large" — fixed multiplier of baseFs
+//   numeric string ("48") — literal pixel size
+function resolveFontSize(textSize, baseFs, text, maxW, maxH) {
+  const s = String(textSize || 'auto').trim().toLowerCase();
+  const num = parseInt(s, 10);
+  if (!isNaN(num) && String(num) === s) return Math.max(6, num);
+  if (s === 'small')  return Math.max(8, Math.round(baseFs * 0.7));
+  if (s === 'medium') return baseFs;
+  if (s === 'large')  return Math.round(baseFs * 1.4);
+  // auto: shrink baseFs until wrapped text fits maxH (min 10px)
+  let fs = baseFs;
+  for (let i = 0; i < 14 && fs > 10; i++) {
+    const charsPerLine = Math.max(3, Math.floor(maxW / (fs * 0.52)));
+    const lines = wrapText(text, charsPerLine);
+    const totalH = lines.length * Math.round(fs * 1.3);
+    if (totalH <= maxH) return fs;
+    fs = Math.max(10, Math.round(fs * 0.9));
+  }
+  return fs;
 }
 
 function wrapText(text, charsPerLine) {
