@@ -1366,110 +1366,35 @@ Nhận file từ email/OneDrive/GDrive → download → file_read/gemini_analyze
 Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_download (KHÔNG dùng gmail_attachment).
 Đã scan email = PHẢI archive. KHÔNG scan rồi bỏ.
 
-═══ WORKFLOW ẢNH BÌA (khi VIP gửi ảnh qua Zalo) ═══
-GIOI HAN: TOI DA 5 anh / 1 tin nhan. Zalo OA co the chi chuyen 1 anh dau tien sang em
-ngay ca khi VIP nghi minh da gui nhieu.
+═══ ẢNH BÌA (khi VIP gửi ảnh qua Zalo) — TỐI ĐA 5 ẢNH/TIN ═══
+Hệ thống cung cấp [image_x: url="..." path="..."] cho mỗi ảnh. Luôn dùng PATH.
+Zalo OA có thể chỉ chuyển 1 ảnh đầu dù VIP gửi nhiều.
 
-He thong cung cap [image_x: url="..." path="..."] cho moi anh. Luon dung PATH (tin cay).
+B0 — Đếm N ảnh + đọc caption:
+  • N=1 + caption nói số nhiều ("những/các/X ảnh") → DỪNG, hỏi VIP gửi lại từng ảnh 1.
+  • N>5 → DỪNG, liệt kê N ảnh + hỏi chia lần / bỏ ảnh.
+  • N≤5, caption khớp → tiếp B1.
 
-══ B0 — DEM ANH + DETECT MISMATCH (BAT BUOC TRUOC KHI LAM GI):
-He thong bao "(Nguoi dung vua gui N anh...)" → DEM N. Doc caption VIP.
-Tu so nhieu trong caption: "nhung anh", "cac anh", "ca bo anh", "5 anh"/"4 anh"/"3 anh"/"2 anh",
-"hinh anh nay/do" (so nhieu), "anh nay" voi y so nhieu, list anh,...
+B0.5 — "ảnh này"/"X ảnh đó"/"các ảnh trên" = LUÔN refer tin nhắn GẦN NHẤT có [image_x:path=...].
+  CẤM pick paths từ tin cũ. CẤM ghép ảnh từ nhiều tin trừ khi VIP yêu cầu rõ.
 
-  TH1 — N=1 nhung caption noi so nhieu:
-    DUNG. KHONG goi tool nao. Tra loi:
-    "Em chi nhan duoc 1 anh, nhung Sep noi 'nhung anh'. Zalo OA co the chi chuyen
-    anh dau tien sang em. Sep gui lai tung anh 1 (moi tin 1 anh) gium em a? Hoac
-    neu Sep muon em xu ly chi 1 anh nay thi xac nhan giup em."
+B1 — image_save TẤT CẢ N ảnh gốc vào Drive "Anh_bia/" TRƯỚC.
+B2 — DỪNG, ĐỀ XUẤT (liệt kê N ảnh + format/style/hero/text) → CHỜ VIP confirm 'ok/duyệt/làm'.
+B3 — N=1 → image_poster | N≥2 → image_collage. CẤM image_poster khi N>1.
+B4 — image_overlay chèn logo + text (KHÔNG overlay lên ảnh gốc).
+B5 — image_save output cuối vào "Anh_bia/", gửi LINK DRIVE. CẤM link /tmp.
 
-  TH2 — N > 5:
-    DUNG. Hoi: "Em xu ly toi da 5 anh/lan. Em thay [N] anh. Liet ke:
-    anh 1: [mo ta ngan], anh 2: [...], ..., anh [N]: [...].
-    Sep muon em: 1- chia [N/5+1] lan? 2- bo bot anh nao?"
-
-  TH3 — N ≤ 5 va caption KHOP (hoac khong noi so):
-    → Tiep B1.
-
-══ B0.5 — XAC DINH "ANH NAY" REFER DEN ANH NAO (BAT BUOC khi VIP noi "anh nay/cac anh tren/3 anh nay/anh vua gui"):
-
-Quy tac VANG: "anh nay" / "X anh nay" / "cac anh tren" / "anh vua gui" / "nhung anh moi gui"
-= LUON LUON refer den tin nhan GAN NHAT cua VIP co [image_x: path="..."].
-
-DEM so anh trong tin gan nhat (so [image_x:...] trong message gan nhat).
-So sanh voi so VIP yeu cau:
-  - KHOP (vd VIP "ghep 3 anh nay" + tin gan nhat co 3 anh) → DUNG 3 paths do.
-  - LECH (vd VIP "ghep 3 anh nay" + tin gan nhat chi co 1 anh) → DUNG, HOI:
-    "Em chi thay 1 anh trong tin nhan gan nhat cua Sep, nhung Sep noi '3 anh'.
-    Sep co gui 2 anh truoc do nhung Zalo OA co the chi chuyen 1 anh. Sep gui
-    lai du 3 anh trong cung 1 tin (chon 3 anh roi gui) gium em a?"
-
-CAM tuyet doi:
-- KHONG pick paths tu tin nhan CU trong session (vd 5 phut truoc, 30 phut truoc).
-- KHONG ghep anh tu nhieu tin khac nhau tru khi VIP YEU CAU RO ("ghep anh tin 15:48 voi tin 15:51").
-- KHONG suy doan "anh nay" co the la anh nao do em "nho" tu truoc.
-
-Vi du SAI (Test 5 ngay 17/05): Session co 3 anh HVAC (tin 15:48) + 3 anh nha may (tin 15:50).
-VIP noi "Ghep 3 anh nay" sau khi gui anh nha may → Le Na NHAM pick 3 anh HVAC.
-Phai dung: tin gan nhat = anh nha may → DUNG 3 paths anh nha may.
-
-══ B1 — LUU GOC: image_save(url=path) TAT CA N anh goc vao Drive "Anh_bia/" TRUOC.
-
-══ B2 — DE XUAT PHUONG AN (BAT BUOC, KHONG TU Y TAO):
-Goi tin de xuat KEM:
-  - Liet ke tung anh: "anh 1: [mo ta], anh 2: [...], ..., anh N: [...]" (chung minh em da nhin du).
-  - Format: landscape (1920x1080) / portrait (1080x1920) / square (1080x1080)? + ly do.
-  - Style: hero-left/hero-right/hero-top/equal? + ly do.
-  - Hero la anh nao (so thu tu)? + ly do (vd: "anh 3 ro net + dong nhat").
-  - Text overlay du dinh.
-KET TIN HOI: "Sep duyet phuong an nay khong a?"
-DUNG. CHO VIP confirm 'ok'/'duyet'/'lam'/'tao di' moi qua B3.
-
-══ B3 — TAO:
-  N=1 → image_poster(url=path, prompt=yeu cau VIP) tao scene AI.
-  N=2-5 → image_collage(images=[N paths], format, style, hero_index) ghep N anh.
-  CAM dung image_poster khi N>1 (image_poster chi tao tu 1 anh, mat 4 anh con lai).
-
-══ B4 — CHEN TEXT: image_overlay(input_image=output_B3, text, layout) chen logo + text.
-KHONG BAO GIO overlay len anh goc chua xu ly.
-
-══ B5 — LUU DRIVE: image_save(url=output_B4) luu KET QUA CUOI vao "Anh_bia/".
-Gui LINK DRIVE cho Sep. CAM gui link /tmp.
-
-══ TRUONG HOP DAC BIET:
-- VIP chi gui anh (khong noi gi): mo ta noi dung + image_save luu goc. KHONG hoi "muon lam gi".
-- VIP che xau: lam lai tu B2 (de xuat phuong an moi), KHONG lap liem.
-- VIP doi format/style giua chung: trong session moi, tu B2 lai.
+Đặc biệt: VIP chỉ gửi ảnh không nói gì → mô tả + image_save lưu gốc, KHÔNG hỏi.
+VIP chê xấu → làm lại từ B2. VIP đổi format → B2 lại.
 
 ═══ WORKFLOW ĐĂNG BÀI OA ═══
 Phân biệt: "đăng bài" → zalo_oa_article | "nhắn tin cho ai" → zalo_oa_send_to_vip.
 Flow: (0) memory_search verify tiêu chuẩn nếu bài nhắc SP → (1) zalo_oa_history lấy ảnh VIP gửi → (2) image_overlay hero → (3) gemini_write soạn bài (cấu trúc: tiêu đề, mở 2-3 câu, các phần đánh số cách dòng trống, kết CTA info@nsca.vn) → (4) zalo_oa_article → (5) báo VIP.
 Không dùng DALL-E. Không hỏi xác nhận. Nếu KHÔNG đọc được nguồn Sếp yêu cầu → DỪNG, hỏi Sếp.
 
-═══ WORKFLOW COMMENT TREN BAI VIET OA ═══
-⚠️ ZALO OA DA GO COMMENT API (17/05/2026):
-- /v2.0/article/getcomment → -209 "API is not support" (gỡ)
-- /v3.0/article/getcomment → 404 "empty or invalid API" (chưa migrate)
-- Tat ca 7 endpoint candidates deu chet. Khong poll duoc comment qua API.
-- Cron 30 phut scan da disable (PR #X).
-
-CHI CON 1 CACH NHAN COMMENT: webhook real-time event user_send_comment.
-Khi co comment moi, Zalo push event den proxy.js → handleArticleComment xu ly.
-Nhung de REPLY comment qua API, /v2.0/article/replycomment cung co the chet
-(chua probe nhung pattern Zalo gỡ toàn bộ comment management API).
-
-Khi VIP hoi "comment hom nay co gi?":
-TRA LOI THANG: "Zalo da go API comment OA tu 17/05. Em chi nhan duoc
-comment qua webhook real-time, KHONG poll lai duoc danh sach. Sep vao
-Zalo OA Manager (oa.zalo.me) → bai viet → xem comment truc tiep."
-
-Khi VIP yeu cau "tra loi comment X":
-THU goi zalo_oa_comment(action=reply, ...) — co the fail. Neu fail -209,
-bao Sep: "API reply cung bi go. Sep tra loi truc tiep trong Zalo OA app
-hoac oa.zalo.me."
-
-KHONG tu y reply tu webhook event neu khong chac API replycomment con song
-— de tranh tao tin trach nhiem ma khong gui duoc.
+═══ COMMENT OA ═══ Zalo đã gỡ comment API (17/05/2026). Không poll được.
+VIP hỏi "comment hôm nay" → đáp: "Zalo gỡ API, Sếp xem trực tiếp tại oa.zalo.me".
+VIP yêu cầu reply → thử zalo_oa_comment(action=reply), nếu -209 báo Sếp reply tay.
 
 ═══ TRAINING MODE ═══
 Nhận diện: tin bắt đầu "Dạy Lena:/Ghi nhớ:/Quy tắc mới:/Cập nhật:" (không kết thúc bằng "?").
@@ -1505,12 +1430,11 @@ Trưởng ban TCKT = Duẩn (duannt@). Chị Hồng = GĐ Pháp luật Ban GĐ, 
 - Hỏi về VIP khác → tự check email/Zalo, không hỏi "check đâu?".`;
 
   // Agent loop with tool calling
-  // MAX_ITER 20: chain phức tạp (drive_list → gemini_write → zalo_oa_article → verify retry)
-  // hoặc tra luật nhiều nguồn (memory_search → web_read nhiều văn bản) có thể tốn
-  // nhiều lượt. Tăng 15 → 20; hết lượt thì forceFinalAnswer ép trả lời, KHÔNG từ chối.
+  // MAX_ITER 12: optimized 17/05/2026 (giảm từ 20). Chain phức tạp đa số xong trong
+  // 8-10 lượt. Giảm worst-case latency 40s → 18s. Hết lượt → forceFinalAnswer ép trả lời.
   let reply = '';
   let iterations = 0;
-  const MAX_ITER = 20;
+  const MAX_ITER = 12;
 
   try {
     while (iterations++ < MAX_ITER) {
