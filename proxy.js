@@ -1844,19 +1844,13 @@ NHÂN VIÊN NỘI BỘ: Nếu người nhắn cho biết họ là nhân viên / 
 // Return reply string thay vì gọi sendZaloMessage.
 
 const WEB_CHAT_ALLOWED_ORIGINS = new Set([
-
   'https://starduct.vn',
-
   'https://www.starduct.vn',
-
   'https://starduct.online',
-
   'https://www.starduct.online',
-
   'http://localhost:3000',  // dev test, gỡ khi production
-
-  'http://localhost:8000'
-
+  'http://localhost:8000',
+  'null'  // dev test from file:// local — có thể gỡ khi production stable
 ]);
 
 // Rate limit theo IP: 20 tin/phút, 200 tin/giờ
