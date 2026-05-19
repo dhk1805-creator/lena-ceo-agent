@@ -1837,6 +1837,101 @@ NHÂN VIÊN NỘI BỘ: Nếu người nhắn cho biết họ là nhân viên / 
   }
 }
 
+// === WEB CHAT — endpoint cho widget nhúng trên starduct.vn =================
+
+// Reuse follower tier với synthetic sender ID `web:<uuid>`. Không gọi Zalo API.
+
+// Return reply string thay vì gọi sendZaloMessage.
+
+const WEB_CHAT_ALLOWED_ORIGINS = new Set([
+
+  'https://starduct.vn',
+
+  'https://www.starduct.vn',
+
+  'https://starduct.online',
+
+  'https://www.starduct.online',
+
+  'http://localhost:3000',  // dev test, gỡ khi production
+
+  'http://localhost:8000'
+
+]);
+
+// Rate limit theo IP: 20 tin/phút, 200 tin/giờ
+
+const _webChatRate = new Map(); // ip -> { minute: {count, resetAt}, hour: {count, resetAt} }
+
+function _webChatCheckRate(ip) {
+
+  const now = Date.now();
+
+  let rec = _webChatRate.get(ip);
+
+  if (!rec) {
+
+    rec = {
+
+      minute: { count: 0, resetAt: now + 60000 },
+
+      hour:   { count: 0, resetAt: now + 3600000 }
+
+    };
+
+    _webChatRate.set(ip, rec);
+
+  }
+
+  if (now >= rec.minute.resetAt) { rec.minute = { count: 0, resetAt: now + 60000 }; }
+
+  if (now >= rec.hour.resetAt)   { rec.hour   = { count: 0, resetAt: now + 3600000 }; }
+
+  rec.minute.count++;
+
+  rec.hour.count++;
+
+  if (rec.minute.count > 20) return { ok: false, retryAfter: Math.ceil((rec.minute.resetAt - now)/1000), scope: 'minute' };
+
+  if (rec.hour.count > 200)  return { ok: false, retryAfter: Math.ceil((rec.hour.resetAt - now)/1000),   scope: 'hour'   };
+
+  return { ok: true };
+
+}
+
+// Periodic cleanup map rate-limit (mỗi 30 phút)
+
+setInterval(() => {
+
+  const now = Date.now();
+
+  for (const [ip, rec] of _webChatRate.entries()) {
+
+    if (rec.hour.resetAt < now && rec.minute.resetAt < now) _webChatRate.delete(ip);
+
+  }
+
+}, 1800000);
+
+async function handleWebChat(sessionId, messageText, visitorMeta) {
+
+  const sessionKey = `web_${sessionId}`;
+
+  let session = loadSession(sessionKey);
+
+  if (!Array.isArray(session)) session = [];
+
+  if (session.length > 0) {
+
+    const last = session[session.length - 1];
+
+    if (last.role === 'user' && Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
+
+      session = [];
+
+    }
+
+  }
 // === STAFF REGISTRATION — đăng ký nhân viên qua email @nsca.vn ============
 // Gọi khi tin nhắn của người CHƯA đăng ký có chứa email @nsca.vn.
 // Đối chiếu email với directory.md → khớp thì ghi nhận Zalo ID tức thì.
@@ -2058,6 +2153,93 @@ setInterval(() => {
 }, 3600000);
 
 // === HEALTH CHECK ===
+// === CORS + WEB CHAT ENDPOINT ============================================
+
+// CORS chỉ cho /web-chat — không động vào các route khác.
+
+app.use('/web-chat', (req, res, next) => {
+
+  const origin = req.headers.origin;
+
+  if (origin && WEB_CHAT_ALLOWED_ORIGINS.has(origin)) {
+
+    res.setHeader('Access-Control-Allow-Origin', origin);
+
+    res.setHeader('Vary', 'Origin');
+
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
+  next();
+
+});
+
+app.post('/web-chat', express.json({ limit: '64kb' }), async (req, res) => {
+
+  try {
+
+    const origin = req.headers.origin;
+
+    if (origin && !WEB_CHAT_ALLOWED_ORIGINS.has(origin)) {
+
+      return res.status(403).json({ error: 'origin_not_allowed' });
+
+    }
+
+    const ip = (req.headers['x-forwarded-for']?.split(',')[0] || req.ip || 'unknown').trim();
+
+    const rate = _webChatCheckRate(ip);
+
+    if (!rate.ok) {
+
+      res.setHeader('Retry-After', String(rate.retryAfter));
+
+      return res.status(429).json({ error: 'rate_limited', scope: rate.scope, retry_after_seconds: rate.retryAfter });
+
+    }
+
+    const { session_id, message, meta } = req.body || {};
+
+    if (typeof message !== 'string' || !message.trim()) {
+
+      return res.status(400).json({ error: 'message_required' });
+
+    }
+
+    if (message.length > 1500) {
+
+      return res.status(400).json({ error: 'message_too_long', limit: 1500 });
+
+    }
+
+    let sid = (typeof session_id === 'string' && /^[a-f0-9-]{8,64}$/i.test(session_id)) ? session_id : null;
+
+    if (!sid) {
+
+      sid = require('crypto').randomBytes(16).toString('hex');
+
+    }
+
+    const reply = await handleWebChat(sid, message.trim(), meta || {});
+
+    return res.json({ ok: true, reply, session_id: sid });
+
+  } catch (e) {
+
+    console.error(`[web-chat-endpoint] ${e.message}`);
+
+    return res.status(500).json({ error: 'internal_error', detail: e.message });
+
+  }
+
+});
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
