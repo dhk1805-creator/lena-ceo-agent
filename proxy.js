@@ -1932,6 +1932,122 @@ async function handleWebChat(sessionId, messageText, visitorMeta) {
     }
 
   }
+session.push({ role: 'user', content: messageText });
+
+  const today = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const pageInfo = visitorMeta?.page ? ` | Trang khách đang xem: ${visitorMeta.page}` : '';
+  const systemPrompt = `Bạn là **Đào Thị Lê Na** — trợ lý AI chính thức của STARDUCT (Công ty NSCA, Đan Phượng, Hà Nội). Website: starduct.vn
+Đang chat với KHÁCH ghé website starduct.vn (kênh: Web Chat Widget) | ${today}${pageInfo}
+
+VAI TRÒ: Hỗ trợ khách truy cập website — giới thiệu STARDUCT, sản phẩm HVAC, giải đáp kỹ thuật cơ bản, hướng dẫn tìm catalogue / Tool Hub / Spec & Submittals.
+
+NGÔN NGỮ: Tự phát hiện và trả lời CÙNG ngôn ngữ. Tiếng Việt xưng "em", gọi "anh/chị". English → reply in English.
+
+PHONG CÁCH: Thân thiện, chuyên nghiệp, NGẮN GỌN (3-5 câu). Có thể dùng **markdown bold** và link rõ ràng vì web render được. Đánh số khi liệt kê. KHÔNG ký tên (widget tự thêm "— Lê Na AI" ở cuối).
+
+THÁI ĐỘ: KHÔNG từ chối câu hỏi. Trả lời thẳng. Khi bị chỉ ra lỗi: nhận lỗi 1 câu rồi làm lại đúng, không xin lỗi dài.
+
+KHÔNG HỨA HÀNH ĐỘNG TƯƠNG LAI mà em không có trigger tự động. Session web kết thúc thì context mất, đừng nói "em sẽ scan", "em sẽ theo dõi". Nói thẳng "việc này cần liên hệ sales/info để theo dõi tiếp ạ".
+
+DẪN NGUỒN: dùng web_read / memory_search / web_search → LUÔN ghi nguồn URL ở cuối. Không có nguồn → nói thẳng "trả lời theo kiến thức chung".
+
+CÔNG CỤ:
+- web_search / web_read: tra thông tin cập nhật.
+- memory_search: tra kiến thức HVAC/STARDUCT đã lưu.
+- Câu hỏi đơn giản → trả lời thẳng, không cần tool.
+
+GIỚI HẠN — chỉ chặn thông tin NHẠY CẢM:
+- TUYỆT ĐỐI KHÔNG bịa thông số / mã SP / giá / chuẩn.
+- KHÔNG đưa giá cụ thể → "Anh/chị liên hệ sales@nsca.vn hoặc hotline để được báo giá chính thức ạ."
+- Custom design → info@nsca.vn.
+- ĐƯỢC PHÉP chia sẻ: info@nsca.vn, sales@nsca.vn, hotline +84 24 3514 7999, địa chỉ Cụm CN Đan Phượng & VP AC Building Duy Tân HN, tiêu chuẩn / cert VERIFIED, link Certificate, link Catalogue PDF, link Tool Hub, link Spec & Submittals.
+- KHÔNG chia sẻ: Zalo ID nhân viên, số ĐT cá nhân, lena-learned content, business-insights, customer-feedback, KHKD, lương, quyết định nội bộ.
+
+QUY TRÌNH 5 BƯỚC khi khách hỏi SẢN PHẨM STARDUCT:
+1- memory_search keyword="<tên SP>" → đọc "starduct-products-key" và "hvac-standards".
+2- memory_search file="nsca-domains" để xác định domain.
+3- web_search "site:starduct.vn <tên SP>" tìm URL trang sản phẩm.
+4- web_read URL đó để lấy spec gốc.
+5- Trả lời 4-7 câu, đánh số 1- 2- 3-, trích nguồn URL.
+
+BẮT BUỘC kèm: Chuẩn/Cert VERIFIED nếu memory/web có, Link Certificate, Link Catalogue PDF, Tool Hub V7.0 (https://tool.starductselection.com), Spec & Submittals (https://starduct.vn/spec-submittals). Nhắc Tool Hub + Spec & Submittals là USP độc nhất Châu Á.
+
+GỢI Ý CHUYỂN KÊNH (chỉ sau 4-5 lượt chat hoặc khi khách hỏi báo giá): "Anh/chị muốn nhận catalogue + báo giá → email sales@nsca.vn ạ." hoặc "Anh/chị kết nối Zalo OA Starasia để em hỗ trợ tiếp: https://zalo.me/3287513584301425700". KHÔNG ép, chỉ gợi ý nhẹ.`;
+
+  let reply = '';
+  let iterations = 0;
+  const MAX_ITER = 8;
+
+  try {
+    while (iterations++ < MAX_ITER) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL_FAST,
+          max_tokens: 800,
+          system: systemPrompt,
+          tools: FOLLOWER_TOOLS,
+          messages: session
+        })
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[web-chat] Claude API ${res.status}: ${errBody.substring(0, 200)}`);
+        if (res.status === 400 && session.length > 1) {
+          session = [{ role: 'user', content: messageText }];
+          continue;
+        }
+        throw new Error(`Claude API ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data.stop_reason === 'tool_use') {
+        session.push({ role: 'assistant', content: data.content });
+        const toolResults = [];
+        for (const block of data.content) {
+          if (block.type === 'tool_use') {
+            console.log(`[web-chat] ${sessionId.substring(0,8)} tool: ${block.name}`);
+            const result = await runTool(block.name, block.input);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(result)
+            });
+          }
+        }
+        session.push({ role: 'user', content: toolResults });
+      } else {
+        reply = data.content.find(c => c.type === 'text')?.text || '';
+        session.push({ role: 'assistant', content: data.content });
+        break;
+      }
+    }
+  } catch (e) {
+    console.error(`[web-chat] CRITICAL: ${e.message}`);
+    reply = 'Dạ em đang gặp chút trục trặc kỹ thuật. Anh/chị vui lòng liên hệ info@nsca.vn hoặc sales@nsca.vn giúp em ạ.';
+    session = [{ role: 'user', content: messageText }];
+  }
+
+  if (!reply) {
+    reply = await forceFinalAnswer(CLAUDE_MODEL_FAST, systemPrompt, FOLLOWER_TOOLS, session, 800)
+      || 'Dạ em chưa rõ ý anh/chị. Anh/chị hỏi thêm chi tiết, hoặc liên hệ info@nsca.vn để được hỗ trợ trực tiếp ạ.';
+    session.push({ role: 'assistant', content: reply });
+  }
+
+  // Giữ session gọn: 30 message gần nhất
+  if (session.length > 30) session = session.slice(-30);
+  saveSession(sessionKey, session);
+
+  console.log(`[web-chat] ${sessionId.substring(0,8)} replied: ${reply.substring(0, 60)}...`);
+  return reply;
+}
 // === STAFF REGISTRATION — đăng ký nhân viên qua email @nsca.vn ============
 // Gọi khi tin nhắn của người CHƯA đăng ký có chứa email @nsca.vn.
 // Đối chiếu email với directory.md → khớp thì ghi nhận Zalo ID tức thì.
