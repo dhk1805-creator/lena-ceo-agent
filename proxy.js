@@ -1120,6 +1120,25 @@ app.post('/zalo-webhook', express.json({ limit: '5mb' }), (req, res) => {
         handleImageMessage(merged).catch(err => console.error('[image] error:', err.message));
       }, 5000); // 5s debounce — du margin cho VIP gui nhieu anh cach nhau ~2-3s
     }
+  } else if (event.event_name === 'user_send_file') {
+    // Batch file events: Zalo gui nhieu file = nhieu events rieng biet (giong anh).
+    // Gom trong 5s de Le Na nhan du cac file gui lien tiep.
+    const sid = event.sender?.id;
+    if (sid) {
+      if (!_fileBatch[sid]) _fileBatch[sid] = { events: [], timer: null };
+      _fileBatch[sid].events.push(event);
+      if (_fileBatch[sid].timer) clearTimeout(_fileBatch[sid].timer);
+      _fileBatch[sid].timer = setTimeout(() => {
+        const batch = _fileBatch[sid];
+        delete _fileBatch[sid];
+        const merged = JSON.parse(JSON.stringify(batch.events[0]));
+        if (batch.events.length > 1) {
+          merged.message.attachments = batch.events.flatMap(e => e.message?.attachments || []);
+        }
+        console.log(`[file-batch] ${sid}: ${batch.events.length} events → ${merged.message.attachments?.length || 0} attachments`);
+        handleFileMessage(merged).catch(err => console.error('[file] error:', err.message));
+      }, 5000); // 5s debounce — giong image batch
+    }
   } else if (
     event.event_name === 'user_send_comment' ||
     event.event_name === 'oa_comment' ||
@@ -1260,6 +1279,93 @@ async function handleImageMessage(event) {
     sender: { id: senderId },
     message: { text: combined }
   }).catch(e => console.error('[image] handler error:', e.message));
+}
+
+// Lê Na ĐỌC được file đính kèm: tải file VIP gửi qua Zalo → trích nội dung text
+// bằng file-read.js → đưa qua handleUserMessage để Lê Na vừa "đọc" được file, vừa
+// có path dùng cho file_read / gemini_analyze / report_archive.
+async function handleFileMessage(event) {
+  const senderId = event.sender?.id;
+  if (!senderId) return;
+  const vip = VIP_USERS[senderId];
+  const staff = !vip ? lookupStaffByZaloId(senderId) : null;
+  const name = vip ? vip.name : (staff?.name || lookupFollower(senderId)?.display_name || 'anh/chị');
+
+  const atts = (event.message?.attachments || []).filter(a => a?.payload?.url);
+  const caption = (event.message?.text || '').trim();
+  console.log(`[file] from ${name} (${senderId}): ${atts.length} tệp`);
+
+  // Bước 1: tải file về /tmp/zalo-files/ ngay (URL Zalo hết hạn nhanh).
+  fs.mkdirSync('/tmp/zalo-files', { recursive: true });
+  const savedFiles = []; // { path, name }
+  for (const att of atts.slice(0, 5)) {
+    const url = att.payload.url;
+    const rawName = String(att.payload?.name || 'file').trim() || 'file';
+    const safeName = (rawName.replace(/[^\w.\-]+/g, '_').slice(-80)) || 'file';
+    try {
+      const r = await fetch(url);
+      if (!r.ok) { console.error(`[file] tải lỗi ${r.status}: ${rawName}`); continue; }
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 25 * 1024 * 1024) { console.error(`[file] quá lớn (${buf.length}b), bỏ qua: ${rawName}`); continue; }
+      const tmpPath = `/tmp/zalo-files/${Date.now()}-${savedFiles.length}-${safeName}`;
+      fs.writeFileSync(tmpPath, buf);
+      savedFiles.push({ path: tmpPath, name: rawName });
+    } catch (e) {
+      console.error(`[file] tải lỗi: ${e.message}`);
+    }
+  }
+
+  // Không tải được file nào → báo VIP rõ ràng, hướng gửi qua email/Drive.
+  if (savedFiles.length === 0) {
+    await handleUserMessage({
+      event_name: 'user_send_text',
+      sender: { id: senderId },
+      message: { text: `(He thong nhan duoc su kien VIP gui file qua Zalo nhung KHONG tai duoc file ve.${caption ? ` Loi nhan kem: "${caption}".` : ''} Hay noi ro voi VIP la em chua tai duoc file, nho VIP gui lai qua email (dinh kem) hoac bo vao Drive Lena_Reports roi nhan em. DUNG doan ly do, DUNG bao VIP thu lai y vay.)` }
+    }).catch(e => console.error('[file] handler error:', e.message));
+    return;
+  }
+
+  // Bước 2: trích nội dung text từng file qua file-read.js (giống vision đọc ảnh).
+  const fileReadJs = `${__dirname}/google-tools/file-read.js`;
+  const parts = [];
+  for (const f of savedFiles) {
+    let extracted = '';
+    try {
+      const { stdout } = await execFileAsync('node', [fileReadJs, f.path, '5000'],
+        { encoding: 'utf-8', timeout: 60000, maxBuffer: 20 * 1024 * 1024 });
+      let parsed = null;
+      try {
+        parsed = JSON.parse(stdout);
+      } catch (_) {
+        const s = stdout.indexOf('{'), e2 = stdout.lastIndexOf('}');
+        if (s >= 0 && e2 > s) { try { parsed = JSON.parse(stdout.slice(s, e2 + 1)); } catch (_) {} }
+      }
+      if (parsed && parsed.success && parsed.content) {
+        extracted = parsed.content;
+      } else {
+        extracted = `(He thong chua trich duoc noi dung tep nay${parsed && parsed.error ? `: ${parsed.error}` : ''}. Dung tool file_read hoac gemini_analyze voi path o duoi de doc.)`;
+      }
+    } catch (e) {
+      console.error(`[file] trích nội dung lỗi (${f.name}): ${e.message}`);
+      extracted = `(He thong chua trich duoc noi dung tep nay. Dung tool file_read hoac gemini_analyze voi path o duoi de doc.)`;
+    }
+    parts.push(`=== Tep: ${f.name} ===\n${extracted}`);
+  }
+
+  // Bước 3: ghép nội dung + path thành 1 tin text rồi đưa qua handleUserMessage —
+  // để Lê Na vừa "đọc" được file, vừa có path dùng cho file_read / report_archive.
+  const fileRefLines = savedFiles.map((f, i) => `[file_${i + 1}: path="${f.path}" name="${f.name}"]`).join('\n');
+  const overflowNote = atts.length > savedFiles.length
+    ? ` (VIP gui ${atts.length} tep, he thong xu ly ${savedFiles.length} tep dau — neu thieu, nho VIP gui tiep phan con lai.)`
+    : '';
+  const combined = `(Nguoi dung vua gui ${savedFiles.length} tep dinh kem qua Zalo. He thong da tai ve va trich san noi dung.${caption ? ` Loi nhan kem: "${caption}".` : ''}${overflowNote}\n\n${parts.join('\n\n')}\n\n${fileRefLines})`;
+
+  console.log(`[file] ${name}: ${savedFiles.length} tệp đã tải + trích nội dung, chuyển handleUserMessage`);
+  await handleUserMessage({
+    event_name: 'user_send_text',
+    sender: { id: senderId },
+    message: { text: combined }
+  }).catch(e => console.error('[file] handler error:', e.message));
 }
 
 // Auto-reply tu dong cho comment cua follower tren bai viet OA.
@@ -1450,6 +1556,22 @@ Sheet tabs: CEO Daily Dashboard | KPI Tracker | Report Tracker | Weekly Performa
 Nhận file từ email/OneDrive/GDrive → download → file_read/gemini_analyze → report_archive upload → báo VIP.
 Link OneDrive (onedrive.live.com, 1drv.ms, sharepoint.com) → dùng onedrive_download (KHÔNG dùng gmail_attachment).
 Đã scan email = PHẢI archive. KHÔNG scan rồi bỏ.
+
+═══ WORKFLOW FILE ĐÍNH KÈM (khi VIP gửi file qua Zalo) ═══
+VIP gửi file qua Zalo (PDF, Word, Excel, PowerPoint, CSV, TXT...) → hệ thống TỰ tải file
+về và trích sẵn nội dung, đưa cho em dạng:
+"(Nguoi dung vua gui N tep... === Tep: <ten> === <noi dung> ... [file_x: path="..." name="..."])".
+
+1- Nội dung file đã có sẵn trong tin → ĐỌC và xử lý theo yêu cầu VIP NGAY (P1). KHÔNG nói "em không thấy file".
+2- File dài bị cắt ngắn, cần đọc đầy đủ hơn → file_read(file_path = path trong [file_x], max_chars lớn hơn).
+3- PDF scan/ảnh/hóa đơn không trích được chữ → gemini_analyze(file_path = path) đọc bằng vision.
+4- File là báo cáo của BP/nhân viên → đọc xong report_archive(action=upload, file_path=path, period, label) lưu Lena_Reports, cập nhật Report Tracker nếu là BC tuần.
+5- VIP không dặn gì thêm → tóm tắt ngắn nội dung file rồi hỏi VIP muốn em làm gì tiếp.
+
+Khi VIP nói đã gửi file mà em KHÔNG thấy [file_x: ...] hay dòng "=== Tep: ===" nào trong tin:
+KHÔNG đoán lý do (đừng nói "file chưa upload / định dạng không hỗ trợ / lỗi kỹ thuật"),
+KHÔNG bảo VIP "thử lại". Đáp: "Em chưa nhận được file qua Zalo. Sếp gửi giúp em qua
+email (đính kèm) hoặc bỏ vào Drive Lena_Reports rồi nhắn em, em đọc được ngay ạ."
 
 ═══ WORKFLOW ẢNH BÌA (khi VIP gửi ảnh qua Zalo) ═══
 GIOI HAN: TOI DA 5 anh / 1 tin nhan. Zalo OA co the chi chuyen 1 anh dau tien sang em
@@ -2209,6 +2331,7 @@ const _zaloSendCache = new Map();
 const ZALO_CHAT_COOLDOWN = 5000; // 5 seconds dedup for chat replies
 const _webhookDedup = new Set();
 const _imgBatch = {}; // senderId → { events[], timer } — gom image events trong 5s (margin cho VIP gui cach nhau)
+const _fileBatch = {}; // senderId → { events[], timer } — gom file events trong 5s (giong _imgBatch)
 
 // Sanitize cuoi cung truoc khi gui ra Zalo: Sonnet thuong drift ve markdown
 // dau **, ma Zalo OA khong render markdown nen hien thi nguyen ky tu **.
