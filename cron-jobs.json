@@ -219,5 +219,18 @@
       "message": "KIEM TRA TINH TRANG ZALO OA TOKEN — 12H TRUA HANG NGAY.\n\nMUC DICH: Verify token Zalo OA con valid khong, neu fail thi tu dong gui email canh bao Sep ngay.\n\nQUY TAC:\n1. Chay tool exec: `node /app/google-tools/zalo-oa-token-health.js`\n2. Tool tu dong:\n   - Verify token qua GET /v2.0/oa/getoa\n   - Neu OK: log + return JSON {ok: true, oa_name, num_follower}\n   - Neu FAIL: track fail count + gui email canh bao Sep (dhk@nsca.vn)\n   - Lan fail dau: WARNING. Tu lan 2 lien tiep: URGENT.\n3. Doc output JSON tra ve:\n   - ok=true: IM LANG, khong bao gi Sep.\n   - ok=false alert_sent=true: bao Sep qua zalo_oa_send_to_vip target=sep-khanh:\n     'Token Zalo OA bi loi (Zalo error: <code>). Em da gui email canh bao chi tiet. Sep can paste token moi.'\n   - ok=false alert_sent=false: thu email manual qua email_send tool.\n\nCAM:\n- KHONG spam Sep neu token OK (im lang).\n- KHONG tu tra loi 'kha nang sua' khi gap token issue — chi report.\n- KHONG retry refresh trong cron nay (proxy.js tu handle on-demand)."
     },
     "sessionTarget": "isolated"
+  },
+  {
+    "id": "daily-gmail-token-health",
+    "name": "Daily Gmail OAuth Token Health Check - 7h sang (Issue #103)",
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 7 * * *"
+    },
+    "payload": {
+      "kind": "agentTurn",
+      "message": "KIEM TRA TINH TRANG GMAIL OAUTH TOKEN — 7H SANG HANG NGAY (Issue #103).\n\nMUC DICH: Phat hien som GOOGLE_REFRESH_TOKEN het han / bi revoke (loi invalid_grant) TRUOC khi cac cron quet email fail im lang (triage TCKT chi Hong 17h, weekly email scan T7, weekly business report T2...). Chay 7h sang de Sep co ca ngay lam viec de sua token.\n\nQUY TAC:\n1. Chay tool exec: `node /app/google-tools/gmail-token-health.js`\n2. Tool tu dong:\n   - Doi GOOGLE_REFRESH_TOKEN -> access_token, roi goi Gmail /profile xac nhan scope\n   - Neu OK: log + return JSON {ok: true, email}\n   - Neu FAIL: track fail count + bao Sep qua ZALO (kenh khong phu thuoc token Gmail) + thu email canh bao (account lena@)\n   - Lan fail dau: WARNING. Tu lan 2 lien tiep: URGENT.\n3. Doc output JSON tra ve:\n   - ok=true: IM LANG, khong bao gi Sep.\n   - ok=false: tool da tu gui canh bao. KHONG gui them tin nao nua (tranh trung lap).\n\nCAM:\n- KHONG spam Sep neu token OK (im lang).\n- KHONG tu hua 'se sua token' — token refresh la credential, chi Sep paste token moi vao Railway moi sua duoc. Chi report.\n- KHONG dung gmail-read/email_read trong cron nay (chinh no dang loi)."
+    },
+    "sessionTarget": "isolated"
   }
 ]
