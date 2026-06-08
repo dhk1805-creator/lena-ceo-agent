@@ -11,7 +11,7 @@ RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_
     && /usr/local/bin/yt-dlp --version
 
 # Install dependencies: sharp (image), express (server), node-cron (scheduler)
-RUN cd /app && npm install sharp express node-cron xlsx pdf-parse mammoth adm-zip
+RUN cd /app && npm install sharp express node-cron xlsx pdf-parse@2.4.5 mammoth adm-zip
 
 # Copy workspace files
 RUN mkdir -p /app/workspace/skills /app/workspace/memory
