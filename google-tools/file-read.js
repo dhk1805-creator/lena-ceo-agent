@@ -81,11 +81,58 @@ async function readExcel() {
 }
 
 async function readPDF() {
-  const pdfParse = require('pdf-parse');
   const buffer = fs.readFileSync(filePath);
-  const data = await pdfParse(buffer);
+  let text = '';
+  let pages;
 
-  let content = data.text || '';
+  try {
+    const mod = require('pdf-parse');
+    if (mod && typeof mod.PDFParse === 'function') {
+      // pdf-parse v2.x — API moi dung class PDFParse (require tra ve object, KHONG goi truc tiep duoc).
+      // Day la nguyen nhan loi "pdfParse is not a function" khi npm keo ban v2.
+      const parser = new mod.PDFParse({ data: buffer });
+      const data = await parser.getText();
+      await parser.destroy();
+      text = data.text || '';
+      pages = data.total;
+    } else {
+      // pdf-parse v1.x — default export la ham goi truc tiep.
+      const pdfParse = (typeof mod === 'function') ? mod : (mod && mod.default);
+      if (typeof pdfParse !== 'function') {
+        throw new Error('pdf-parse khong export ham parse (phien ban khong ho tro)');
+      }
+      const data = await pdfParse(buffer);
+      text = data.text || '';
+      pages = data.numpages;
+    }
+  } catch (e) {
+    // Trich text that bai → goi y dung vision (gemini_analyze) thay vi bao loi suong.
+    console.log(JSON.stringify({
+      error: 'Khong trich duoc text tu PDF: ' + e.message,
+      file: path.basename(filePath),
+      fallback: 'gemini_analyze',
+      note: `PDF nay khong trich duoc text (co the la PDF scan/anh). Dung tool gemini_analyze voi file_path="${filePath}" de doc bang vision.`
+    }));
+    return;
+  }
+
+  // Parse thanh cong nhung gan nhu khong co text → PDF scan/anh → fallback vision.
+  // pdf-parse v2 chen marker "-- N of M --" giua cac trang → bo ra truoc khi do do dai that.
+  const meaningful = text.replace(/--\s*\d+\s+of\s+\d+\s*--/g, '').trim();
+  if (meaningful.length < 10) {
+    console.log(JSON.stringify({
+      success: false,
+      type: 'pdf',
+      file: path.basename(filePath),
+      pages,
+      charCount: text.length,
+      fallback: 'gemini_analyze',
+      note: `PDF khong co text (co the la PDF scan/anh). Dung tool gemini_analyze voi file_path="${filePath}" de doc bang vision.`
+    }, null, 2));
+    return;
+  }
+
+  let content = text;
   const fullLen = content.length;
 
   if (content.length > maxChars) {
@@ -96,7 +143,7 @@ async function readPDF() {
     success: true,
     type: 'pdf',
     file: path.basename(filePath),
-    pages: data.numpages,
+    pages,
     charCount: fullLen,
     content
   }, null, 2));

@@ -1220,7 +1220,7 @@ async function handleImageMessage(event) {
   const imageBlocks = [];
   const savedPaths = [];
   fs.mkdirSync('/tmp/zalo-images', { recursive: true });
-  for (const url of imageUrls.slice(0, 5)) {
+  for (const url of imageUrls.slice(0, 10)) {
     try {
       const r = await fetch(url);
       if (!r.ok) { console.error(`[image] tải ảnh lỗi ${r.status}`); continue; }
