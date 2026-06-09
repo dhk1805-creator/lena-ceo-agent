@@ -2,6 +2,7 @@
   {
     "id": "weekly-email-scan-sep-khanh",
     "name": "Weekly Email Scan Sep Khanh - 21h30 T7",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "30 21 * * 6"
@@ -15,6 +16,7 @@
   {
     "id": "weekly-report-scan-saturday",
     "name": "Weekly Report Scan - 21h Thu 7",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 21 * * 6"
@@ -28,6 +30,7 @@
   {
     "id": "weekly-report-reminder-sunday",
     "name": "Weekly Report Reminder - 21h CN (lan 2/3, neu can)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 21 * * 0"
@@ -41,6 +44,7 @@
   {
     "id": "weekly-report-reminder-monday-final",
     "name": "Weekly Report Reminder - 8h T2 (lan cuoi 3/3, neu can)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 8 * * 1"

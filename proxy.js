@@ -1022,13 +1022,10 @@ async function runTool(name, input) {
       break;
     }
     case 'bulk_report_scan': {
-      const bulkArgs = [`${GTOOL}/bulk-report-scan.js`];
-      if (input.start_week) bulkArgs.push(String(input.start_week));
-      if (input.end_week) bulkArgs.push(String(input.end_week));
-      if (input.year) bulkArgs.push(String(input.year));
-      if (input.dryrun) bulkArgs.push('dryrun');
-      cmd = 'node'; args = bulkArgs;
-      break;
+      // DA TAM DUNG theo yeu cau Sep Khanh (Issue #108): kha nang tim/doc email cua
+      // Le Na dang co van de -> dung quet email tim attachment de tranh ket luan sai
+      // ("chua nop" trong khi BP da gui). Le Na chi nhan file qua Zalo truc tiep tu VIP.
+      return { error: 'bulk_report_scan da bi tam dung theo yeu cau Sep Khanh (Issue #108). Le Na khong tu dong quet email tim bao cao nua — chi nhan file qua Zalo truc tiep tu VIP.' };
     }
     default:
       return { error: `Unknown tool: ${name}` };
@@ -2682,6 +2679,10 @@ function loadCronJobs() {
   let scheduled = 0;
   for (const job of jobs) {
     if (!job.schedule?.expr) continue;
+    if (job.enabled === false) {
+      console.log(`[cron] ⏸ ${job.id} (disabled)`);
+      continue;
+    }
     cron.schedule(job.schedule.expr, () => {
       console.log(`[cron] ▶ ${job.id}`);
       handleCronJob(job).catch(e =>
