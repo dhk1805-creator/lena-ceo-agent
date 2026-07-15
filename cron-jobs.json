@@ -58,6 +58,7 @@
   {
     "id": "weekly-business-report-monday",
     "name": "Weekly Business Report - 9h30 T2 (sau anh Ngoc 9h, ca nhan hoa 11 BP + tong hop Sep)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "30 9 * * 1"
@@ -71,6 +72,7 @@
   {
     "id": "meeting-minutes-check-tuesday",
     "name": "Check bien ban hop T2 (8h T3)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 8 * * 2"
@@ -84,6 +86,7 @@
   {
     "id": "daily-tckt-email-triage-chi-hong",
     "name": "Daily TCKT Email Triage Chi Hong - 17h",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 17 * * 1-6"
@@ -97,6 +100,7 @@
   {
     "id": "daily-email-triage-anh-ngoc",
     "name": "Daily Email Triage Anh Ngoc - 17h",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 17 * * 1-6"
@@ -110,6 +114,7 @@
   {
     "id": "daily-npp-scan-anh-ngoc",
     "name": "Daily NPP Scan - 9h sang (cho anh Ngoc TP KD)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 9 * * 1-6"
@@ -123,6 +128,7 @@
   {
     "id": "weekly-pkd-team-report-anh-ngoc",
     "name": "Weekly PKD Team Report - 9h T2 (cho anh Ngoc - quan ly cap duoi)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 9 * * 1"
@@ -136,6 +142,7 @@
   {
     "id": "daily-calendar-morning-briefing",
     "name": "Daily Calendar Morning Briefing - 8h30 sang",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "30 8 * * 1-6"
@@ -149,6 +156,7 @@
   {
     "id": "monthly-closing-report-anh-ngoc",
     "name": "Monthly Closing Report - Cuoi thang (cho anh Ngoc - PKD)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 21 28-31 * *"
@@ -162,6 +170,7 @@
   {
     "id": "monthly-closing-report",
     "name": "Monthly Closing Report - Ngay cuoi thang (TONG HOP TU 4 TUAN)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "30 21 28-31 * *"
@@ -175,6 +184,7 @@
   {
     "id": "daily-task-overdue-check",
     "name": "Daily Task Overdue Check - 9h30 sang",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "30 9 * * 1-6"
@@ -188,6 +198,7 @@
   {
     "id": "weekly-kpi-update",
     "name": "Weekly KPI Tracker Update - 22h T7 (sau Report Scan 21h)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 22 * * 6"
@@ -201,6 +212,7 @@
   {
     "id": "daily-auto-learn",
     "name": "Auto-Learn from Conversations - 23h hang ngay (Issue #31)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 23 * * *"
@@ -214,6 +226,7 @@
   {
     "id": "daily-zalo-token-health",
     "name": "Daily Zalo OA Token Health Check - 12h trua",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 12 * * *"
@@ -227,6 +240,7 @@
   {
     "id": "daily-gmail-token-health",
     "name": "Daily Gmail OAuth Token Health Check - 7h sang (Issue #103)",
+    "enabled": false,
     "schedule": {
       "kind": "cron",
       "expr": "0 7 * * *"
